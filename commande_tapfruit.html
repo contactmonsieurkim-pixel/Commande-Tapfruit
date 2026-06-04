@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Commande Tapfruit</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F2F7F4; --surface: #FFFFFF; --border: #D6E8DD;
+  --text: #1A2E22; --muted: #6B8F77; --accent: #2D6A4F;
+  --accent-light: #EAF4EE; --accent-muted: #74C69D;
+  --success: #1B4332; --danger: #C23B22;
+  --font: 'DM Sans', sans-serif; --mono: 'DM Mono', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body { font-family: var(--font); background: var(--bg); color: var(--text); }
+
+.layout { display: grid; grid-template-columns: 1fr 300px; min-height: 100vh; }
+.main { padding: 2rem; }
+.top-bar { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap; }
+.top-bar h1 { font-size: 20px; font-weight: 500; letter-spacing: -0.02em; }
+.top-bar h1 span { color: var(--muted); font-weight: 300; }
+.notice { margin-top: 6px; font-size: 12px; color: var(--muted); line-height: 1.6; }
+.notice b { color: var(--accent); }
+.section { margin-bottom: 2rem; }
+.section-header { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+.item { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 16px; padding: 10px 8px; border-radius: 8px; transition: background 0.1s; border: 1px solid transparent; }
+.item:hover { background: var(--surface); }
+.item.active { background: var(--accent-light); border-color: #B7DFC8; }
+.item-meta { min-width: 0; }
+.item-name { font-size: 13px; line-height: 1.45; color: var(--text); margin-bottom: 2px; }
+.item-unit { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.item-price { font-family: var(--mono); font-size: 13px; color: var(--muted); white-space: nowrap; text-align: right; min-width: 70px; }
+.qty-ctrl { display: flex; align-items: center; gap: 8px; }
+.qty-btn { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 18px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.12s; flex-shrink: 0; }
+.qty-btn:hover { border-color: var(--accent); color: var(--accent); }
+.qty-btn:active { transform: scale(0.9); }
+.qty-val { font-family: var(--mono); font-size: 14px; font-weight: 500; min-width: 22px; text-align: center; color: var(--text); }
+
+.sidebar { background: var(--surface); border-left: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.sidebar-head { padding: 1.5rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.sidebar-head h2 { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+.sidebar-head p { font-size: 12px; color: var(--muted); }
+.sender-wrap { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.sender-wrap label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); display: block; margin-bottom: 6px; }
+.sender-wrap input { font-family: var(--font); font-size: 13px; width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); outline: none; transition: border-color 0.15s; }
+.sender-wrap input:focus { border-color: var(--accent-muted); background: var(--surface); }
+.cart-items { flex: 1; padding: 1rem 1.5rem; }
+.cart-empty { font-size: 13px; color: var(--muted); text-align: center; padding: 2rem 0; line-height: 1.7; }
+.cart-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.cart-item:last-child { border-bottom: none; }
+.cart-item-info { flex: 1; min-width: 0; }
+.cart-item-name { font-size: 12px; line-height: 1.4; color: var(--text); margin-bottom: 2px; }
+.cart-item-sub { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.cart-item-total { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--text); white-space: nowrap; }
+.sidebar-footer { padding: 1.25rem 1.5rem; border-top: 1px solid var(--border); flex-shrink: 0; }
+.total-line { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.total-label { font-size: 13px; color: var(--muted); }
+.total-value { font-family: var(--mono); font-size: 22px; font-weight: 500; color: var(--text); }
+.minimum-warning { font-size: 11px; color: var(--danger); margin-bottom: 12px; display: none; }
+.minimum-warning.show { display: block; }
+.send-btn { font-family: var(--font); font-size: 14px; font-weight: 500; width: 100%; padding: 12px; border-radius: 8px; border: none; background: var(--accent); color: #fff; cursor: pointer; transition: all 0.15s; }
+.send-btn:hover { background: #1B4332; }
+.send-btn:active { transform: scale(0.99); }
+.send-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; }
+.send-btn.success { background: var(--success); }
+.toast { position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--text); color: #fff; font-size: 13px; padding: 10px 20px; border-radius: 99px; opacity: 0; pointer-events: none; transition: all 0.25s; z-index: 999; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.error { background: var(--danger); }
+
+@media (max-width: 700px) {
+  .layout { grid-template-columns: 1fr; }
+  .main { padding: 1rem; }
+  .sidebar { position: static; height: auto; overflow-y: visible; border-left: none; border-top: 1px solid var(--border); }
+  .top-bar { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+  <main class="main">
+    <div class="top-bar">
+      <div>
+        <h1>Commande Tapfruit <span>— Fruits & Légumes</span></h1>
+        <p class="notice">
+          <b>Commande minimum : 50 €</b> &nbsp;·&nbsp;
+          Livraison lun. – ven. &nbsp;·&nbsp;
+          <b>Commander avant 22h00</b> pour livraison le lendemain matin
+        </p>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-header">Produits disponibles</div>
+      <div id="catalog"></div>
+    </div>
+  </main>
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <h2>Récapitulatif</h2>
+      <p id="cart-count">Aucun article sélectionné</p>
+    </div>
+    <div class="sender-wrap">
+      <label>Votre prénom / nom</label>
+      <input type="text" id="sender" placeholder="Ex : Marie Dupont">
+    </div>
+    <div class="cart-items" id="cart-items">
+      <p class="cart-empty">Ajoutez des produits<br>en utilisant les boutons + à gauche.</p>
+    </div>
+    <div class="sidebar-footer">
+      <div class="total-line">
+        <span class="total-label">Total HT</span>
+        <span class="total-value" id="total-val">0,00 €</span>
+      </div>
+      <p class="minimum-warning" id="min-warning">⚠️ Minimum de commande : 50 €</p>
+      <button class="send-btn" id="send-btn" onclick="sendOrder()">Envoyer la commande →</button>
+    </div>
+  </aside>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby5IF7NPbeRfjNtUyjzvocDt8eC5FuDgw_LNp456PTO1IczeBEuyBvqDP9KbBRZSBUFag/exec';
+
+const catalog = [
+  {name:"Asperge blanche +22",     unit:"kg (5 kg = 1 boîte)",        price:5.50},
+  {name:"Trévise",                  unit:"kg (1 pièce = 250 g)",        price:5.00},
+  {name:"Salade Romaine",           unit:"Sachet (2 pièces / sachet)",  price:3.28},
+  {name:"Cerfeuil",                 unit:"Botte (30 g = 1 botte)",      price:0.95},
+  {name:"Chou chinois",             unit:"Pièce",                       price:2.48},
+  {name:"Haricot Vert",             unit:"Barquette (500 g)",           price:4.98},
+  {name:"Poireau",                  unit:"kg",                          price:2.28},
+  {name:"Pomelo",                   unit:"Pièce",                       price:0.88},
+  {name:"Pomme Golden 201/240",     unit:"kg",                          price:2.28}
+];
+
+const qty = {};
+
+function fmt(n) { return n.toFixed(2).replace('.', ',') + ' €'; }
+
+function change(idx, delta) {
+  qty[idx] = Math.max(0, (qty[idx] || 0) + delta);
+  var valEl = document.getElementById('qv-' + idx);
+  var rowEl = document.getElementById('row-' + idx);
+  if (valEl) valEl.textContent = qty[idx];
+  if (rowEl) rowEl.className = 'item' + (qty[idx] > 0 ? ' active' : '');
+  renderCart();
+}
+
+function renderCatalog() {
+  var el = document.getElementById('catalog');
+  el.innerHTML = '';
+  catalog.forEach(function(item, idx) {
+    var q = qty[idx] || 0;
+    var row = document.createElement('div');
+    row.id = 'row-' + idx;
+    row.className = 'item' + (q > 0 ? ' active' : '');
+    row.innerHTML = '<div class="item-meta"><div class="item-name">' + item.name + '</div><div class="item-unit">' + item.unit + '</div></div>'
+      + '<div class="item-price">' + fmt(item.price) + '</div>'
+      + '<div class="qty-ctrl">'
+      + '<button class="qty-btn" onclick="change(' + idx + ',-1)">−</button>'
+      + '<span class="qty-val" id="qv-' + idx + '">' + q + '</span>'
+      + '<button class="qty-btn" onclick="change(' + idx + ',1)">+</button>'
+      + '</div>';
+    el.appendChild(row);
+  });
+}
+
+function renderCart() {
+  var el = document.getElementById('cart-items');
+  var selected = Object.entries(qty).filter(function(e) { return e[1] > 0; });
+  var total = 0;
+  if (!selected.length) {
+    el.innerHTML = '<p class="cart-empty">Ajoutez des produits<br>en utilisant les boutons + à gauche.</p>';
+    document.getElementById('total-val').textContent = '0,00 €';
+    document.getElementById('cart-count').textContent = 'Aucun article sélectionné';
+    document.getElementById('min-warning').classList.remove('show');
+    return;
+  }
+  el.innerHTML = '';
+  selected.forEach(function(entry) {
+    var idx = entry[0], q = entry[1];
+    var item = catalog[idx];
+    var sub = item.price * q;
+    total += sub;
+    var div = document.createElement('div');
+    div.className = 'cart-item';
+    div.innerHTML = '<div class="cart-item-info"><div class="cart-item-name">' + item.name + '</div><div class="cart-item-sub">' + fmt(item.price) + ' × ' + q + '</div></div><div class="cart-item-total">' + fmt(sub) + '</div>';
+    el.appendChild(div);
+  });
+  document.getElementById('total-val').textContent = fmt(total);
+  var refs = selected.length;
+  document.getElementById('cart-count').textContent = refs + ' référence' + (refs > 1 ? 's' : '') + ' sélectionnée' + (refs > 1 ? 's' : '');
+  var warning = document.getElementById('min-warning');
+  if (total < 50) { warning.classList.add('show'); } else { warning.classList.remove('show'); }
+}
+
+function showToast(msg, isError) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(function() { t.className = 'toast'; }, 3500);
+}
+
+function sendOrder() {
+  var sender = document.getElementById('sender').value.trim();
+  if (!sender) { showToast('Veuillez indiquer votre prénom / nom.', true); return; }
+  var selected = Object.entries(qty).filter(function(e) { return e[1] > 0; });
+  if (!selected.length) { showToast('Aucun article sélectionné.', true); return; }
+
+  var total = 0;
+  var items = selected.map(function(entry) {
+    var idx = entry[0], q = entry[1];
+    var item = catalog[idx];
+    total += item.price * q;
+    return { name: item.name, unit: item.unit, price: item.price, qty: q };
+  });
+
+  if (total < 50) { showToast('Minimum de commande : 50 €', true); return; }
+
+  var btn = document.getElementById('send-btn');
+  btn.disabled = true;
+  btn.textContent = 'Envoi en cours…';
+
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = SCRIPT_URL;
+  form.target = 'hidden-iframe';
+  form.style.display = 'none';
+
+  var input = document.createElement('input');
+  input.type = 'hidden';
+  input.name = 'data';
+  input.value = JSON.stringify({ sender: sender, items: items });
+  form.appendChild(input);
+
+  var iframe = document.createElement('iframe');
+  iframe.name = 'hidden-iframe';
+  iframe.style.display = 'none';
+
+  iframe.onload = function() {
+    btn.classList.add('success');
+    btn.textContent = '✓ Commande envoyée !';
+    showToast('Commande envoyée avec succès !');
+    setTimeout(function() {
+      btn.disabled = false;
+      btn.classList.remove('success');
+      btn.textContent = 'Envoyer la commande →';
+    }, 4000);
+    document.body.removeChild(form);
+    document.body.removeChild(iframe);
+  };
+
+  document.body.appendChild(iframe);
+  document.body.appendChild(form);
+  form.submit();
+}
+
+renderCatalog();
+renderCart();
+</script>
+</body>
+</html>
