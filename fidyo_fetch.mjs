@@ -9,7 +9,7 @@
  *   5) 받은 xlsx 를 Apps Script(doPost)로 전송 → Data 폴더에 저장
  *
  * 환경변수(=GitHub Secrets): FIDYO_USER, FIDYO_PASS, UPLOAD_URL, UPLOAD_TOKEN
- * 실패해도 debug/ 에 각 단계 스크린샷을 남겨서 원인 파악이 쉽습니다.
+ * 실패해도 debug/ 에 각 단계 스크린샷을 남깁니다.
  */
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -28,49 +28,73 @@ for (const [k, v] of Object.entries({ FIDYO_USER: USER, FIDYO_PASS: PASS, UPLOAD
 const DEBUG = path.resolve('debug');
 fs.mkdirSync(DEBUG, { recursive: true });
 let step = 0;
-async function shot(page, name) {
-  step++;
-  try { await page.screenshot({ path: path.join(DEBUG, String(step).padStart(2, '0') + '-' + name + '.png') }); } catch {}
-}
 
 async function run() {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ acceptDownloads: true, locale: 'fr-FR', timezoneId: 'Europe/Paris' });
   const page = await ctx.newPage();
   page.setDefaultTimeout(60000);
+
+  async function shot(name) {
+    step++;
+    try { await page.screenshot({ path: path.join(DEBUG, String(step).padStart(2, '0') + '-' + name + '.png') }); } catch {}
+  }
+  // 입력칸을 라벨/placeholder 로 찾아 채우되, 앱 리렌더로 실패하면 몇 번 재시도
+  async function fillField(labels, value, tag) {
+    const build = () => {
+      let loc = page.getByLabel(labels[0]);
+      for (let i = 1; i < labels.length; i++) loc = loc.or(page.getByPlaceholder(labels[i]));
+      return loc.first();
+    };
+    let lastErr;
+    for (let i = 0; i < 5; i++) {
+      try {
+        const el = build();
+        await el.waitFor({ state: 'visible', timeout: 20000 });
+        await el.click();
+        await el.fill(value);
+        return;
+      } catch (e) { lastErr = e; console.log('   ' + tag + ' 입력 재시도 ' + (i + 1)); await page.waitForTimeout(2500); }
+    }
+    throw lastErr;
+  }
+
   try {
     console.log('1) 로그인 페이지 열기');
-    await page.goto(LOGIN_URL, { waitUntil: 'networkidle' });
+    await page.goto(LOGIN_URL, { waitUntil: 'domcontentloaded' });
+    // 앱 로딩(splash "正在加载应用...") 이 끝나고 로그인 폼이 뜰 때까지 대기
+    try { await page.getByText('正在加载应用').waitFor({ state: 'hidden', timeout: 90000 }); } catch {}
+    await page.getByRole('button', { name: 'Connexion' }).waitFor({ state: 'visible', timeout: 90000 });
     await page.waitForTimeout(1500);
-    await shot(page, 'login');
+    await shot('login');
 
-    // Nom(이메일) = 비밀번호가 아닌 첫 입력칸, 비밀번호 = type=password
-    await page.locator('input:not([type="password"])').first().fill(USER);
-    await page.locator('input[type="password"]').first().fill(PASS);
-    await shot(page, 'filled');
+    console.log('   아이디/비밀번호 입력');
+    await fillField(['Nom', 'Nom'], USER, 'Nom');
+    await fillField(['Mot de passe', 'Mot de passe'], PASS, 'Mot de passe');
+    await shot('filled');
     await page.getByRole('button', { name: 'Connexion' }).click();
 
     console.log('   로그인 완료 대기…');
-    await page.getByText('Statistiques', { exact: true }).waitFor({ timeout: 60000 });
-    await page.waitForTimeout(1200);
-    await shot(page, 'home');
+    await page.getByText('Statistiques', { exact: true }).waitFor({ state: 'visible', timeout: 90000 });
+    await page.waitForTimeout(1500);
+    await shot('home');
 
     console.log('2) Statistiques 클릭');
     await page.getByText('Statistiques', { exact: true }).click();
-    await page.waitForTimeout(1500);
-    await shot(page, 'statistiques');
+    await page.waitForTimeout(2000);
+    await shot('statistiques');
 
     console.log('3) 商品销售统计 클릭');
     await page.getByRole('button', { name: '商品销售统计' })
       .or(page.getByText('商品销售统计')).first().click();
-    await page.waitForTimeout(1500);
-    await shot(page, 'daterange');
+    await page.waitForTimeout(2000);
+    await shot('daterange');
 
     console.log('4) Valider 클릭 (오늘 날짜 자동)');
     await page.getByRole('button', { name: 'Valider' }).click();
-    await page.getByText('下载表格').waitFor({ timeout: 60000 });
-    await page.waitForTimeout(1500);
-    await shot(page, 'table');
+    await page.getByText('下载表格').waitFor({ state: 'visible', timeout: 60000 });
+    await page.waitForTimeout(2000);
+    await shot('table');
 
     console.log('5) 下载表格 클릭 → 다운로드');
     const [download] = await Promise.all([
@@ -82,7 +106,7 @@ async function run() {
     const saved = path.join(DEBUG, suggested);
     await download.saveAs(saved);
     console.log('   다운로드됨:', suggested, fs.statSync(saved).size + ' bytes');
-    await shot(page, 'after-download');
+    await shot('after-download');
 
     console.log('6) Apps Script 로 업로드');
     const b64 = fs.readFileSync(saved).toString('base64');
@@ -97,7 +121,7 @@ async function run() {
     await browser.close();
     console.log('DONE ✅');
   } catch (err) {
-    await shot(page, 'ERROR');
+    await shot('ERROR');
     await browser.close();
     console.error('FAILED ❌', err);
     process.exit(1);
