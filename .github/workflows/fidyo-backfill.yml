@@ -1,0 +1,46 @@
+name: Fidyo backfill (one-time)
+
+# 과거 데이터 일회성 수집. 예약 없음 — "Run workflow" 버튼으로 수동 실행만.
+# 기본 범위: 2026-08-08 ~ 2026-08-25 (원하면 아래 입력칸으로 바꿔서 실행 가능)
+on:
+  workflow_dispatch:
+    inputs:
+      start:
+        description: '시작 날짜 (YYYY-MM-DD)'
+        required: false
+        default: '2026-08-08'
+      end:
+        description: '종료 날짜 (YYYY-MM-DD)'
+        required: false
+        default: '2026-08-25'
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: npm install playwright
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Backfill
+        env:
+          FIDYO_USER: ${{ secrets.FIDYO_USER }}
+          FIDYO_PASS: ${{ secrets.FIDYO_PASS }}
+          UPLOAD_URL: ${{ secrets.UPLOAD_URL }}
+          UPLOAD_TOKEN: ${{ secrets.UPLOAD_TOKEN }}
+          BACKFILL_START: ${{ inputs.start }}
+          BACKFILL_END: ${{ inputs.end }}
+        run: node fidyo_backfill.mjs
+      - name: Upload debug screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fidyo-backfill-debug
+          path: debug/
+          if-no-files-found: ignore
+          retention-days: 7
