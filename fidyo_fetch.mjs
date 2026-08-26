@@ -61,6 +61,23 @@ async function run() {
     await loc.waitFor({ state: 'visible', timeout });
     await loc.click();
   }
+  // Flutter 입력칸: 클릭 후 준비 대기 → 비우고 → 천천히 입력 → 글자수 검증/재시도
+  async function typeInto(loc, value, label) {
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      await loc.click();
+      await page.waitForTimeout(600);                 // Flutter 입력요소 준비 대기 (첫 글자 씹힘 방지)
+      try { await page.keyboard.press('Control+A'); await page.keyboard.press('Delete'); } catch {}
+      await page.waitForTimeout(150);
+      await page.keyboard.type(value, { delay: 90 });
+      await page.waitForTimeout(300);
+      let val = null;
+      try { val = await loc.inputValue(); } catch {}
+      if (val === null) { console.log('   ' + label + ': 값 확인 불가, 진행'); return; }
+      if (val.length === value.length) { console.log('   ' + label + ': OK (' + val.length + '자)'); return; }
+      console.log('   ' + label + ': ' + val.length + '/' + value.length + '자 → 재시도 ' + attempt);
+    }
+    console.log('   ' + label + ': 글자수 안 맞지만 진행');
+  }
 
   try {
     console.log('1) 로그인 페이지 열기 + Flutter 로딩');
@@ -83,14 +100,12 @@ async function run() {
     // Nom = aria-label 우선, 없으면 첫 input
     let nom = page.locator('input[aria-label*="Nom" i]').first();
     if (!(await nom.count())) nom = page.locator('input').first();
-    await nom.click();
-    await page.keyboard.type(USER, { delay: 25 });
+    await typeInto(nom, USER, 'Nom');
 
     let pw = page.locator('input[type="password"]').first();
     if (!(await pw.count())) pw = page.locator('input[aria-label*="passe" i]').first();
     if (!(await pw.count())) pw = page.locator('input').nth(1);
-    await pw.click();
-    await page.keyboard.type(PASS, { delay: 25 });
+    await typeInto(pw, PASS, 'Mot de passe');
     await shot('filled');
 
     console.log('   Connexion');
