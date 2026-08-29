@@ -59,11 +59,30 @@ async function run() {
       console.log('   ' + label + ': ' + v.length + '/' + value.length + ' 재시도 ' + a);
     }
   }
-  // Flutter 날짜칸: value 를 못 읽으므로(canvas), 클릭→비우고→천천히 타이핑
+  // 날짜칸 클릭 → 달력(Material date picker) 열림 → 해당 날짜 버튼 클릭 → OK
+  const FR_MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  async function pickDate(dateISO) {
+    const [y, m, d] = dateISO.split('-').map(Number);
+    const dayRe = new RegExp('^' + d + ',.*' + FR_MONTHS[m - 1] + ' ' + y);
+    const days = () => page.locator('flt-semantics[role="button"]').filter({ hasText: dayRe });
+    for (let i = 0; i < 18; i++) {
+      if (await days().count()) break;
+      let shownM = -1, shownY = -1;
+      const sample = await page.locator('flt-semantics[role="button"]').filter({ hasText: /^\d+,.* \d{4}\s*$/ }).first().textContent().catch(() => null);
+      if (sample) { const mm = /([^\s]+) (\d{4})\s*$/.exec(sample.trim()); if (mm) { shownM = FR_MONTHS.indexOf(mm[1]); shownY = +mm[2]; } }
+      let goNext = false; // 표시 월을 못 읽으면 과거(이전 달) 방향이 기본 — 어제/백필용
+      if (shownY >= 0 && shownM >= 0) goNext = (shownY < y) || (shownY === y && shownM < (m - 1));
+      await page.getByRole('button', { name: goNext ? 'Mois suivant' : 'Mois précédent' }).click();
+      await page.waitForTimeout(500);
+    }
+    await days().first().click();
+    await page.getByRole('button', { name: 'OK', exact: true }).click();
+    await page.waitForTimeout(600);
+  }
   async function setDateField(loc, dateISO) {
-    await loc.click(); await page.waitForTimeout(700);
-    try { await page.keyboard.press('Control+A'); await page.keyboard.press('Delete'); } catch {}
-    await page.waitForTimeout(200); await page.keyboard.type(dateISO, { delay: 90 }); await page.waitForTimeout(300);
+    await loc.click();               // 날짜칸 → 달력 열림
+    await page.waitForTimeout(900);
+    await pickDate(dateISO);          // 달력에서 날짜 선택 + OK
   }
   async function uploadFile(saved, suggested) {
     const b64 = fs.readFileSync(saved).toString('base64');
