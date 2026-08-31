@@ -1,10 +1,15 @@
 /**
- * Fidyo 일일 수집 — "어제(파리 기준, 영업이 끝난 완전한 하루)" 데이터를 받아옵니다.
- * 새벽에 실행되므로, 실행 시점의 '오늘'이 아니라 날짜를 직접 지정합니다.
- * (GitHub 예약 실행이 몇 시간 밀려도 '어제'는 그대로라 안전)
+ * Fidyo 수집 스크립트 (일일 저녁마감 / 점심마감 겸용).
+ *
+ *  · 기본(야간 실행): "어제(영업이 끝난 완전한 하루)" 전체 매출 → Data 폴더.
+ *  · 점심 실행(15~19시 사이): "오늘(점심 마감분)" 매출 → Lunch Sale 폴더.
+ *
  * Fidyo 는 Flutter 앱 → 접근성(semantics) 트리를 켜서 조작.
+ *
  * 환경변수: FIDYO_USER, FIDYO_PASS, UPLOAD_URL, UPLOAD_TOKEN
- * (선택) TARGET_DATE = 'YYYY-MM-DD' 로 특정 날짜 강제 가능
+ * (선택) TARGET_MODE   = 'yesterday'(기본) | 'today'
+ * (선택) UPLOAD_FOLDER = ''(기본, Data) | 'lunch'(Lunch Sale)
+ * (선택) TARGET_DATE   = 'YYYY-MM-DD' 로 특정 날짜 강제 (TARGET_MODE 보다 우선)
  */
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -20,13 +25,15 @@ for (const [k, v] of Object.entries({ FIDYO_USER: USER, FIDYO_PASS: PASS, UPLOAD
   if (!v) { console.error('환경변수 누락: ' + k); process.exit(1); }
 }
 
-// 어제(파리 기준) 날짜
-function yesterdayParis() {
+// 파리 기준 오늘 / 어제
+function parisYMD(offsetDays) {
   const p = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
-  p.setDate(p.getDate() - 1);
+  p.setDate(p.getDate() + (offsetDays || 0));
   return p.getFullYear() + '-' + String(p.getMonth() + 1).padStart(2, '0') + '-' + String(p.getDate()).padStart(2, '0');
 }
-const TARGET = process.env.TARGET_DATE || yesterdayParis();
+const MODE = (process.env.TARGET_MODE || 'yesterday').toLowerCase();
+const FOLDER = (process.env.UPLOAD_FOLDER || '').toLowerCase(); // '' = Data, 'lunch' = Lunch Sale
+const TARGET = process.env.TARGET_DATE || (MODE === 'today' ? parisYMD(0) : parisYMD(-1));
 const toDMY = iso => iso.slice(8, 10) + '-' + iso.slice(5, 7) + '-' + iso.slice(0, 4);
 
 const DEBUG = path.resolve('debug');
@@ -34,7 +41,7 @@ fs.mkdirSync(DEBUG, { recursive: true });
 let step = 0;
 
 async function run() {
-  console.log('대상 날짜:', TARGET);
+  console.log('대상 날짜:', TARGET, '| 모드:', MODE, '| 폴더:', FOLDER === 'lunch' ? 'Lunch Sale' : 'Data');
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ acceptDownloads: true, locale: 'fr-FR', timezoneId: 'Europe/Paris', viewport: { width: 1280, height: 800 } });
   const page = await ctx.newPage();
@@ -126,7 +133,9 @@ async function run() {
     const saved = path.join(DEBUG, suggested);
     await download.saveAs(saved);
     const b64 = fs.readFileSync(saved).toString('base64');
-    const res = await fetch(UPLOAD_URL, { method: 'POST', body: new URLSearchParams({ token: UPLOAD_TOKEN, name: suggested, data: b64 }) });
+    const body = { token: UPLOAD_TOKEN, name: suggested, data: b64 };
+    if (FOLDER) body.folder = FOLDER; // 'lunch' → Lunch Sale 폴더
+    const res = await fetch(UPLOAD_URL, { method: 'POST', body: new URLSearchParams(body) });
     const txt = await res.text();
     if (res.status >= 400 || /unauthorized|missing|error/i.test(txt)) throw new Error('업로드 실패: ' + res.status + ' ' + txt.slice(0, 120));
     console.log('DONE ✅ ' + suggested + ' (' + fs.statSync(saved).size + ' bytes)');
