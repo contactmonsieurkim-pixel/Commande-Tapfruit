@@ -1,0 +1,45 @@
+name: Fidyo lunch export
+
+# 점심 마감분 수집 → "오늘(점심까지)" 매출을 Lunch Sale 폴더에 저장합니다.
+# 점심 영업은 15시 종료, 저녁 영업은 19시 시작 → 그 사이(15~19시)에 실행해야 합니다.
+#   cron 15:30 UTC = 17:30 파리(여름) / 16:30 파리(겨울)  → 항상 15~19시 사이
+# "Run workflow" 버튼으로 수동 실행도 됩니다. (예약은 main 브랜치에서만 동작)
+on:
+  schedule:
+    - cron: '30 15 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: npm install playwright
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Fetch & upload (lunch)
+        env:
+          FIDYO_USER: ${{ secrets.FIDYO_USER }}
+          FIDYO_PASS: ${{ secrets.FIDYO_PASS }}
+          UPLOAD_URL: ${{ secrets.UPLOAD_URL }}
+          UPLOAD_TOKEN: ${{ secrets.UPLOAD_TOKEN }}
+          TARGET_MODE: today
+          UPLOAD_FOLDER: lunch
+        run: node fidyo_fetch.mjs
+
+      - name: Upload debug screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fidyo-lunch-debug
+          path: debug/
+          if-no-files-found: ignore
+          retention-days: 7
