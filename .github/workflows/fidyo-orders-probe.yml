@@ -1,0 +1,39 @@
+name: Fidyo orders probe (one-time)
+
+# 주문(Commandes) 화면 구조 탐사용. 데이터 업로드 없음 — 스크린샷/semantics 덤프만.
+# "Run workflow" 버튼으로 수동 실행 → 끝나면 debug 아티팩트를 내려받아 공유해 주세요.
+on:
+  workflow_dispatch:
+    inputs:
+      date:
+        description: '탐사 대상 날짜 (YYYY-MM-DD, 비우면 어제)'
+        required: false
+        default: ''
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: npm install playwright
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Probe
+        env:
+          FIDYO_USER: ${{ secrets.FIDYO_USER }}
+          FIDYO_PASS: ${{ secrets.FIDYO_PASS }}
+          TARGET_DATE: ${{ inputs.date }}
+        run: node fidyo_orders_probe.mjs
+      - name: Upload debug
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fidyo-orders-probe-debug
+          path: debug/
+          if-no-files-found: ignore
+          retention-days: 7
