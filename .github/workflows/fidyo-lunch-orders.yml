@@ -1,0 +1,55 @@
+name: Fidyo lunch (orders)
+
+# 주문(Commandes) 기반 점심 수집 — 접수 시각 11:30~16:00 주문만 취합해 Lunch Sale 폴더에 저장.
+# 시간에 의존하지 않으므로 언제 실행해도 정확합니다. 매일 아침 "어제치"를 받습니다.
+#   cron 04:30 UTC = 06:30 파리(여름) / 05:30 파리(겨울) — 저녁 총결산 수집과 비슷한 시간대.
+# 수동 실행 시 특정 날짜/백필 범위를 지정할 수 있습니다.
+on:
+  schedule:
+    - cron: '30 4 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: '단일 날짜 (YYYY-MM-DD, 비우면 어제)'
+        required: false
+        default: ''
+      start:
+        description: '백필 시작 (YYYY-MM-DD, 범위로 받을 때만)'
+        required: false
+        default: ''
+      end:
+        description: '백필 종료 (YYYY-MM-DD, 범위로 받을 때만)'
+        required: false
+        default: ''
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Playwright
+        run: npm install playwright
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Fetch & upload (lunch orders)
+        env:
+          FIDYO_USER: ${{ secrets.FIDYO_USER }}
+          FIDYO_PASS: ${{ secrets.FIDYO_PASS }}
+          UPLOAD_URL: ${{ secrets.UPLOAD_URL }}
+          UPLOAD_TOKEN: ${{ secrets.UPLOAD_TOKEN }}
+          TARGET_DATE: ${{ inputs.date }}
+          BACKFILL_START: ${{ inputs.start }}
+          BACKFILL_END: ${{ inputs.end }}
+        run: node fidyo_lunch_orders.mjs
+      - name: Upload debug
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fidyo-lunch-orders-debug
+          path: debug/
+          if-no-files-found: ignore
+          retention-days: 7
