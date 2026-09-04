@@ -1,0 +1,20 @@
+id	name	category	subCategory	menus	avgShelfLifeDays	suppliers	orderUnit	gramsPerOrderUnit	piecesPerOrderUnit	unitPrice	parLevel	boxSize	gramsPerBox	createdBy	createdAt	updatedBy	updatedAt	batchYield	supplierRef
+mtn5saucegalb1	Sauce Galbi (Ma-seng-mi)	Production	RTU-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5saucegalb2	Sauce Galbi (No Ma-seng-mi)	Production	RTU-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5tartarenat	Sauce Tartare Nature	Production	RTU-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5tartarepiq	Sauce Tartare Piquant	Production	RTU-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5sauctemple	Sauce Temple	Production	RTU-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5bingsubase	Bingsu Base	Production	Inter-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5matchasauc	Matcha Sauce	Production	RTU-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5patbingsu0	Pat for Bingsu	Production	Inter-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5bingsuttok	Bingsu Ttok	Production	Inter-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5chickpowd1	Chicken Powder	Production	Inter-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5chickmari1	Chicken Marinade (2.5kg)	Production	Inter-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5chickfry5k	Frying Chicken (5kg Base)	Production	Inter-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5chickfry7k	Frying Chicken (7.5kg Base)	Production	Inter-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5chickfry10	Frying Chicken (10kg Base)	Production	Inter-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5sauceblack	Sauce BLACK	Production	RTU-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5saucered00	Sauce RED	Production	RTU-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5dakgalbiso	Sauce Dak-Galbi	Production	RTU-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5kimchisauc	Kimchi Sauce Base (40kg Cabbage)	Production	Inter-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+mtn5tiramisu00	Basic Tiramisu	Production	RTU-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		

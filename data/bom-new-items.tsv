@@ -1,0 +1,16 @@
+id	name	category	subCategory	menus	avgShelfLifeDays	suppliers	orderUnit	gramsPerOrderUnit	piecesPerOrderUnit	unitPrice	parLevel	boxSize	gramsPerBox	createdBy	createdAt	updatedBy	updatedAt	batchYield	supplierRef
+ing-maseng	Ma-seng-mi (매생이)	Supplier Goods	Staple Stock											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+ing-xanthan	Xanthan Gum	Supplier Goods	Staple Stock											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+ing-scallion	Scallion (Ciboule)	Supplier Goods	Fresh Raw Goods											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+ing-pear	Pear (Poire Coréenne)	Supplier Goods	Fresh Raw Goods											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+ing-espresso	Espresso	Production	Inter-Prod.											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+ing-nectpear	Nectar Poire Coréen	Supplier Goods	Staple Stock											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+ing-shiitakep	Shiitake Powder	Supplier Goods	Staple Stock											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+ing-muscade	Poudre Muscade (Nutmeg)	Supplier Goods	Staple Stock											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+ing-cannellep	Poudre Cannelle (Cinnamon)	Supplier Goods	Staple Stock											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+ing-ailp	Poudre Ail (Garlic pwd)	Supplier Goods	Staple Stock											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+ing-gingembrp	Poudre Gingembre (Ginger pwd)	Supplier Goods	Staple Stock											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+ing-coriandr	Poudre Coriandre	Supplier Goods	Staple Stock											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+ing-curcuma	Poudre Curcuma (Turmeric)	Supplier Goods	Staple Stock											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+ing-cardamom	Poudre Cardamome	Supplier Goods	Staple Stock											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+ing-poivrenoir	Poudre Poivre Noir (Black pepper pwd)	Supplier Goods	Staple Stock											import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		

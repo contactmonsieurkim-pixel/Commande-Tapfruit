@@ -1,0 +1,117 @@
+parentId	parentName	ingredientId	ingredientName	qty	unit
+mtn5saucegalb1	Sauce Galbi (Ma-seng-mi)	mtmvkvcq7ydlp	Jus de Pomme	3000	g
+mtn5saucegalb1	Sauce Galbi (Ma-seng-mi)	ing-maseng	Ma-seng-mi (매생이)	720	g
+mtn5saucegalb1	Sauce Galbi (Ma-seng-mi)	mtmvc9i99du0f	Miel Fleur	760	g
+mtn5saucegalb1	Sauce Galbi (Ma-seng-mi)	cfg-099	Sauce soja coréen	1600	g
+mtn5saucegalb1	Sauce Galbi (Ma-seng-mi)	cfg-106	Huile de sésame (jia)	160	g
+mtn5saucegalb1	Sauce Galbi (Ma-seng-mi)	mtmwbiw3iziox	Poivre Blanc moulu	6	g
+mtn5saucegalb2	Sauce Galbi (No Ma-seng-mi)	mtmvkvcq7ydlp	Jus de Pomme	3000	g
+mtn5saucegalb2	Sauce Galbi (No Ma-seng-mi)	mtmu3svqpy1qm	Pulpe d'Ail	90	g
+mtn5saucegalb2	Sauce Galbi (No Ma-seng-mi)	mtmtyr7nwq1rc	Purée Gingembre	180	g
+mtn5saucegalb2	Sauce Galbi (No Ma-seng-mi)	cfg-107	Mirin (WADAKAN) 9%	250	g
+mtn5saucegalb2	Sauce Galbi (No Ma-seng-mi)	mtmvc9i99du0f	Miel Fleur	760	g
+mtn5saucegalb2	Sauce Galbi (No Ma-seng-mi)	cfg-099	Sauce soja coréen	1600	g
+mtn5saucegalb2	Sauce Galbi (No Ma-seng-mi)	cfg-106	Huile de sésame (jia)	160	g
+mtn5saucegalb2	Sauce Galbi (No Ma-seng-mi)	mtmwbiw3iziox	Poivre Blanc moulu	6	g
+mtn5tartarenat	Sauce Tartare Nature	mtmzf60vx0jf0	Sel Fin	55	g
+mtn5tartarenat	Sauce Tartare Nature	mtmvvkh1sq24d	Sucre Blanc poudre	200	g
+mtn5tartarenat	Sauce Tartare Nature	cfg-105	Sauce Poisson	200	g
+mtn5tartarenat	Sauce Tartare Nature	cfg-099	Sauce soja coréen	200	g
+mtn5tartarenat	Sauce Tartare Nature	mtmu3svqpy1qm	Pulpe d'Ail	25	g
+mtn5tartarenat	Sauce Tartare Nature	mtmtyr7nwq1rc	Purée Gingembre	50	g
+mtn5tartarenat	Sauce Tartare Nature	cfg-107	Mirin (WADAKAN) 9%	125	g
+mtn5tartarenat	Sauce Tartare Nature	mtmvdlovu4zpb	Pulco Jus Citron	180	g
+mtn5tartarenat	Sauce Tartare Nature	cfg-106	Huile de sésame (jia)	400	g
+mtn5tartarenat	Sauce Tartare Nature	ing-xanthan	Xanthan Gum	2,5	g
+mtn5tartarepiq	Sauce Tartare Piquant	cfg-096	Gochujang	3000	g
+mtn5tartarepiq	Sauce Tartare Piquant	cfg-098	Thé Prune	1500	g
+mtn5tartarepiq	Sauce Tartare Piquant	mtmvc9i99du0f	Miel Fleur	1000	g
+mtn5tartarepiq	Sauce Tartare Piquant	cfg-106	Huile de sésame (jia)	1000	g
+mtn5tartarepiq	Sauce Tartare Piquant	cfg-105	Sauce Poisson	600	g
+mtn5tartarepiq	Sauce Tartare Piquant	mtmvdlovu4zpb	Pulco Jus Citron	300	g
+mtn5sauctemple	Sauce Temple	ing-scallion	Scallion (Ciboule)	500	g
+mtn5sauctemple	Sauce Temple	mtmujkfwxwy40	Poivron Padron	500	g
+mtn5sauctemple	Sauce Temple	cfg-106	Huile de sésame (jia)	100	g
+mtn5sauctemple	Sauce Temple	cfg-099	Sauce soja coréen	500	g
+mtn5sauctemple	Sauce Temple	mtmvc9i99du0f	Miel Fleur	200	g
+mtn5bingsubase	Bingsu Base	mtmv7eu5xmhub	Lait Concentré	1000	g
+mtn5bingsubase	Bingsu Base	mtn5pngq4nxog	Eau	2000	g
+mtn5bingsubase	Bingsu Base	mtn5pngq4nxog	Eau	2000	g
+mtn5bingsubase	Bingsu Base	mtmzh02wg5ixz	Lait entier	2000	g
+mtn5matchasauc	Matcha Sauce	mtn5pngq4nxog	Eau	330	g
+mtn5matchasauc	Matcha Sauce	mtmvvkh1sq24d	Sucre Blanc poudre	230	g
+mtn5matchasauc	Matcha Sauce	mtmvf1nqksjee	Matcha	90	g
+mtn5matchasauc	Matcha Sauce	mtmv7eu5xmhub	Lait Concentré	1000	g
+mtn5patbingsu0	Pat for Bingsu	cfg-104	Grain de Azuki	1000	g
+mtn5patbingsu0	Pat for Bingsu	mtn5pngq4nxog	Eau	2500	g
+mtn5patbingsu0	Pat for Bingsu	mtmvvkh1sq24d	Sucre Blanc poudre	500	g
+mtn5patbingsu0	Pat for Bingsu	mtmzf60vx0jf0	Sel Fin	15	g
+mtn5bingsuttok	Bingsu Ttok	cfg-102	Poudre Riz Gluant	800	g
+mtn5bingsuttok	Bingsu Ttok	mtn5pngq4nxog	Eau	650	g
+mtn5bingsuttok	Bingsu Ttok	mtmzf60vx0jf0	Sel Fin	15	g
+mtn5bingsuttok	Bingsu Ttok	mtmvvkh1sq24d	Sucre Blanc poudre	130	g
+mtn5chickpowd1	Chicken Powder	ing-muscade	Poudre Muscade (Nutmeg)	100	g
+mtn5chickpowd1	Chicken Powder	ing-cannellep	Poudre Cannelle (Cinnamon)	240	g
+mtn5chickpowd1	Chicken Powder	ing-ailp	Poudre Ail (Garlic pwd)	500	g
+mtn5chickpowd1	Chicken Powder	ing-gingembrp	Poudre Gingembre (Ginger pwd)	240	g
+mtn5chickpowd1	Chicken Powder	ing-coriandr	Poudre Coriandre	700	g
+mtn5chickpowd1	Chicken Powder	ing-curcuma	Poudre Curcuma (Turmeric)	1000	g
+mtn5chickpowd1	Chicken Powder	ing-cardamom	Poudre Cardamome	140	g
+mtn5chickpowd1	Chicken Powder	mtmwbiw3iziox	Poivre Blanc moulu	700	g
+mtn5chickpowd1	Chicken Powder	ing-poivrenoir	Poudre Poivre Noir (Black pepper pwd)	700	g
+mtn5chickmari1	Chicken Marinade (2.5kg)	mtmzf60vx0jf0	Sel Fin	25	g
+mtn5chickmari1	Chicken Marinade (2.5kg)	mtmvvkh1sq24d	Sucre Blanc poudre	25	g
+mtn5chickmari1	Chicken Marinade (2.5kg)	mtn5chickpowd1	Chicken Powder	25	g
+mtn5chickfry5k	Frying Chicken (5kg Base)	mtmw5ml1m32w8	Fécule PDT	35	g
+mtn5chickfry5k	Frying Chicken (5kg Base)	mtmw4crz8njlr	Farine T45	225	g
+mtn5chickfry5k	Frying Chicken (5kg Base)	mtn5pngq4nxog	Eau	570	g
+mtn5chickfry7k	Frying Chicken (7.5kg Base)	mtmw5ml1m32w8	Fécule PDT	50	g
+mtn5chickfry7k	Frying Chicken (7.5kg Base)	mtmw4crz8njlr	Farine T45	330	g
+mtn5chickfry7k	Frying Chicken (7.5kg Base)	mtn5pngq4nxog	Eau	810	g
+mtn5chickfry10	Frying Chicken (10kg Base)	mtmw5ml1m32w8	Fécule PDT	70	g
+mtn5chickfry10	Frying Chicken (10kg Base)	mtmw4crz8njlr	Farine T45	450	g
+mtn5chickfry10	Frying Chicken (10kg Base)	mtn5pngq4nxog	Eau	1140	g
+mtn5sauceblack	Sauce BLACK	mtmvb2ynot3u4	Glucose Atomisé	5000	g
+mtn5sauceblack	Sauce BLACK	mtn5pngq4nxog	Eau	1250	g
+mtn5sauceblack	Sauce BLACK	mtmvkvcq7ydlp	Jus de Pomme	3120	g
+mtn5sauceblack	Sauce BLACK	cfg-099	Sauce soja coréen	3120	g
+mtn5sauceblack	Sauce BLACK	mtmvvkh1sq24d	Sucre Blanc poudre	1250	g
+mtn5sauceblack	Sauce BLACK	cfg-109	Kombu sec	50	g
+mtn5sauceblack	Sauce BLACK	mtmtqfo12eh4w	Gingembre frais	190	g
+mtn5sauceblack	Sauce BLACK	mtmuhb8bu61t0	Piment vert	190	g
+mtn5saucered00	Sauce RED	mtn5pngq4nxog	Eau	5000	g
+mtn5saucered00	Sauce RED	mtmvb2ynot3u4	Glucose Atomisé	5000	g
+mtn5saucered00	Sauce RED	mtmw7vs68imzh	Ketchup Heinz	2125	g
+mtn5saucered00	Sauce RED	cfg-096	Gochujang	1875	g
+mtn5saucered00	Sauce RED	cfg-099	Sauce soja coréen	720	g
+mtn5saucered00	Sauce RED	mtmu3svqpy1qm	Pulpe d'Ail	90	g
+mtn5saucered00	Sauce RED	mtmtyr7nwq1rc	Purée Gingembre	180	g
+mtn5saucered00	Sauce RED	cfg-107	Mirin (WADAKAN) 9%	450	g
+mtn5saucered00	Sauce RED	cfg-101	Poudre piment "Très Fin"	625	g
+mtn5saucered00	Sauce RED	mtmvvkh1sq24d	Sucre Blanc poudre	875	g
+mtn5dakgalbiso	Sauce Dak-Galbi	ing-shiitakep	Shiitake Powder	80	g
+mtn5dakgalbiso	Sauce Dak-Galbi	cfg-107	Mirin (WADAKAN) 9%	800	g
+mtn5dakgalbiso	Sauce Dak-Galbi	mtmvc9i99du0f	Miel Fleur	480	g
+mtn5dakgalbiso	Sauce Dak-Galbi	cfg-101	Poudre piment "Très Fin"	120	g
+mtn5dakgalbiso	Sauce Dak-Galbi	mtmtyr7nwq1rc	Purée Gingembre	100	g
+mtn5dakgalbiso	Sauce Dak-Galbi	mtmu3svqpy1qm	Pulpe d'Ail	150	g
+mtn5dakgalbiso	Sauce Dak-Galbi	cfg-106	Huile de sésame (jia)	160	g
+mtn5dakgalbiso	Sauce Dak-Galbi	mtmwa9m1ynjkw	Huile Friture	160	g
+mtn5dakgalbiso	Sauce Dak-Galbi	cfg-099	Sauce soja coréen	480	g
+mtn5dakgalbiso	Sauce Dak-Galbi	ing-nectpear	Nectar Poire Coréen	1000	g
+mtn5kimchisauc	Kimchi Sauce Base (40kg Cabbage)	cfg-109	Kombu sec	50	g
+mtn5kimchisauc	Kimchi Sauce Base (40kg Cabbage)	mtn5pngq4nxog	Eau	5500	g
+mtn5kimchisauc	Kimchi Sauce Base (40kg Cabbage)	cfg-100	Poudre piment Gros	1000	g
+mtn5kimchisauc	Kimchi Sauce Base (40kg Cabbage)	cfg-102	Poudre Riz Gluant	300	g
+mtn5kimchisauc	Kimchi Sauce Base (40kg Cabbage)	ing-pear	Pear (Poire Coréenne)	3000	g
+mtn5kimchisauc	Kimchi Sauce Base (40kg Cabbage)	mtmu05i8e2uqm	Ail pelé	400	g
+mtn5kimchisauc	Kimchi Sauce Base (40kg Cabbage)	mtmtqfo12eh4w	Gingembre frais	200	g
+mtn5kimchisauc	Kimchi Sauce Base (40kg Cabbage)	mtmvkvcq7ydlp	Jus de Pomme	500	g
+mtn5tiramisu00	Basic Tiramisu	mtmuwuejxelaj	Blanc d'Oeuf Pasteurisé	360	g
+mtn5tiramisu00	Basic Tiramisu	mtmzf60vx0jf0	Sel Fin	4	pinches
+mtn5tiramisu00	Basic Tiramisu	mtmvvkh1sq24d	Sucre Blanc poudre	400	g
+mtn5tiramisu00	Basic Tiramisu	mtmuvz5mauryx	Jaune d'Oeuf Pasteurisé	240	g
+mtn5tiramisu00	Basic Tiramisu	mtmrcnkljdu86	Mascarpone Galbani	1000	g
+mtn5tiramisu00	Basic Tiramisu	mtmrdlenxwaay	Mascarapone Bianco	1000	g
+mtn5tiramisu00	Basic Tiramisu	mtmvn4lp7doh0	Biscuit Cuillers	52	pcs
+mtn5tiramisu00	Basic Tiramisu	ing-espresso	Espresso	5	shots
