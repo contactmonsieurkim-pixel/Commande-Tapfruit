@@ -54,14 +54,21 @@ function setup() {
 /* ---------------- read ---------------- */
 
 function doGet(e) {
-  var data = readAll_();
-  var cb = e && e.parameter && e.parameter.callback;
-  if (cb) {
-    return ContentService.createTextOutput(cb + '(' + JSON.stringify(data) + ')')
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
-  return ContentService.createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
+  return HtmlService.createHtmlOutputFromFile('Index')
+    .setTitle('Tapfruit Item Master')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/* Called from the page via google.script.run */
+function getData() { return readAll_(); }
+function saveItemToSheet(item) {
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try { upsertItem_(item); return { ok: true }; } finally { lock.releaseLock(); }
+}
+function deleteItemFromSheet(id) {
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try { deleteItem_(id); return { ok: true }; } finally { lock.releaseLock(); }
 }
 
 function readAll_() {
@@ -100,22 +107,7 @@ function readAll_() {
 
 /* ---------------- write ---------------- */
 
-function doPost(e) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
-    var payload = JSON.parse(e.parameter.data);
-    if (payload.action === 'upsert') upsertItem_(payload.item);
-    else if (payload.action === 'delete') deleteItem_(payload.id);
-    return ContentService.createTextOutput(JSON.stringify({ ok: true }))
-      .setMimeType(ContentService.MimeType.JSON);
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) }))
-      .setMimeType(ContentService.MimeType.JSON);
-  } finally {
-    lock.releaseLock();
-  }
-}
+/* Writes go through google.script.run (saveItemToSheet / deleteItemFromSheet). */
 
 function upsertItem_(it) {
   var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Items');
