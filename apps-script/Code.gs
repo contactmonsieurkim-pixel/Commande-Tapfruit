@@ -23,7 +23,7 @@ var TABS = {
   Boxes:     ['BoxSize'],
   Items:     ['id','name','category','subCategory','menus','avgShelfLifeDays','suppliers',
               'orderUnit','gramsPerOrderUnit','unitPrice','parLevel','boxSize','gramsPerBox',
-              'createdBy','createdAt','updatedBy','updatedAt'],
+              'createdBy','createdAt','updatedBy','updatedAt','batchYield'],
   BOM:       ['parentId','parentName','ingredientId','ingredientName','qty','unit']
 };
 
@@ -38,13 +38,13 @@ var SEED = {
 function setup() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   Object.keys(TABS).forEach(function(name) {
+    var existed = !!ss.getSheetByName(name);
     var sh = ss.getSheetByName(name) || ss.insertSheet(name);
-    if (sh.getLastRow() === 0) {
-      sh.appendRow(TABS[name]);
-      sh.getRange(1, 1, 1, TABS[name].length).setFontWeight('bold');
-      sh.setFrozenRows(1);
-      if (SEED[name]) SEED[name].forEach(function(r) { sh.appendRow(r); });
-    }
+    var hadRows = sh.getLastRow() > 0;
+    // write / repair the header row (safe to re-run; new columns are appended at the end)
+    sh.getRange(1, 1, 1, TABS[name].length).setValues([TABS[name]]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+    if (!hadRows && SEED[name]) SEED[name].forEach(function(r) { sh.appendRow(r); });
   });
   var s1 = ss.getSheetByName('Sheet1');
   if (s1 && ss.getSheets().length > 1 && s1.getLastRow() === 0) ss.deleteSheet(s1);
@@ -82,7 +82,8 @@ function readAll_() {
       gramsPerOrderUnit: numOrNull_(r.gramsPerOrderUnit), unitPrice: numOrNull_(r.unitPrice),
       parLevel: numOrNull_(r.parLevel), boxSize: r.boxSize, gramsPerBox: numOrNull_(r.gramsPerBox),
       recipe: recipeByParent[r.id] || [],
-      createdBy: r.createdBy, createdAt: r.createdAt, updatedBy: r.updatedBy, updatedAt: r.updatedAt
+      createdBy: r.createdBy, createdAt: r.createdAt, updatedBy: r.updatedBy, updatedAt: r.updatedAt,
+      batchYield: numOrNull_(r.batchYield)
     };
   });
   return {
@@ -123,7 +124,7 @@ function upsertItem_(it) {
     (it.menus || []).join(', '), blank_(it.avgShelfLifeDays),
     (it.suppliers || []).join(', '), it.orderUnit || '', blank_(it.gramsPerOrderUnit),
     blank_(it.unitPrice), blank_(it.parLevel), it.boxSize || '', blank_(it.gramsPerBox),
-    it.createdBy || '', it.createdAt || '', it.updatedBy || '', it.updatedAt || ''
+    it.createdBy || '', it.createdAt || '', it.updatedBy || '', it.updatedAt || '', blank_(it.batchYield)
   ];
   var r = findRow_(sh, it.id);
   if (r > 0) sh.getRange(r, 1, 1, row.length).setValues([row]);

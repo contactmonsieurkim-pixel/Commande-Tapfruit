@@ -261,8 +261,9 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
           <div class="field"><label>Box size</label><select id="fBox"></select></div>
           <div class="field"><label>Grams / box <span class="opt">avg weight</span></label><div class="inline"><input id="fGpb" class="num" type="number" min="0" step="any" placeholder="0"><span class="suffix">g</span></div></div>
         </div>
+        <div class="field"><label>Batch yield <span class="opt">boxes made by 1 batch</span></label><div class="inline"><input id="fBatch" class="num" type="number" min="0" step="any" placeholder="1"><span class="suffix">box</span></div></div>
         <div class="field">
-          <label>Recipe <span class="opt">per 1 box · units: g / box / %</span></label>
+          <label>Recipe <span class="opt">ingredients for 1 batch · units: g / box / %</span></label>
           <div class="recipe" id="recipeRows"></div>
           <button class="ghost sm" id="addIng" type="button">+ Add ingredient</button>
           <p class="hint" id="recipeHint"></p>
@@ -478,7 +479,7 @@ function renderRecipe(){
     x.onclick=function(){form.recipe.splice(idx,1);renderRecipe()};
     wrap.appendChild(name);wrap.appendChild(qty);wrap.appendChild(unit);wrap.appendChild(x);el.appendChild(wrap);
   });
-  $("#recipeHint").textContent="Type an ingredient name — existing items auto-suggest. New names link automatically once you add that item. × removes a row.";
+  $("#recipeHint").textContent="Ingredients for ONE batch (which makes the boxes set above). Type a name — existing items auto-suggest; new names link once you add that item. × removes a row.";
 }
 
 /* ===== form flow ===== */
@@ -516,7 +517,8 @@ function gather(){
     suppliers:isSup?Array.from(form.suppliers):[],orderUnit:isSup?$("#fUnit").value:"",
     gramsPerOrderUnit:isSup?numOrNull($("#fGpu")):null,unitPrice:isSup?numOrNull($("#fPrice")):null,
     parLevel:form.subCategory==="Staple Stock"?numOrNull($("#fPar")):null,
-    boxSize:!isSup?$("#fBox").value:"",gramsPerBox:!isSup?numOrNull($("#fGpb")):null,recipe:rec,
+    boxSize:!isSup?$("#fBox").value:"",gramsPerBox:!isSup?numOrNull($("#fGpb")):null,
+    batchYield:!isSup?(numOrNull($("#fBatch"))||1):null,recipe:rec,
     createdBy:ex?ex.createdBy:(S.you||""),createdAt:ex?ex.createdAt:nowISO(),updatedBy:S.you||"",updatedAt:nowISO()
   };
 }
@@ -531,7 +533,7 @@ function saveItem(){
 }
 function resetForm(keepContext){
   editingId=null;$("#formTitle").textContent="Add item";$("#cancelEdit").classList.add("hidden");
-  $("#fName").value="";$("#fShelf").value="";$("#fGpu").value="";$("#fPrice").value="";$("#fPar").value="";$("#fGpb").value="";
+  $("#fName").value="";$("#fShelf").value="";$("#fGpu").value="";$("#fPrice").value="";$("#fPar").value="";$("#fGpb").value="";$("#fBatch").value="";
   form.suppliers.clear();form.recipe=[];
   if($("#fUnit").options.length)$("#fUnit").selectedIndex=0;
   if($("#fBox").options.length)$("#fBox").selectedIndex=0;
@@ -563,6 +565,7 @@ function editItem(id){
   $("#fPar").value=it.parLevel!=null?it.parLevel:"";
   fillSelect($("#fBox"),BOX_SIZES,it.boxSize);
   $("#fGpb").value=it.gramsPerBox!=null?it.gramsPerBox:"";
+  $("#fBatch").value=it.batchYield!=null?it.batchYield:"";
   renderMenuChips();renderSupChips();renderRecipe();renderList();
   $("#formTitle").textContent="Edit item";$("#cancelEdit").classList.remove("hidden");
   window.scrollTo({top:0,behavior:"smooth"});
@@ -588,6 +591,7 @@ function metaLine(it){
     if(it.parLevel!=null)p.push("par "+it.parLevel);return p.join("  ·  ");
   }else{
     var q=[];if(it.boxSize)q.push(it.boxSize);if(it.gramsPerBox!=null)q.push(it.gramsPerBox+"g/box");
+    if(it.batchYield!=null)q.push("batch→"+it.batchYield+"box");
     var n=it.recipe?it.recipe.length:0;q.push(n+" ingredient"+(n===1?"":"s"));return q.join("  ·  ");
   }
 }
