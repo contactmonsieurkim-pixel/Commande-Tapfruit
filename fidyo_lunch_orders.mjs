@@ -77,11 +77,20 @@ async function run() {
     }
   }
   // 화면의 모든 '텍스트 잎' 셀을 좌표와 함께 읽습니다 (빈 칸에 강건한 표 파싱용).
-  async function cells() {
+  async function readCellsRaw() {
     return await page.$$eval('flt-semantics', els => els
       .filter(e => e.children.length === 0 && e.textContent && e.textContent.trim())
       .map(e => { const r = e.getBoundingClientRect(); return { t: e.textContent.trim(), x: r.x, y: r.y, w: r.width, h: r.height, cx: r.x + r.width / 2, cy: r.y + r.height / 2 }; })
       .filter(c => c.w > 0 && c.h > 0));
+  }
+  // semantics 트리가 꺼져 있으면 다시 켜고 재시도 (Flutter는 화면 전환 시 트리를 비울 수 있음).
+  async function cells() {
+    for (let a = 0; a < 4; a++) {
+      const out = await readCellsRaw();
+      if (out.length) return out;
+      await enableSemantics(); await page.waitForTimeout(500);
+    }
+    return await readCellsRaw();
   }
   // 헤더 라벨들의 x 중심을 찾아 컬럼 기준을 만든 뒤, 각 셀을 가장 가까운 컬럼에 배정.
   function parseTable(all, headerLabels, tableLeft) {
@@ -106,6 +115,29 @@ async function run() {
       o.leftX = Math.min(...r.cells.map(c => c.x));
       return o;
     });
+  }
+  // 상세 표: 컬럼 헤더가 0크기라 위치기반이 불안정 → 각 행에서 '이름(앞쪽 텍스트) + 숫자열' 구조로 파싱.
+  // 숫자열 순서 = [단가, Qté, 할인, Total, TURN]. 그래서 수량=nums[1], 매출=nums[3].
+  function isNumTxt(t) { return /^[\d]+([.,]\d+)?\s*%?$/.test(String(t).trim()); }
+  function toNumTxt(t) { var v = parseFloat(String(t).replace(/\s/g, '').replace('%', '').replace(',', '.')); return isNaN(v) ? null : v; }
+  function parseDetailRows(all) {
+    var body = all.filter(function (c) { return c.x >= 160; });
+    body.sort(function (a, b) { return a.cy - b.cy || a.cx - b.cx; });
+    var rows = [];
+    body.forEach(function (c) { var r = rows.find(function (r) { return Math.abs(r.cy - c.cy) < 14; }); if (!r) { r = { cy: c.cy, cells: [] }; rows.push(r); } r.cells.push(c); });
+    var out = [];
+    rows.forEach(function (r) {
+      var cs = r.cells.slice().sort(function (a, b) { return a.cx - b.cx; });
+      var nameParts = [], nums = [], seen = false;
+      cs.forEach(function (c) { if (isNumTxt(c.t)) { seen = true; nums.push(toNumTxt(c.t)); } else if (!seen) { nameParts.push(c.t); } });
+      var name = nameParts.join(' ').trim();
+      if (!name) return;
+      if (/suite/i.test(name) || /^[-\s]+$/.test(name)) return;
+      if (['Nom du produit', 'Prix unitaire', 'Qté', 'Remise %', 'Total', 'Note', 'TURN', 'SESS', 'Code', 'Fixé €'].indexOf(name) >= 0) return;
+      if (nums.length < 4) return; // 단가·Qté·할인·Total 최소 4개
+      out.push({ p: name, q: nums[1] || 0, r: nums[3] || 0 });
+    });
+    return out;
   }
   function pageMeta(all) {
     const c = all.find(c => /\d+\s*[–-]\s*\d+\s*sur\s*\d+/.test(c.t));
@@ -142,17 +174,9 @@ async function run() {
     for (let pg = 0; pg < 20; pg++) {
       await page.waitForTimeout(500);
       const all = await cells();
-      const rows = parseTable(all, ['Nom du produit', 'Qté', 'Total'], 160);
-      rows.forEach(r => {
-        const nameC = r['Nom du produit']; if (!nameC) return;
-        const name = nameC.t;
-        if (/^-+\s*suite\s*-+$/i.test(name) || /suite/i.test(name) || /^[-\s]+$/.test(name)) return;
-        if (name === 'Nom du produit') return;
-        const q = r['Qté'] ? parseFloat(r['Qté'].t.replace(',', '.')) : NaN;
-        const tot = r['Total'] ? parseFloat(r['Total'].t.replace(',', '.')) : NaN;
-        if (isNaN(q) && isNaN(tot)) return;
-        items.push({ p: name, q: isNaN(q) ? 0 : q, r: isNaN(tot) ? 0 : tot });
-      });
+      const rows = parseDetailRows(all);
+      if (pg === 0) console.log('     [진단] 상세 셀 ' + all.length + '개, 파싱 품목행 ' + rows.length);
+      rows.forEach(r => items.push(r));
       const m = pageMeta(all);
       if (!m || m.b >= m.c) break;
       if (!(await nextPage())) break;
@@ -164,9 +188,10 @@ async function run() {
     if (!(await clickText('RETOUR'))) { try { await page.goBack(); } catch {} }
     await page.waitForTimeout(1500); await enableSemantics(); await page.waitForTimeout(500);
     // 목록 화면 확인
-    for (let i = 0; i < 10; i++) { if ((await cells()).some(c => c.t === 'Heure')) return true; await page.waitForTimeout(500); }
+    for (let i = 0; i < 10; i++) { const cc = await cells(); if (cc.some(c => c.t === 'Mes commandes' || c.t === 'Heure')) return true; await page.waitForTimeout(500); }
     return false;
   }
+  function isDetailOpen(cc) { return cc.some(c => /Détails de la commande/.test(c.t) || c.t === 'Enregistrement de statut'); }
 
   const results = {}; // date -> {p -> {q,r}}
   try {
@@ -188,7 +213,7 @@ async function run() {
       console.log('=== ' + date + ' ===');
       if (!(await setDate(date))) { console.warn('   날짜 설정 실패: ' + date); await shot('datefail-' + date); continue; }
       await page.waitForTimeout(1200); await firstPage();
-      await shot('list-' + date);
+      await shot('list-' + date); await dump('list-' + date);
 
       // 1) 목록 전체를 훑어 점심 창 주문 식별자(시각) 수집
       const targets = []; // {time, hm, page}
@@ -196,10 +221,15 @@ async function run() {
       for (; pg < 30; pg++) {
         const all = await cells();
         const rows = parseTable(all, ['Heure', 'Total', 'Dispo', 'Date'], 160);
+        if (pg === 0) {
+          console.log('   [진단] 목록 셀 ' + all.length + '개, 헤더 발견: ' + ['Heure', 'Total', 'Dispo', 'Date'].filter(h => all.some(c => c.t === h)).join('/'));
+          console.log('   [진단] 1페이지 행: ' + rows.map(r => (r['Heure'] ? r['Heure'].t : '?') + (r['Dispo'] ? '(' + r['Dispo'].t + ')' : '')).join(', '));
+        }
         rows.forEach(r => {
           const hC = r['Heure']; if (!hC) return; const t = hC.t; const mm = hm(t); if (mm == null) return;
-          const dispo = r['Dispo'] ? r['Dispo'].t : '';
-          if (/annul/i.test(dispo)) return;
+          // 취소 주문 제외: 행 내용 어디든 Annulée 가 있으면 스킵 (Dispo 헤더가 0크기라 열 매칭이 불안정)
+          const cancelled = (r._cells || []).some(c => /annul/i.test(c.t));
+          if (cancelled) return;
           if (mm >= LUNCH_START && mm < LUNCH_END) targets.push({ time: t, hm: mm, page: pg });
         });
         const m = pageMeta(all);
@@ -221,13 +251,19 @@ async function run() {
         const rows = parseTable(all, ['Heure', 'Total', 'Dispo'], 160);
         const row = rows.find(r => r['Heure'] && r['Heure'].t === tg.time);
         if (!row) { console.warn('   행 못 찾음: ' + tg.time); continue; }
-        // 행의 맨 왼쪽 셀(주문번호) 좌표로 클릭 → 상세 열림
+        // 행의 맨 왼쪽 셀(주문번호) 좌표로 클릭 → 상세 열림. 실패 시 Heure 셀 클릭 재시도.
         await page.mouse.click(row.leftX + 6, row.cy);
-        // 상세 로딩 대기
         let ok = false;
-        for (let i = 0; i < 12; i++) { await page.waitForTimeout(500); if ((await cells()).some(c => c.t === 'Nom du produit')) { ok = true; break; } }
-        if (!ok) { console.warn('   상세 안 열림: ' + tg.time); await shot('nodetail-' + date + '-' + tg.time.replace(':', '')); continue; }
+        for (let i = 0; i < 12; i++) { await page.waitForTimeout(500); await enableSemantics(); if (isDetailOpen(await cells())) { ok = true; break; } }
+        if (!ok && row['Heure']) {
+          await page.mouse.click(row['Heure'].cx, row['Heure'].cy);
+          for (let i = 0; i < 10; i++) { await page.waitForTimeout(500); await enableSemantics(); if (isDetailOpen(await cells())) { ok = true; break; } }
+        }
+        if (!ok) { console.warn('   상세 안 열림: ' + tg.time); await shot('nodetail-' + date + '-' + tg.time.replace(':', '')); await dump('nodetail-' + date); continue; }
+        await enableSemantics(); await page.waitForTimeout(300);
         const items = await scrapeDetail();
+        console.log('   주문 ' + tg.time + ': 품목 ' + items.length + '개');
+        if (!items.length) { await shot('emptydetail-' + date + '-' + tg.time.replace(':', '')); await dump('emptydetail-' + date + '-' + tg.time.replace(':', '')); }
         items.forEach(it => { const k = it.p; (agg[k] = agg[k] || { q: 0, r: 0 }); agg[k].q += it.q; agg[k].r += it.r; });
         done++;
         if (done === 1) { await shot('detail-' + date); await dump('detail-' + date); }
