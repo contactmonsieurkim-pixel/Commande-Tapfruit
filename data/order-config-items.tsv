@@ -1,0 +1,122 @@
+cfg-001	Echine de Porc	Supplier Goods	Fresh Raw Goods			Beauvallet	kg	1000		7.95				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-002	Faux fillet Boeuf Angus Argentine	Supplier Goods	Fresh Raw Goods			Beauvallet	kg	1000		25.16				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-003	Tartare Boeuf Charolais	Supplier Goods	Fresh Raw Goods			Beauvallet	carton		32	56.16				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-004	Salade Romaine	Supplier Goods	Fresh Raw Goods			Tapfruit	bag		2	3.28				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-005	Chou chinois	Supplier Goods	Fresh Raw Goods			Tapfruit	piece		1	2.48				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-006	Haricot Vert	Supplier Goods	Fresh Raw Goods			Tapfruit	tray	500		4.98				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-007	Poireau	Supplier Goods	Fresh Raw Goods			Tapfruit	kg	1000		2.28				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-008	Pomme Golden 201/240	Supplier Goods	Fresh Raw Goods			Tapfruit	kg	1000		2.28				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-009	Chou choudou catégorie 1 Portugal	Supplier Goods	Fresh Raw Goods			Metro	piece		1	2.96				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		710171
+cfg-010	Chou chinois	Supplier Goods	Fresh Raw Goods			Metro	piece		1	2.74				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		760449
+cfg-011	Pomme Gala barquette	Supplier Goods	Fresh Raw Goods			Metro	pack	1700		4.06				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		701650
+cfg-012	Salade romaine	Supplier Goods	Fresh Raw Goods			Metro	piece		1	2.74				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		763485
+cfg-013	Céleri botte catégorie 1 Espagne	Supplier Goods	Fresh Raw Goods			Metro	bunch		1	1.97				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		9174
+cfg-014	Haricot vert barquette	Supplier Goods	Fresh Raw Goods			Metro	pack	500		4.72				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		30711
+cfg-015	Foin pour cuisine France	Supplier Goods	Fresh Raw Goods			Metro	carton			16.48				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		700944
+cfg-016	Gingembre Chine	Supplier Goods	Fresh Raw Goods			Metro	pack	500		4.39				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		31959
+cfg-017	Jardins du Midi Purée de gingembre Chine	Supplier Goods	Fresh Raw Goods			Metro	pack	450		6.59				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		66377
+cfg-018	METRO Chef Ail pelé	Supplier Goods	Fresh Raw Goods			Metro	pack	1000		5.27				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		307186
+cfg-019	METRO Chef Ciboulette sachet 5 bottes	Supplier Goods	Fresh Raw Goods			Metro	pack	20		5.45				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		30859
+cfg-020	METRO Chef Concombre pièce catégorie 1 France 400/500 g	Supplier Goods	Fresh Raw Goods			Metro	piece		1	0.87				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		762411
+cfg-021	Piment vert catégorie 1 Maroc	Supplier Goods	Fresh Raw Goods			Metro	pack	4000		13.15				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		30561
+cfg-022	Radis blanc for Moo Cut	Supplier Goods	Fresh Raw Goods			Metro	piece	500		1.64				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		30771
+cfg-023	Radis rouge for Pickle	Supplier Goods	Fresh Raw Goods			Metro	pack	1500		6.26				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		762340
+cfg-024	Vitalfa Graine germée de radis pourpre France	Supplier Goods	Fresh Raw Goods			Metro	pack	85		1.53				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		1982
+cfg-025	Mori-Nu Tofu soyeux fort tetra	Supplier Goods	Fresh Raw Goods			Metro	pack	307		4.84				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		173311
+cfg-026	Mûre Portugal	Supplier Goods	Fresh Raw Goods			Metro	pack	125		2.19				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		831821
+cfg-027	Groseille	Supplier Goods	Fresh Raw Goods			Metro	pack	125		2.19				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		710495
+cfg-028	Melon Jaune Bollo	Supplier Goods	Fresh Raw Goods			Metro	piece		1	4.61				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		703224
+cfg-029	Courgette 14/21	Supplier Goods	Fresh Raw Goods			Metro	pack	5000		10.4				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		714890
+cfg-030	GALBANI Mascarpone 41.5%	Supplier Goods	Fresh Raw Goods			Metro	pack	500		7.41				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		23609
+cfg-031	Latte Bianco Mascarpone 42% MG	Supplier Goods	Fresh Raw Goods			Metro	pack	500		5.58				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		239744
+cfg-032	METRO Chef Jaune d'oeuf liquide pasteurisé bidon	Supplier Goods	Fresh Raw Goods			Metro	pack	1000		10.31				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		5611
+cfg-033	OVOTEAM Blanc d'oeuf liquide pasteurisé	Supplier Goods	Fresh Raw Goods			Metro	pack	1000		6.88				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		24390
+cfg-034	Gastronome Viande cuisses poulet sans os Halal sous vide France	Supplier Goods	Fresh Raw Goods			Metro	pack	2500		21.6				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		273322
+cfg-035	METRO Chef Roti échine de porc VPF sans os sous vide France	Supplier Goods	Fresh Raw Goods			Metro	pack	2200		13.09				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		306985
+cfg-036	Epaule de veau sans os sans jarret sous vide	Supplier Goods	Fresh Raw Goods			Metro	pack	5000		16.63				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		9554
+cfg-037	METRO Chef Mangue en morceaux	Supplier Goods	Staple Stock			Metro	pack	1000		5.06				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		121393
+cfg-038	Oeufs calibre moyen plein air	Supplier Goods	Fresh Raw Goods			Metro	piece		180	46.33				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		296830
+cfg-039	Purée de mangue	Supplier Goods	Staple Stock			Metro	pack			8.53				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		67379
+cfg-040	Lait concentré sucré	Supplier Goods	Staple Stock			Metro	pack	1000		5.51				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		10315
+cfg-041	Sirop de glucose cristal	Supplier Goods	Staple Stock			Metro	pack	1000		7.3				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		11578
+cfg-042	Miel de fleurs pot	Supplier Goods	Staple Stock			Metro	pack	1000		6.26				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		107929
+cfg-043	Pulco Citron verre perdu	Supplier Goods	Staple Stock			Metro	pack			2.69				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		202560
+cfg-044	Carandini Vinaigre balsamique blanc	Supplier Goods	Staple Stock			Metro	pack			3.53				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		57085
+cfg-045	Matcha en Poudre	Supplier Goods	Staple Stock			Metro	pack	500		21.57				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		276472
+cfg-046	Cacao en Poudre	Supplier Goods	Staple Stock			Metro	pack	250		4.74				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		22642
+cfg-047	RIOBA Pur jus de pomme	Supplier Goods	Staple Stock			Metro	pack		6	9.39				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		280387
+cfg-048	Biscuits cuillers pâtissiers	Supplier Goods	Staple Stock			Metro	pack	1600		29.35				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		247412
+cfg-049	Sucre en poudre	Supplier Goods	Staple Stock			Metro	pack	6000		6.97				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		247300
+cfg-050	Farine de blé T45	Supplier Goods	Staple Stock			Metro	pack	10000		10.2				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		96497
+cfg-051	Fécule de pomme de terre	Supplier Goods	Staple Stock			Metro	pack	5000		17.38				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		241829
+cfg-052	Biscuits cuillers	Supplier Goods	Staple Stock			Metro	pack	600		5.94				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		85452
+cfg-053	Pignon de pin	Supplier Goods	Staple Stock			Metro	pack	1000		45.66				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		302252
+cfg-054	Nori grillées	Supplier Goods	Staple Stock			Metro	pack	196		22.04				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		263492
+cfg-055	Heinz Tomato ketchup bidon	Supplier Goods	Staple Stock			Metro	pack			14.44				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		180281
+cfg-056	aro Vinaigre blanc 8°	Supplier Goods	Staple Stock			Metro	pack			7.87				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		304649
+cfg-057	Huile de friture	Supplier Goods	Staple Stock			Metro	pack			12.12				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		48498
+cfg-058	aro Poivre blanc moulu	Supplier Goods	Staple Stock			Metro	pack	1000		23.12				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		296704
+cfg-059	Cerebos Sel fin	Supplier Goods	Staple Stock			Metro	pack	5000		4.29				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		241859
+cfg-060	Lait entier UHT	Supplier Goods	Fresh Raw Goods			Metro	pack		6	7.71				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		298289
+cfg-061	Badoit Eau minérale gazeuse verre consigné	Supplier Goods	Staple Stock			Metro	pack		12	20.42				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		202528
+cfg-062	Coca-Cola goût original verre consigné	Supplier Goods	Staple Stock			Metro	pack		24	34.02				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		202424
+cfg-063	Coca-Cola sans sucres verre consigné	Supplier Goods	Staple Stock			Metro	pack		24	31.75				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		202422
+cfg-064	Evian Eau minérale verre consigné	Supplier Goods	Staple Stock			Metro	pack		12	19.86				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		202530
+cfg-065	La French Ginger Beer	Supplier Goods	Staple Stock			Metro	pack		24	30.67				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		284230
+cfg-066	Couvercle bol à salade 500/750/1000 RPET	Supplier Goods	Staple Stock			Metro	pack		50	2.87				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		184047
+cfg-067	Bol à salade kraft 750 ml (Emporter)	Supplier Goods	Staple Stock			Metro	pack		50	5.64				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		307632
+cfg-068	Bol à salade kraft 500 ml (Emporter)	Supplier Goods	Staple Stock			Metro	pack		50	5.11				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		307634
+cfg-069	Film alimentaire 44 cm ×300 m	Supplier Goods	Staple Stock			Metro	roll		4	30.85				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		211040
+cfg-070	Solia Pot à sauce + couvercle 60 ml	Supplier Goods	Staple Stock			Metro	pack		100	3.59				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		189688
+cfg-071	Useo Kit couverts 4 en 1 bois	Supplier Goods	Staple Stock			Metro	pack		50	8.35				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		275939
+cfg-072	Sigma Bobine caisse enregistreuse 80×77×12 mm	Supplier Goods	Staple Stock			Metro	pack		10	23.94				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		259413
+cfg-073	Sigma Bobine TPE 57×40×12 mm	Supplier Goods	Staple Stock			Metro	pack		20	13.24				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		259417
+cfg-074	Sac avec poignée kraft 32×22×24 cm (Emporter)	Supplier Goods	Staple Stock			Metro	pack		50	6.83				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		239596
+cfg-075	Sac en papier kraft 22×11×28 cm (Emporter)	Supplier Goods	Staple Stock			Metro	pack		50	5.02				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		228590
+cfg-076	Sac à bretelle plastique 26×12×45 cm (Emporter)	Supplier Goods	Staple Stock			Metro	pack		500	27.19				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		194106
+cfg-077	Cartouche de gaz sécurisée	Supplier Goods	Staple Stock			Metro	pack		3	6.88				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		153771
+cfg-078	Sac lisse de conservation 15×30 cm (Sous-vide)	Supplier Goods	Staple Stock			Metro	pack		100	18.94				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		240677
+cfg-079	Sac lisse de conservation 30×40 cm (Sous-vide)	Supplier Goods	Staple Stock			Metro	pack		100	42.56				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		240684
+cfg-080	Sac congélation liens 3 L ×75	Supplier Goods	Staple Stock			Metro	pack		3	6.39				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		216522
+cfg-081	aro Eponge métallique ×3	Supplier Goods	Staple Stock			Metro	pack		10	9.48				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		245843
+cfg-082	aro Liquide vaisselle citron 1 L	Supplier Goods	Staple Stock			Metro	pack		3	4.51				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		192689
+cfg-083	Gant en latex taille M	Supplier Goods	Staple Stock			Metro	pack		100	4.91				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		210458
+cfg-084	Gant en latex taille S	Supplier Goods	Staple Stock			Metro	pack		100	5.06				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		210442
+cfg-085	Sac poubelle avec liens 100 L	Supplier Goods	Staple Stock			Metro	pack		30	5.78				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		225677
+cfg-086	Sac poubelle coulissant 50 L	Supplier Goods	Staple Stock			Metro	pack		30	3.39				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		225661
+cfg-087	Lavette non-tissée bleu	Supplier Goods	Staple Stock			Metro	pack		10	3.54				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		4555
+cfg-088	Solivaisselle lave-vaisselle cycle court (Kitchen / White)	Supplier Goods	Staple Stock			Metro	pack			20.77				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		156415
+cfg-089	Solivaisselle rinçage séchage (Kitchen / Blue)	Supplier Goods	Staple Stock			Metro	pack			21.04				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		4686
+cfg-090	Liquide lave-verre machine (Dishwasher Service)	Supplier Goods	Staple Stock			Metro	pack			21.33				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		205046
+cfg-091	Détartrant anti-calcaire	Supplier Goods	Staple Stock			Metro	pack			12.83				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		188621
+cfg-092	Gel décapant four	Supplier Goods	Staple Stock			Metro	pack			20.46				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		7533
+cfg-093	Sanytol Désinfectant sol et surfaces	Supplier Goods	Staple Stock			Metro	pack			18.12				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		149418
+cfg-094	Bobine 2 plis 450 feuilles (Sopalin)	Supplier Goods	Staple Stock			Metro	pack		6	11.14				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		304082
+cfg-095	Papier toilette rouleau extra doux 140 feuilles	Supplier Goods	Staple Stock			Metro	pack		24	10.44				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		286331
+cfg-096	Gochujang	Supplier Goods	Staple Stock			Leaf market	box	1000		5.65				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-097	Doenjang	Supplier Goods	Staple Stock			Leaf market	box	500		3.52				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-098	Thé Prune	Supplier Goods	Staple Stock			Leaf market	pot	480		5.37				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-099	Sauce soja coréen	Supplier Goods	Staple Stock			Leaf market	bottle			3.83				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-100	Poudre piment Gros	Supplier Goods	Staple Stock			Leaf market	bag	1360		13.2				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-101	Poudre piment "Très Fin"	Supplier Goods	Staple Stock			Leaf market	bag	1000		7.84				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-102	Poudre Riz Gluant	Supplier Goods	Staple Stock			Leaf market	bag	400		1.57				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-103	Sésame blanc	Supplier Goods	Staple Stock			Leaf market	bag	434		2.71				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-104	Grain de Azuki	Supplier Goods	Staple Stock			Leaf market	bag	400		2.47				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-105	Sauce Poisson	Supplier Goods	Staple Stock			Leaf market	bottle			4.7				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-106	Huile de sésame (jia)	Supplier Goods	Staple Stock			Leaf market	bottle			24.61				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-107	Mirin (WADAKAN) 9%	Supplier Goods	Staple Stock			Leaf market	bottle			5.75				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-108	Shitake (entier) sec	Supplier Goods	Staple Stock			Leaf market	bag	500		14.72				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-109	Kombu sec	Supplier Goods	Staple Stock			Leaf market	bag	170		4.7				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-110	Poivre Sichuan	Supplier Goods	Staple Stock			Leaf market	bag	100		2.94				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-111	Riz (Miki)	Supplier Goods	Staple Stock			Leaf market	bag	20000		44.5				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-112	Milkis	Supplier Goods	Staple Stock			Leaf market	carton		30	30.3				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-113	Jus Poire Coréen	Supplier Goods	Staple Stock			Leaf market	carton		12	15.84				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-114	Jus Raisin Coréen (bongbong)	Supplier Goods	Staple Stock			Leaf market	carton		12	14.64				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-115	Aloe Wang	Supplier Goods	Staple Stock			Leaf market	carton		20	32				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-116	CASS	Supplier Goods	Staple Stock			Leaf market	carton		24	37.5				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-117	Asahi	Supplier Goods	Staple Stock			Leaf market	carton		24	31.5				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-118	Makgeoli nature (kook soon dang)	Supplier Goods	Staple Stock			Leaf market	bottle			5.65				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-119	Thé seal solomon	Supplier Goods	Staple Stock			Leaf market	box		25	3.72				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-120	Thé vert au riz complet	Supplier Goods	Staple Stock			Leaf market	box		25	3.72				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-121	Tofu Ferme	Supplier Goods	Fresh Raw Goods			Leaf market	bag	500		2.33				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		
+cfg-122	Queue Crevette décortiqué (21/25)	Supplier Goods	Staple Stock			Leaf market	bag	700		13.25				import	2026-09-04T00:00:00.000Z	import	2026-09-04T00:00:00.000Z		

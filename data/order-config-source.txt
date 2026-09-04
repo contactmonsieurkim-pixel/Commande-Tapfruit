@@ -1,0 +1,122 @@
+Beauvallet|Viande|Echine de Porc|kg|7,95|
+Beauvallet|Viande|Faux fillet Boeuf Angus Argentine|kg|25,16|
+Beauvallet|Viande|Tartare Boeuf Charolais|Carton (=32 portions)|56,16|
+Tapfruit|Légume|Salade Romaine|Sachet (2 pièces / sachet)|3,28|
+Tapfruit|Légume|Chou chinois|Pièce|2,48|
+Tapfruit|Légume|Haricot Vert|Barquette (500 g)|4,98|
+Tapfruit|Légume|Poireau|kg|2,28|
+Tapfruit|Fruit|Pomme Golden 201/240|kg|2,28|
+Metro|Fruits & Légumes|Chou choudou catégorie 1 Portugal|1 pièce|2,96|710171
+Metro|Fruits & Légumes|Chou chinois|1 pièce|2,74|760449
+Metro|Fruits & Légumes|Pomme Gala barquette|1.7 kg|4,06|701650
+Metro|Fruits & Légumes|Salade romaine|1 pièce|2,74|763485
+Metro|Fruits & Légumes|Céleri botte catégorie 1 Espagne|1 botte|1,97|9174
+Metro|Fruits & Légumes|Haricot vert barquette|500 g|4,72|30711
+Metro|Fruits & Légumes|Foin pour cuisine France|Carton|16,48|700944
+Metro|Fruits & Légumes|Gingembre Chine|0.5 kg|4,39|31959
+Metro|Fruits & Légumes|Jardins du Midi Purée de gingembre Chine|450 g|6,59|66377
+Metro|Fruits & Légumes|METRO Chef Ail pelé|1 kg|5,27|307186
+Metro|Fruits & Légumes|METRO Chef Ciboulette sachet 5 bottes|×20 g|5,45|30859
+Metro|Fruits & Légumes|METRO Chef Concombre pièce catégorie 1 France 400/500 g|1 pièce|0,87|762411
+Metro|Fruits & Légumes|Piment vert catégorie 1 Maroc|4 kg|13,15|30561
+Metro|Fruits & Légumes|Radis blanc for Moo Cut|Pièce (200/500g)|1,64|30771
+Metro|Fruits & Légumes|Radis rouge for Pickle|1.5 kg|6,26|762340
+Metro|Fruits & Légumes|Vitalfa Graine germée de radis pourpre France|85 g|1,53|1982
+Metro|Fruits & Légumes|Mori-Nu Tofu soyeux fort tetra|307 g|4,84|173311
+Metro|Fruits & Légumes|Mûre Portugal|125 g|2,19|831821
+Metro|Fruits & Légumes|Groseille|125 g|2,19|710495
+Metro|Fruits & Légumes|Melon Jaune Bollo|Pièce|4,61|703224
+Metro|Fruits & Légumes|Courgette 14/21|5 kg|10,4|714890
+Metro|Crèmerie|GALBANI Mascarpone 41.5%|500 g|7,41|23609
+Metro|Crèmerie|Latte Bianco Mascarpone 42% MG|500 g|5,58|239744
+Metro|Crèmerie|METRO Chef Jaune d'oeuf liquide pasteurisé bidon|1 kg|10,31|5611
+Metro|Crèmerie|OVOTEAM Blanc d'oeuf liquide pasteurisé|1 kg|6,88|24390
+Metro|Boucherie|Gastronome Viande cuisses poulet sans os Halal sous vide France|2.5 kg|21,6|273322
+Metro|Boucherie|METRO Chef Roti échine de porc VPF sans os sous vide France|2.2 kg|13,09|306985
+Metro|Boucherie|Epaule de veau sans os sans jarret sous vide|5 kg|16,63|9554
+Metro|Frozen Product|METRO Chef Mangue en morceaux|1 kg|5,06|121393
+Metro|Crèmerie|Oeufs calibre moyen plein air|180 pièces|46,33|296830
+Metro|Épicerie sucrée|Purée de mangue|1 L|8,53|67379
+Metro|Épicerie sucrée|Lait concentré sucré|1 kg|5,51|10315
+Metro|Épicerie sucrée|Sirop de glucose cristal|1 kg|7,3|11578
+Metro|Épicerie sucrée|Miel de fleurs pot|1 kg|6,26|107929
+Metro|Brasserie|Pulco Citron verre perdu|70 cl|2,69|202560
+Metro|Épicerie salée|Carandini Vinaigre balsamique blanc|50 cl|3,53|57085
+Metro|Épicerie sucrée|Matcha en Poudre|500 g|21,57|276472
+Metro|Épicerie sucrée|Cacao en Poudre|250 g|4,74|22642
+Metro|Brasserie|RIOBA Pur jus de pomme|6×1 L|9,39|280387
+Metro|Épicerie sucrée|Biscuits cuillers pâtissiers|1.6 kg|29,35|247412
+Metro|Épicerie sucrée|Sucre en poudre|6×1 kg|6,97|247300
+Metro|Épicerie salée|Farine de blé T45|10×1 kg|10,2|96497
+Metro|Épicerie salée|Fécule de pomme de terre|5 kg|17,38|241829
+Metro|Épicerie sucrée|Biscuits cuillers|2×300 g (600 g)|5,94|85452
+Metro|Épicerie sucrée|Pignon de pin|1 kg|45,66|302252
+Metro|Épicerie salée|Nori grillées|196 g (70 feuilles)|22,04|263492
+Metro|Épicerie salée|Heinz Tomato ketchup bidon|4 L|14,44|180281
+Metro|Épicerie salée|aro Vinaigre blanc 8°|10 L|7,87|304649
+Metro|Épicerie salée|Huile de friture|5 L|12,12|48498
+Metro|Épicerie salée|aro Poivre blanc moulu|1 kg|23,12|296704
+Metro|Épicerie salée|Cerebos Sel fin|5 kg|4,29|241859
+Metro|Crèmerie|Lait entier UHT|6×1 L|7,71|298289
+Metro|Brasserie|Badoit Eau minérale gazeuse verre consigné|12×1 L|20,42|202528
+Metro|Brasserie|Coca-Cola goût original verre consigné|24×33 cl|34,02|202424
+Metro|Brasserie|Coca-Cola sans sucres verre consigné|24×33 cl|31,75|202422
+Metro|Brasserie|Evian Eau minérale verre consigné|12×1 L|19,86|202530
+Metro|Brasserie|La French Ginger Beer|24×25 cl|30,67|284230
+Metro|Matériel & Emballage|Couvercle bol à salade 500/750/1000 RPET|×50|2,87|184047
+Metro|Matériel & Emballage|Bol à salade kraft 750 ml (Emporter)|×50|5,64|307632
+Metro|Matériel & Emballage|Bol à salade kraft 500 ml (Emporter)|×50|5,11|307634
+Metro|Matériel & Emballage|Film alimentaire 44 cm ×300 m|4 rouleaux|30,85|211040
+Metro|Matériel & Emballage|Solia Pot à sauce + couvercle 60 ml|×100|3,59|189688
+Metro|Matériel & Emballage|Useo Kit couverts 4 en 1 bois|×50|8,35|275939
+Metro|Fournitures bureau|Sigma Bobine caisse enregistreuse 80×77×12 mm|×10|23,94|259413
+Metro|Fournitures bureau|Sigma Bobine TPE 57×40×12 mm|×20|13,24|259417
+Metro|Matériel & Emballage|Sac avec poignée kraft 32×22×24 cm (Emporter)|×50|6,83|239596
+Metro|Matériel & Emballage|Sac en papier kraft 22×11×28 cm (Emporter)|×50|5,02|228590
+Metro|Matériel & Emballage|Sac à bretelle plastique 26×12×45 cm (Emporter)|×500|27,19|194106
+Metro|Matériel & Emballage|Cartouche de gaz sécurisée|×3|6,88|153771
+Metro|Matériel & Emballage|Sac lisse de conservation 15×30 cm (Sous-vide)|×100|18,94|240677
+Metro|Matériel & Emballage|Sac lisse de conservation 30×40 cm (Sous-vide)|×100|42,56|240684
+Metro|Matériel & Emballage|Sac congélation liens 3 L ×75|×3|6,39|216522
+Metro|Hygiène & Entretien|aro Eponge métallique ×3|×10|9,48|245843
+Metro|Hygiène & Entretien|aro Liquide vaisselle citron 1 L|×3|4,51|192689
+Metro|Hygiène & Entretien|Gant en latex taille M|×100|4,91|210458
+Metro|Hygiène & Entretien|Gant en latex taille S|×100|5,06|210442
+Metro|Hygiène & Entretien|Sac poubelle avec liens 100 L|×30|5,78|225677
+Metro|Hygiène & Entretien|Sac poubelle coulissant 50 L|×30|3,39|225661
+Metro|Hygiène & Entretien|Lavette non-tissée bleu|×10|3,54|4555
+Metro|Hygiène & Entretien|Solivaisselle lave-vaisselle cycle court (Kitchen / White)|5 L|20,77|156415
+Metro|Hygiène & Entretien|Solivaisselle rinçage séchage (Kitchen / Blue)|5 L|21,04|4686
+Metro|Hygiène & Entretien|Liquide lave-verre machine (Dishwasher Service)|5 L|21,33|205046
+Metro|Hygiène & Entretien|Détartrant anti-calcaire|5 L|12,83|188621
+Metro|Hygiène & Entretien|Gel décapant four|5 L|20,46|7533
+Metro|Hygiène & Entretien|Sanytol Désinfectant sol et surfaces|5 L|18,12|149418
+Metro|Hygiène & Entretien|Bobine 2 plis 450 feuilles (Sopalin)|×6|11,14|304082
+Metro|Hygiène & Entretien|Papier toilette rouleau extra doux 140 feuilles|×24|10,44|286331
+Leaf market|Sauce & Condiment|Gochujang|Boîte (1 kg)|5,65|
+Leaf market|Sauce & Condiment|Doenjang|Boîte (500 g)|3,52|
+Leaf market|Sauce & Condiment|Thé Prune|Pot (480 g)|5,37|
+Leaf market|Sauce & Condiment|Sauce soja coréen|Bouteilles (860 ml)|3,83|
+Leaf market|Dry Goods|Poudre piment Gros|Sachets (1,36 kg)|13,20|
+Leaf market|Dry Goods|Poudre piment "Très Fin"|Sachets (1 kg)|7,84|
+Leaf market|Dry Goods|Poudre Riz Gluant|Sachets (400 g)|1,57|
+Leaf market|Dry Goods|Sésame blanc|Sachets (434 g)|2,71|
+Leaf market|Dry Goods|Grain de Azuki|Sachets (400 g)|2,47|
+Leaf market|Sauce & Condiment|Sauce Poisson|Bouteilles (1,5 L)|4,70|
+Leaf market|Sauce & Condiment|Huile de sésame (jia)|Bouteilles (2.5 L)|24,61|
+Leaf market|Sauce & Condiment|Mirin (WADAKAN) 9%|Bouteilles (1 L)|5,75|
+Leaf market|Dry Goods|Shitake (entier) sec|Sachets (500 g)|14,72|
+Leaf market|Dry Goods|Kombu sec|Sachets (170 g)|4,70|
+Leaf market|Dry Goods|Poivre Sichuan|Sachets (100 g)|2,94|
+Leaf market|Dry Goods|Riz (Miki)|sachets (20kg)|44,50|
+Leaf market|Beverage|Milkis|Carton (250 ml × 30)|30,30|
+Leaf market|Beverage|Jus Poire Coréen|Carton (238 ml × 12)|15,84|
+Leaf market|Beverage|Jus Raisin Coréen (bongbong)|Carton (238 ml × 12)|14,64|
+Leaf market|Beverage|Aloe Wang|Carton (500 ml × 20)|32,00|
+Leaf market|Alcohol|CASS|Carton (330 ml × 24)|37,50|
+Leaf market|Alcohol|Asahi|Carton (330 ml × 24)|31,50|
+Leaf market|Alcohol|Makgeoli nature (kook soon dang)|Bouteilles (750 ml)|5,65|
+Leaf market|Tea|Thé seal solomon|Boîte (25 sachets)|3,72|
+Leaf market|Tea|Thé vert au riz complet|Boîte (25 sachets)|3,72|
+Leaf market|Fresh|Tofu Ferme|Sachets (500 g)|2,33|
+Leaf market|Frozen Product|Queue Crevette décortiqué (21/25)|Sachets (700 g)|13,25|

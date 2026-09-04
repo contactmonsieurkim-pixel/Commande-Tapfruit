@@ -22,8 +22,8 @@ var TABS = {
   Units:     ['Unit'],
   Boxes:     ['BoxSize'],
   Items:     ['id','name','category','subCategory','menus','avgShelfLifeDays','suppliers',
-              'orderUnit','gramsPerOrderUnit','unitPrice','parLevel','boxSize','gramsPerBox',
-              'createdBy','createdAt','updatedBy','updatedAt','batchYield'],
+              'orderUnit','gramsPerOrderUnit','piecesPerOrderUnit','unitPrice','parLevel','boxSize','gramsPerBox',
+              'createdBy','createdAt','updatedBy','updatedAt','batchYield','supplierRef'],
   BOM:       ['parentId','parentName','ingredientId','ingredientName','qty','unit']
 };
 
@@ -79,11 +79,11 @@ function readAll_() {
       id: r.id, name: r.name, category: r.category, subCategory: r.subCategory,
       menus: splitList_(r.menus), avgShelfLifeDays: numOrNull_(r.avgShelfLifeDays),
       suppliers: splitList_(r.suppliers), orderUnit: r.orderUnit,
-      gramsPerOrderUnit: numOrNull_(r.gramsPerOrderUnit), unitPrice: numOrNull_(r.unitPrice),
+      gramsPerOrderUnit: numOrNull_(r.gramsPerOrderUnit), piecesPerOrderUnit: numOrNull_(r.piecesPerOrderUnit), unitPrice: numOrNull_(r.unitPrice),
       parLevel: numOrNull_(r.parLevel), boxSize: r.boxSize, gramsPerBox: numOrNull_(r.gramsPerBox),
       recipe: recipeByParent[r.id] || [],
       createdBy: r.createdBy, createdAt: r.createdAt, updatedBy: r.updatedBy, updatedAt: r.updatedAt,
-      batchYield: numOrNull_(r.batchYield)
+      batchYield: numOrNull_(r.batchYield), supplierRef: r.supplierRef
     };
   });
   return {
@@ -122,9 +122,9 @@ function upsertItem_(it) {
   var row = [
     it.id, it.name, it.category, it.subCategory,
     (it.menus || []).join(', '), blank_(it.avgShelfLifeDays),
-    (it.suppliers || []).join(', '), it.orderUnit || '', blank_(it.gramsPerOrderUnit),
+    (it.suppliers || []).join(', '), it.orderUnit || '', blank_(it.gramsPerOrderUnit), blank_(it.piecesPerOrderUnit),
     blank_(it.unitPrice), blank_(it.parLevel), it.boxSize || '', blank_(it.gramsPerBox),
-    it.createdBy || '', it.createdAt || '', it.updatedBy || '', it.updatedAt || '', blank_(it.batchYield)
+    it.createdBy || '', it.createdAt || '', it.updatedBy || '', it.updatedAt || '', blank_(it.batchYield), it.supplierRef || ''
   ];
   var r = findRow_(sh, it.id);
   if (r > 0) sh.getRange(r, 1, 1, row.length).setValues([row]);
@@ -173,5 +173,5 @@ function deleteBomFor_(sh, parentId) {
   for (var i = ids.length - 1; i >= 0; i--) if (('' + ids[i][0]) === ('' + parentId)) sh.deleteRow(i + 2);
 }
 function splitList_(v) { return ('' + (v || '')).split(',').map(function(s) { return s.trim(); }).filter(function(s) { return s; }); }
-function numOrNull_(v) { if (v === '' || v == null) return null; var n = Number(v); return isNaN(n) ? null : n; }
+function numOrNull_(v) { if (v === '' || v == null) return null; if (typeof v === 'string') v = v.replace(',', '.').replace(/[^\d.\-]/g, ''); var n = Number(v); return isNaN(n) ? null : n; }
 function blank_(v) { return (v == null) ? '' : v; }

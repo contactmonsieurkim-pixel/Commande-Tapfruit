@@ -176,6 +176,8 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
 .item-actions{display:flex;gap:.25rem;flex-shrink:0;align-items:center}
 .item-actions .icon-btn{width:30px;height:30px;font-size:13px}
 .confirm-lbl{font-family:var(--mono);font-size:.7rem;color:var(--alert);margin-right:.15rem;white-space:nowrap}
+.warn-par{font-family:var(--mono);font-size:.62rem;font-weight:600;color:var(--alert);background:var(--alert-bg);padding:.14rem .4rem;border-radius:99px;white-space:nowrap}
+.field .req{color:var(--alert);text-transform:none;letter-spacing:0;font-size:.66rem;font-weight:600}
 
 .list-foot{display:flex;align-items:center;gap:.5rem;padding:.7rem 1.1rem;border-top:1px solid var(--border);flex-wrap:wrap}
 .list-foot .spacer{flex:1}
@@ -246,14 +248,16 @@ input::placeholder,textarea::placeholder{color:var(--faint)}
           <label>Supplier(s)</label>
           <div class="chips" id="supChips"></div>
         </div>
+        <div class="field"><label>Order unit</label><select id="fUnit"></select></div>
         <div class="grid2">
-          <div class="field"><label>Order unit</label><select id="fUnit"></select></div>
-          <div class="field"><label>Gram per Unit</label><div class="inline"><input id="fGpu" class="num" type="number" min="0" step="any" placeholder="e.g. 500"><span class="suffix">g</span></div></div>
+          <div class="field"><label>Gram per Unit <span class="opt">if weighable</span></label><div class="inline"><input id="fGpu" class="num" type="number" min="0" step="any" placeholder="e.g. 500"><span class="suffix">g</span></div></div>
+          <div class="field"><label>Pieces per Unit <span class="opt">if counted</span></label><div class="inline"><input id="fPcs" class="num" type="number" min="0" step="any" placeholder="e.g. 24"><span class="suffix">pcs</span></div></div>
         </div>
         <div class="grid2">
           <div class="field"><label>Unit price <span class="opt">optional</span></label><div class="inline"><input id="fPrice" class="num" type="number" min="0" step="any" placeholder="0.00"><span class="suffix">€</span></div></div>
-          <div class="field hidden" id="parWrap"><label>Par level <span class="opt">target stock</span></label><div class="inline"><input id="fPar" class="num" type="number" min="0" step="any" placeholder="0"><span class="suffix" id="parUnit">units</span></div></div>
+          <div class="field hidden" id="parWrap"><label>Par level <span class="req">required</span></label><div class="inline"><input id="fPar" class="num" type="number" min="0" step="any" placeholder="0"><span class="suffix" id="parUnit">units</span></div></div>
         </div>
+        <div class="field"><label>Supplier ref <span class="opt">e.g. Metro no.</span></label><input id="fRef" type="text" autocomplete="off" placeholder="optional"></div>
       </div>
 
       <div id="productionFields" class="hidden">
@@ -508,6 +512,7 @@ function gather(){
   if(!form.category||!form.subCategory){toast("Pick a category & sub-category",true);return null}
   var isSup=form.category==="Supplier Goods";
   if(isSup&&form.suppliers.size===0){toast("Select at least one supplier",true);return null}
+  if(form.subCategory==="Staple Stock"&&numOrNull($("#fPar"))==null){toast("Par level is required for Staple Stock",true);$("#fPar").focus();return null}
   var ex=editingId?itemById(editingId):null;
   var rec=isSup?[]:form.recipe.filter(function(r){return r.itemName&&r.itemName.trim()&&r.qty!=null}).map(function(r){
     var it=itemByName(r.itemName);return {itemId:it?it.id:"",itemName:r.itemName.trim(),qty:r.qty,unit:r.unit}});
@@ -515,7 +520,8 @@ function gather(){
     id:editingId||uid(),name:name,category:form.category,subCategory:form.subCategory,
     menus:Array.from(form.menus),avgShelfLifeDays:numOrNull($("#fShelf")),
     suppliers:isSup?Array.from(form.suppliers):[],orderUnit:isSup?$("#fUnit").value:"",
-    gramsPerOrderUnit:isSup?numOrNull($("#fGpu")):null,unitPrice:isSup?numOrNull($("#fPrice")):null,
+    gramsPerOrderUnit:isSup?numOrNull($("#fGpu")):null,piecesPerOrderUnit:isSup?numOrNull($("#fPcs")):null,unitPrice:isSup?numOrNull($("#fPrice")):null,
+    supplierRef:isSup?$("#fRef").value.trim():"",
     parLevel:form.subCategory==="Staple Stock"?numOrNull($("#fPar")):null,
     boxSize:!isSup?$("#fBox").value:"",gramsPerBox:!isSup?numOrNull($("#fGpb")):null,
     batchYield:!isSup?(numOrNull($("#fBatch"))||1):null,recipe:rec,
@@ -533,7 +539,7 @@ function saveItem(){
 }
 function resetForm(keepContext){
   editingId=null;$("#formTitle").textContent="Add item";$("#cancelEdit").classList.add("hidden");
-  $("#fName").value="";$("#fShelf").value="";$("#fGpu").value="";$("#fPrice").value="";$("#fPar").value="";$("#fGpb").value="";$("#fBatch").value="";
+  $("#fName").value="";$("#fShelf").value="";$("#fGpu").value="";$("#fPcs").value="";$("#fPrice").value="";$("#fPar").value="";$("#fGpb").value="";$("#fBatch").value="";$("#fRef").value="";
   form.suppliers.clear();form.recipe=[];
   if($("#fUnit").options.length)$("#fUnit").selectedIndex=0;
   if($("#fBox").options.length)$("#fBox").selectedIndex=0;
@@ -561,7 +567,9 @@ function editItem(id){
   $("#fName").value=it.name||"";$("#fShelf").value=it.avgShelfLifeDays!=null?it.avgShelfLifeDays:"";
   fillSelect($("#fUnit"),S.units,it.orderUnit);updateParUnit();
   $("#fGpu").value=it.gramsPerOrderUnit!=null?it.gramsPerOrderUnit:"";
+  $("#fPcs").value=it.piecesPerOrderUnit!=null?it.piecesPerOrderUnit:"";
   $("#fPrice").value=it.unitPrice!=null?it.unitPrice:"";
+  $("#fRef").value=it.supplierRef||"";
   $("#fPar").value=it.parLevel!=null?it.parLevel:"";
   fillSelect($("#fBox"),BOX_SIZES,it.boxSize);
   $("#fGpb").value=it.gramsPerBox!=null?it.gramsPerBox:"";
@@ -587,7 +595,10 @@ function deleteItem(id){
 function metaLine(it){
   if(it.category==="Supplier Goods"){
     var p=[];if(it.suppliers.length)p.push(it.suppliers.join(", "));if(it.orderUnit)p.push(it.orderUnit);
-    if(it.gramsPerOrderUnit!=null)p.push(it.gramsPerOrderUnit+"g/unit");if(it.unitPrice!=null)p.push("€"+it.unitPrice);
+    if(it.gramsPerOrderUnit!=null)p.push(it.gramsPerOrderUnit+"g/unit");
+    if(it.piecesPerOrderUnit!=null)p.push(it.piecesPerOrderUnit+"pcs/unit");
+    if(it.unitPrice!=null)p.push("€"+it.unitPrice);
+    if(it.supplierRef)p.push("réf "+it.supplierRef);
     if(it.parLevel!=null)p.push("par "+it.parLevel);return p.join("  ·  ");
   }else{
     var q=[];if(it.boxSize)q.push(it.boxSize);if(it.gramsPerBox!=null)q.push(it.gramsPerBox+"g/box");
@@ -614,7 +625,9 @@ function renderList(){
   el.innerHTML=list.map(function(it){
     return '<div class="item" data-id="'+it.id+'"><div class="item-main">'
       +'<div class="item-top"><span class="item-name">'+esc(it.name)+'</span>'
-      +'<span class="badge sc-'+(SC_CLASS[it.subCategory]||"")+'">'+esc(it.subCategory)+'</span></div>'
+      +'<span class="badge sc-'+(SC_CLASS[it.subCategory]||"")+'">'+esc(it.subCategory)+'</span>'
+      +((it.subCategory==="Staple Stock"&&it.parLevel==null)?'<span class="warn-par">⚠ set par</span>':"")
+      +'</div>'
       +'<div class="item-meta">'+esc(metaLine(it))+'</div>'
       +((it.menus&&it.menus.length)?'<div class="item-menus">'+it.menus.map(function(m){return '<span class="mtag">'+esc(m)+'</span>'}).join("")+'</div>':"")
       +'</div><div class="item-actions">'+actionsHTML(it)+'</div></div>';
