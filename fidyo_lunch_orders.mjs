@@ -145,9 +145,20 @@ async function run() {
     const m = /(\d+)\s*[–-]\s*(\d+)\s*sur\s*(\d+)/.exec(c.t);
     return { a: +m[1], b: +m[2], c: +m[3] };
   }
-  async function clickText(txt) { const el = all => all; const c = (await cells()).find(c => c.t === txt); if (c) { await page.mouse.click(c.cx, c.cy); return true; } return false; }
-  async function nextPage() { return clickText('Page suivante'); }
-  async function firstPage() { for (let i = 0; i < 12; i++) { const m = pageMeta(await cells()); if (!m || m.a <= 1) break; if (!(await clickText('Page précédente'))) break; await page.waitForTimeout(700); } }
+  async function clickText(txt) { const c = (await cells()).find(c => c.t === txt); if (c) { await page.mouse.click(c.cx, c.cy); return true; } return false; }
+  // role=button 을 정확한 텍스트로 찾아 좌표로 클릭 (아이콘형 페이지/뒤로 버튼용).
+  async function clickButton(name) {
+    const loc = page.locator('flt-semantics[role="button"]').filter({ hasText: name });
+    const n = await loc.count();
+    for (let i = 0; i < n; i++) {
+      const el = loc.nth(i);
+      let t = ''; try { t = (await el.textContent() || '').trim(); } catch {}
+      if (t === name) { const box = await el.boundingBox().catch(() => null); if (box) { await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2); return true; } }
+    }
+    return false;
+  }
+  async function nextPage() { return clickButton('Page suivante'); }
+  async function firstPage() { for (let i = 0; i < 12; i++) { const m = pageMeta(await cells()); if (!m || m.a <= 1) break; if (!(await clickButton('Page précédente'))) break; await page.waitForTimeout(700); } }
 
   async function setDate(target) {
     const want = toDMY2(target);
@@ -171,27 +182,37 @@ async function run() {
   // 상세 페이지 전체(모든 페이지) 품목 수집
   async function scrapeDetail() {
     const items = [];
+    let lastA = -1;
     for (let pg = 0; pg < 20; pg++) {
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(pg === 0 ? 500 : 900);
       const all = await cells();
-      const rows = parseDetailRows(all);
-      if (pg === 0) console.log('     [진단] 상세 셀 ' + all.length + '개, 파싱 품목행 ' + rows.length);
-      rows.forEach(r => items.push(r));
       const m = pageMeta(all);
+      if (m && m.a === lastA) break; // 페이지가 안 넘어갔으면 중복 방지 위해 중단
+      if (m) lastA = m.a;
+      const rows = parseDetailRows(all);
+      if (pg === 0) console.log('     [진단] 상세 셀 ' + all.length + '개, 파싱 품목행 ' + rows.length + (m ? ' (' + m.a + '-' + m.b + '/' + m.c + ')' : ''));
+      rows.forEach(r => items.push(r));
       if (!m || m.b >= m.c) break;
       if (!(await nextPage())) break;
     }
     return items;
   }
-  async function backToList() {
-    // 상세 상단의 RETOUR(목록으로) 클릭. 실패 시 브라우저 뒤로.
-    if (!(await clickText('RETOUR'))) { try { await page.goBack(); } catch {} }
-    await page.waitForTimeout(1500); await enableSemantics(); await page.waitForTimeout(500);
-    // 목록 화면 확인
-    for (let i = 0; i < 10; i++) { const cc = await cells(); if (cc.some(c => c.t === 'Mes commandes' || c.t === 'Heure')) return true; await page.waitForTimeout(500); }
-    return false;
-  }
+  function isListOpen(cc) { return cc.some(c => c.t === 'Mes commandes' || c.t === 'Heure'); }
   function isDetailOpen(cc) { return cc.some(c => /Détails de la commande/.test(c.t) || c.t === 'Enregistrement de statut'); }
+  async function backToList(date) {
+    // 상세 좌상단의 ← 화살표('Retour', x~150)로 목록 복귀. RETOUR(x~472)는 대시보드로 가므로 쓰지 않음.
+    for (let a = 0; a < 3; a++) {
+      if (!(await clickButton('Retour'))) { try { await page.goBack(); } catch {} }
+      await page.waitForTimeout(1200); await enableSemantics(); await page.waitForTimeout(400);
+      for (let i = 0; i < 8; i++) { if (isListOpen(await cells())) return true; await page.waitForTimeout(400); }
+    }
+    // 복구: Commandes 재진입 + 날짜 재설정
+    try {
+      await tapByName('Commandes', 30000); await page.waitForTimeout(2500); await enableSemantics(); await page.waitForTimeout(1000);
+      if (date) await setDate(date);
+      return isListOpen(await cells());
+    } catch { return false; }
+  }
 
   const results = {}; // date -> {p -> {q,r}}
   try {
@@ -266,8 +287,8 @@ async function run() {
         if (!items.length) { await shot('emptydetail-' + date + '-' + tg.time.replace(':', '')); await dump('emptydetail-' + date + '-' + tg.time.replace(':', '')); }
         items.forEach(it => { const k = it.p; (agg[k] = agg[k] || { q: 0, r: 0 }); agg[k].q += it.q; agg[k].r += it.r; });
         done++;
-        if (done === 1) { await shot('detail-' + date); await dump('detail-' + date); }
-        await backToList();
+        if (done <= 2) { await shot('detail-' + date + '-' + done); await dump('detail-' + date + '-' + done); }
+        if (!(await backToList(date))) { console.warn('   목록 복귀 실패 → 중단'); break; }
       }
 
       const rowsOut = Object.keys(agg).map(p => ({ p: p, q: Math.round(agg[p].q), r: Math.round(agg[p].r * 100) / 100 }));
