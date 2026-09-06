@@ -24,7 +24,9 @@ var TABS = {
   Items:     ['id','name','category','subCategory','menus','avgShelfLifeDays','suppliers',
               'orderUnit','gramsPerOrderUnit','piecesPerOrderUnit','unitPrice','parLevel','boxSize','gramsPerBox',
               'createdBy','createdAt','updatedBy','updatedAt','batchYield','supplierRef'],
-  BOM:       ['parentId','parentName','ingredientId','ingredientName','qty','unit']
+  BOM:       ['parentId','parentName','ingredientId','ingredientName','qty','unit'],
+  Orders:    ['orderId','date','executor','supplier','itemId','itemName','orderUnit',
+              'qty','unitPrice','lineTotal','supplierRef']
 };
 
 var SEED = {
@@ -54,14 +56,22 @@ function setup() {
 /* ---------------- read ---------------- */
 
 function doGet(e) {
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('Tapfruit Item Master')
+  var page = (e && e.parameter && e.parameter.page) || '';
+  var order = (page === 'order');
+  return HtmlService.createHtmlOutputFromFile(order ? 'Order' : 'Index')
+    .setTitle(order ? 'Tapfruit Ordering' : 'Tapfruit Item Master')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 /* Called from the page via google.script.run */
 function getData() { return readAll_(); }
+
+/* Order tool: append one row per order line to the Orders tab. */
+function saveOrder(order) {
+  var lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try { return appendOrder_(order); } finally { lock.releaseLock(); }
+}
 function saveItemToSheet(item) {
   var lock = LockService.getScriptLock(); lock.waitLock(20000);
   try { upsertItem_(item); return { ok: true }; } finally { lock.releaseLock(); }
@@ -134,6 +144,27 @@ function deleteItem_(id) {
   var r = findRow_(sh, id);
   if (r > 0) sh.deleteRow(r);
   deleteBomFor_(ss.getSheetByName('BOM'), id);
+}
+
+function appendOrder_(order) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName('Orders') || ss.insertSheet('Orders');
+  if (sh.getLastRow() < 1) {
+    sh.getRange(1, 1, 1, TABS.Orders.length).setValues([TABS.Orders]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+  }
+  var orderId = 'ord-' + new Date().getTime();
+  var date = (order && order.date) || new Date().toISOString();
+  var exec = (order && order.executor) || '';
+  var rows = [];
+  ((order && order.suppliers) || []).forEach(function(s) {
+    (s.lines || []).forEach(function(l) {
+      rows.push([orderId, date, exec, s.name, l.id || '', l.name || '', l.orderUnit || '',
+        blank_(l.qty), blank_(l.unitPrice), blank_(l.lineTotal), l.supplierRef || '']);
+    });
+  });
+  if (rows.length) sh.getRange(sh.getLastRow() + 1, 1, rows.length, TABS.Orders.length).setValues(rows);
+  return { ok: true, orderId: orderId, lines: rows.length };
 }
 
 /* ---------------- helpers ---------------- */

@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tapfruit Ordering</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg:#FBFBF9; --surface:#FFFFFF; --surface-2:#F5F6F2; --border:#E6E7E1; --border-strong:#D5D8CE;
+    --ink:#1C241F; --muted:#6C776E; --faint:#9AA399;
+    --accent:#2D6A4F; --accent-ink:#1B4332; --accent-soft:#E7F1EA;
+    --warn:#A8570F; --warn-soft:#F6ECE0; --danger:#B0361F;
+    --font:'Hanken Grotesk',system-ui,sans-serif; --mono:'DM Mono',ui-monospace,monospace;
+    --shadow:0 1px 2px rgba(28,36,31,.05),0 8px 24px -16px rgba(28,36,31,.18);
+  }
+  @media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+    --bg:#13170F; --surface:#1A1F17; --surface-2:#222820; --border:#2C3328; --border-strong:#3B4335;
+    --ink:#E9EEE7; --muted:#9EA99E; --faint:#727D6D;
+    --accent:#74C69D; --accent-ink:#B7E4C7; --accent-soft:#1E2A22;
+    --warn:#E0975A; --warn-soft:#29221A; --danger:#E08267;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -18px rgba(0,0,0,.7);
+  }}
+  :root[data-theme="dark"]{
+    --bg:#13170F; --surface:#1A1F17; --surface-2:#222820; --border:#2C3328; --border-strong:#3B4335;
+    --ink:#E9EEE7; --muted:#9EA99E; --faint:#727D6D;
+    --accent:#74C69D; --accent-ink:#B7E4C7; --accent-soft:#1E2A22;
+    --warn:#E0975A; --warn-soft:#29221A; --danger:#E08267;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -18px rgba(0,0,0,.7);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);
+    font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .app{max-width:1180px;margin:0 auto;padding:20px}
+  /* topbar */
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .mark{width:40px;height:40px;border-radius:11px;background:var(--accent-soft);color:var(--accent);
+    display:grid;place-items:center;font-size:20px;border:1px solid var(--border)}
+  h1{font-size:18px;font-weight:700;letter-spacing:-.01em;margin:0;line-height:1.1}
+  .sub{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
+  .src{font-family:var(--mono);font-size:11px;color:var(--muted);border:1px solid var(--border);
+    background:var(--surface);padding:5px 10px;border-radius:99px;white-space:nowrap}
+  .src.live{color:var(--accent);border-color:var(--accent)}
+  /* layout */
+  .layout{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
+  .catalog{min-width:0}
+  /* filter chips */
+  .filters{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px}
+  .chip{font-family:var(--font);font-size:12.5px;font-weight:500;color:var(--muted);
+    background:var(--surface);border:1px solid var(--border);padding:6px 12px;border-radius:99px;
+    cursor:pointer;transition:all .12s;display:inline-flex;align-items:center;gap:6px}
+  .chip:hover{border-color:var(--border-strong);color:var(--ink)}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chip .n{font-family:var(--mono);font-size:11px;opacity:.7}
+  .chip.on .n{opacity:.85}
+  /* group */
+  .group{margin-bottom:22px}
+  .group-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+    padding:0 4px 8px;border-bottom:1px solid var(--border);margin-bottom:4px;position:sticky;top:0;
+    background:linear-gradient(var(--bg) 70%,transparent);z-index:2}
+  .group-name{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink)}
+  .group-min{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  /* item row */
+  .row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:14px;
+    padding:10px 8px;border-radius:10px;border:1px solid transparent;transition:background .1s}
+  .row:hover{background:var(--surface)}
+  .row.on{background:var(--accent-soft);border-color:color-mix(in srgb,var(--accent) 30%,transparent)}
+  .cell{min-width:0}
+  .name{font-size:14px;line-height:1.35;font-weight:500}
+  .meta{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:3px;
+    font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .dot{width:3px;height:3px;border-radius:50%;background:var(--faint)}
+  .par{color:var(--accent);font-weight:500}
+  .supsel{font-family:var(--mono);font-size:11px;color:var(--ink);background:var(--surface);
+    border:1px solid var(--border);border-radius:6px;padding:2px 4px}
+  .suppill{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  .price{font-family:var(--mono);font-size:13px;color:var(--muted);text-align:right;white-space:nowrap}
+  .price b{color:var(--ink);font-weight:500}
+  .price small{display:block;font-size:10px;color:var(--faint)}
+  /* qty stepper */
+  .qty{display:flex;align-items:center;gap:0;border:1px solid var(--border-strong);
+    border-radius:9px;overflow:hidden;background:var(--surface)}
+  .qbtn{width:32px;height:34px;border:none;background:var(--surface);color:var(--ink);
+    font-size:18px;line-height:1;cursor:pointer;display:grid;place-items:center;transition:background .1s}
+  .qbtn:hover{background:var(--surface-2);color:var(--accent)}
+  .qbtn:active{background:var(--accent-soft)}
+  .qin{width:46px;height:34px;border:none;border-left:1px solid var(--border);border-right:1px solid var(--border);
+    background:transparent;color:var(--ink);text-align:center;font-family:var(--mono);font-size:14px;
+    -moz-appearance:textfield}
+  .qin::-webkit-outer-spin-button,.qin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .qin:focus{outline:2px solid var(--accent);outline-offset:-2px}
+  .row.on .qin{font-weight:500}
+  /* summary */
+  .summary{position:sticky;top:16px;background:var(--surface);border:1px solid var(--border);
+    border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+  .sum-head{padding:16px 18px;border-bottom:1px solid var(--border)}
+  .sum-head h2{margin:0;font-size:14px;font-weight:600}
+  .sum-head p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+  .field{padding:14px 18px;border-bottom:1px solid var(--border)}
+  .field label{display:block;font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:6px}
+  .field select{width:100%;font-family:var(--font);font-size:13.5px;color:var(--ink);background:var(--bg);
+    border:1px solid var(--border);border-radius:8px;padding:9px 10px;cursor:pointer}
+  .field select:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:var(--accent)}
+  .breakdown{padding:8px 18px;max-height:min(42vh,360px);overflow:auto}
+  .brk{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;
+    border-bottom:1px solid var(--border)}
+  .brk:last-child{border-bottom:none}
+  .brk-l{min-width:0}
+  .brk-name{font-size:13px;font-weight:500}
+  .brk-status{font-family:var(--mono);font-size:11px;margin-top:2px}
+  .brk-status.met{color:var(--accent)}
+  .brk-status.under{color:var(--warn)}
+  .brk-val{font-family:var(--mono);font-size:13px;font-weight:500;white-space:nowrap}
+  .empty{padding:26px 18px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6}
+  .sum-foot{padding:16px 18px;border-top:1px solid var(--border);background:var(--surface-2)}
+  .total{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px}
+  .total span{font-size:13px;color:var(--muted)}
+  .total b{font-family:var(--mono);font-size:26px;font-weight:500;letter-spacing:-.01em}
+  .btn{width:100%;font-family:var(--font);font-size:14px;font-weight:600;padding:12px;border-radius:10px;
+    border:none;background:var(--accent);color:#fff;cursor:pointer;transition:all .14s}
+  .btn:hover{filter:brightness(1.06)}
+  .btn:active{transform:scale(.99)}
+  .btn:disabled{background:var(--border-strong);color:var(--muted);cursor:not-allowed}
+  .btn.ok{background:var(--accent-ink)}
+  .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--muted);margin-top:8px;font-weight:500}
+  .btn.ghost:hover{color:var(--ink);border-color:var(--border-strong);filter:none}
+  .review{margin-top:10px}
+  .review textarea{width:100%;height:120px;font-family:var(--mono);font-size:11.5px;line-height:1.5;
+    color:var(--ink);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;resize:vertical}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(12px);
+    background:var(--ink);color:var(--bg);font-size:13px;font-weight:500;padding:10px 18px;border-radius:99px;
+    opacity:0;pointer-events:none;transition:all .25s;z-index:99;box-shadow:var(--shadow)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast.err{background:var(--danger);color:#fff}
+  @media (max-width:820px){
+    .layout{grid-template-columns:1fr}
+    .summary{position:static;order:-1}
+    .group-head{position:static;background:none}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">🧾</div>
+      <div>
+        <h1>Supplier Order Sheet</h1>
+        <p class="sub">Weekly kitchen ordering · <span id="dateLabel"></span></p>
+      </div>
+    </div>
+    <div class="src" id="srcBadge">Sample data</div>
+  </div>
+
+  <div class="layout">
+    <main class="catalog">
+      <div class="filters" id="filters"></div>
+      <div id="list"></div>
+    </main>
+
+    <aside class="summary">
+      <div class="sum-head">
+        <h2>Order summary</h2>
+        <p id="refCount">No items yet</p>
+      </div>
+      <div class="field">
+        <label for="executor">Ordered by</label>
+        <select id="executor"></select>
+      </div>
+      <div class="breakdown" id="breakdown">
+        <div class="empty">Set quantities with the − / + buttons or by typing.<br>Totals appear here per supplier.</div>
+      </div>
+      <div class="sum-foot">
+        <div class="total"><span>Grand total</span><b id="grand">0,00 €</b></div>
+        <button class="btn" id="place" onclick="place()">Place order</button>
+        <button class="btn ghost" id="clearBtn" onclick="clearAll()">Clear all</button>
+        <div class="review" id="review" hidden>
+          <textarea id="reviewText" readonly></textarea>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SEED = /*__SEED__*/[{"id":"mtlyhsaviof8p","name":"Haricot vert","subCategory":"Fresh Raw Goods","suppliers":["Metro","Tapfruit"],"orderUnit":"g","gramsPerOrderUnit":500,"piecesPerOrderUnit":null,"unitPrice":4.72,"parLevel":null,"supplierRef":""},{"id":"mtlym8ue09ufm","name":"Mâche","subCategory":"Direct Goods","suppliers":["Metro","Tapfruit"],"orderUnit":"bag","gramsPerOrderUnit":300,"piecesPerOrderUnit":null,"unitPrice":3.25,"parLevel":null,"supplierRef":""},{"id":"mtlyo3vg8hr4h","name":"Radis Rouge","subCategory":"Fresh Raw Goods","suppliers":["Metro","Tapfruit"],"orderUnit":"bag","gramsPerOrderUnit":1500,"piecesPerOrderUnit":null,"unitPrice":6.28,"parLevel":null,"supplierRef":""},{"id":"mtlyt7jvnbdg8","name":"Shiitake Sec","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"g","gramsPerOrderUnit":500,"piecesPerOrderUnit":null,"unitPrice":15.5,"parLevel":4,"supplierRef":""},{"id":"mtlz3ahboz0dc","name":"Carotte Rapée","subCategory":"Fresh Raw Goods","suppliers":["Metro","Tapfruit"],"orderUnit":"g","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":3.51,"parLevel":null,"supplierRef":""},{"id":"mtmqybib5vovw","name":"Échine de Porc","subCategory":"Fresh Raw Goods","suppliers":["Beauvallet"],"orderUnit":"bag","gramsPerOrderUnit":2200,"piecesPerOrderUnit":null,"unitPrice":14.74,"parLevel":null,"supplierRef":""},{"id":"mtmr1i7x7k8y7","name":"Faux-Fillet Boeuf Angus Argentin","subCategory":"Fresh Raw Goods","suppliers":["Beauvallet"],"orderUnit":"bag","gramsPerOrderUnit":4500,"piecesPerOrderUnit":null,"unitPrice":112.5,"parLevel":null,"supplierRef":""},{"id":"mtmr3ku4xs41q","name":"Viande Cuisse Poulet Halal","subCategory":"Fresh Raw Goods","suppliers":["Metro"],"orderUnit":"bag","gramsPerOrderUnit":2500,"piecesPerOrderUnit":null,"unitPrice":21.6,"parLevel":null,"supplierRef":""},{"id":"mtmr8xinz9egs","name":"Tartare Boeuf Charolais Couteaux","subCategory":"Fresh Raw Goods","suppliers":["Beauvallet"],"orderUnit":"box","gramsPerOrderUnit":2880,"piecesPerOrderUnit":null,"unitPrice":57,"parLevel":null,"supplierRef":""},{"id":"mtmrcnkljdu86","name":"Mascarpone Galbani","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":500,"piecesPerOrderUnit":null,"unitPrice":6.44,"parLevel":3,"supplierRef":""},{"id":"mtmrdlenxwaay","name":"Mascarapone Bianco","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":500,"piecesPerOrderUnit":null,"unitPrice":5,"parLevel":3,"supplierRef":""},{"id":"mtmt5f3gs1wgl","name":"Salade Romaine","subCategory":"Staple Stock","suppliers":["Metro","Tapfruit"],"orderUnit":"bag","gramsPerOrderUnit":500,"piecesPerOrderUnit":null,"unitPrice":3.07,"parLevel":16,"supplierRef":""},{"id":"mtmt9k5lkd4tk","name":"Chou Chinois","subCategory":"Fresh Raw Goods","suppliers":["Metro","Tapfruit"],"orderUnit":"piece","gramsPerOrderUnit":700,"piecesPerOrderUnit":null,"unitPrice":2.74,"parLevel":null,"supplierRef":""},{"id":"mtmtcpfd7ko9k","name":"Poireau","subCategory":"Fresh Raw Goods","suppliers":["Metro","Tapfruit"],"orderUnit":"bunch","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":3.07,"parLevel":null,"supplierRef":""},{"id":"mtmtjvyrrrer3","name":"Pomme Golden","subCategory":"Fresh Raw Goods","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":3200,"piecesPerOrderUnit":null,"unitPrice":8.77,"parLevel":null,"supplierRef":""},{"id":"mtmtljy1o48ul","name":"Choudou","subCategory":"Fresh Raw Goods","suppliers":["Metro"],"orderUnit":"piece","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":3.07,"parLevel":null,"supplierRef":""},{"id":"mtmtnwbi1y5ip","name":"Celeri Botte","subCategory":"Fresh Raw Goods","suppliers":["Metro","Tapfruit"],"orderUnit":"piece","gramsPerOrderUnit":800,"piecesPerOrderUnit":null,"unitPrice":2.08,"parLevel":null,"supplierRef":""},{"id":"mtmtqfo12eh4w","name":"Gingembre frais","subCategory":"Staple Stock","suppliers":["Metro","Tapfruit"],"orderUnit":"box","gramsPerOrderUnit":500,"piecesPerOrderUnit":null,"unitPrice":3.84,"parLevel":1,"supplierRef":""},{"id":"mtmtyr7nwq1rc","name":"Purée Gingembre","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":450,"piecesPerOrderUnit":null,"unitPrice":6.59,"parLevel":6,"supplierRef":""},{"id":"mtmu05i8e2uqm","name":"Ail pelé","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":6.37,"parLevel":1,"supplierRef":""},{"id":"mtmu3svqpy1qm","name":"Pulpe d'Ail","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":6.59,"parLevel":4,"supplierRef":""},{"id":"mtmudlro1za5t","name":"Concombre","subCategory":"Staple Stock","suppliers":["Metro","Tapfruit"],"orderUnit":"piece","gramsPerOrderUnit":500,"piecesPerOrderUnit":null,"unitPrice":1.64,"parLevel":2,"supplierRef":""},{"id":"mtmuhb8bu61t0","name":"Piment vert","subCategory":"Fresh Raw Goods","suppliers":["Metro","Tapfruit"],"orderUnit":"pack","gramsPerOrderUnit":3000,"piecesPerOrderUnit":null,"unitPrice":11.51,"parLevel":null,"supplierRef":""},{"id":"mtmujkfwxwy40","name":"Poivron Padron","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"bag","gramsPerOrderUnit":500,"piecesPerOrderUnit":null,"unitPrice":3.84,"parLevel":2,"supplierRef":""},{"id":"mtmumc7hkjlja","name":"Germe Poireau","subCategory":"Staple Stock","suppliers":["Metro","Tapfruit"],"orderUnit":"pack","gramsPerOrderUnit":50,"piecesPerOrderUnit":null,"unitPrice":2.1,"parLevel":12,"supplierRef":""},{"id":"mtmunvh95945u","name":"Tofu ferme","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"pack","gramsPerOrderUnit":450,"piecesPerOrderUnit":null,"unitPrice":2.33,"parLevel":3,"supplierRef":""},{"id":"mtmupfrnkta7u","name":"Mûre","subCategory":"Staple Stock","suppliers":["Metro","Tapfruit"],"orderUnit":"pack","gramsPerOrderUnit":125,"piecesPerOrderUnit":null,"unitPrice":2.52,"parLevel":4,"supplierRef":""},{"id":"mtmuqnuof8phh","name":"Groseille","subCategory":"Staple Stock","suppliers":["Metro","Tapfruit"],"orderUnit":"pack","gramsPerOrderUnit":125,"piecesPerOrderUnit":null,"unitPrice":2.52,"parLevel":4,"supplierRef":""},{"id":"mtmurtumqylpz","name":"Melon Jaune","subCategory":"Staple Stock","suppliers":["Metro","Tapfruit"],"orderUnit":"piece","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":4.17,"parLevel":1,"supplierRef":""},{"id":"mtmutgtcqw6kq","name":"Courgette","subCategory":"Staple Stock","suppliers":["Metro","Tapfruit"],"orderUnit":"bunch","gramsPerOrderUnit":2000,"piecesPerOrderUnit":null,"unitPrice":6.58,"parLevel":2,"supplierRef":""},{"id":"mtmuvz5mauryx","name":"Jaune d'Oeuf Pasteurisé","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"bottle","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":10.31,"parLevel":2,"supplierRef":""},{"id":"mtmuwuejxelaj","name":"Blanc d'Oeuf Pasteurisé","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"bottle","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":6.88,"parLevel":2,"supplierRef":""},{"id":"mtmuy91o8aeqr","name":"Mangue Congelé","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":5.06,"parLevel":14,"supplierRef":""},{"id":"mtmv2q54ggfns","name":"Oeuf Calibre moyen","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":4500,"piecesPerOrderUnit":null,"unitPrice":22.39,"parLevel":3,"supplierRef":""},{"id":"mtmv4pkte83pp","name":"Purée Mangue","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":8.53,"parLevel":12,"supplierRef":""},{"id":"mtmv7eu5xmhub","name":"Lait Concentré","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":5.51,"parLevel":16,"supplierRef":""},{"id":"mtmvb2ynot3u4","name":"Glucose Atomisé","subCategory":"Staple Stock","suppliers":["Internet"],"orderUnit":"bag","gramsPerOrderUnit":5000,"piecesPerOrderUnit":null,"unitPrice":44.28,"parLevel":10,"supplierRef":""},{"id":"mtmvc9i99du0f","name":"Miel Fleur","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":6.26,"parLevel":8,"supplierRef":""},{"id":"mtmvdlovu4zpb","name":"Pulco Jus Citron","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"bottle","gramsPerOrderUnit":700,"piecesPerOrderUnit":null,"unitPrice":2.71,"parLevel":6,"supplierRef":""},{"id":"mtmvf1nqksjee","name":"Matcha","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":500,"piecesPerOrderUnit":null,"unitPrice":21.57,"parLevel":4,"supplierRef":""},{"id":"mtmvigk70p399","name":"Cacao Poudre Sans sucre","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":250,"piecesPerOrderUnit":null,"unitPrice":4.74,"parLevel":2,"supplierRef":""},{"id":"mtmvkvcq7ydlp","name":"Jus de Pomme","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":6000,"piecesPerOrderUnit":null,"unitPrice":9.39,"parLevel":2,"supplierRef":""},{"id":"mtmvn4lp7doh0","name":"Biscuit Cuillers","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":1600,"piecesPerOrderUnit":null,"unitPrice":26.48,"parLevel":1,"supplierRef":""},{"id":"mtmvp2thgzsjp","name":"Glace Vanille","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":2500,"piecesPerOrderUnit":null,"unitPrice":7.78,"parLevel":8,"supplierRef":""},{"id":"mtmvpw2rufb6e","name":"Sorbet","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":2500,"piecesPerOrderUnit":null,"unitPrice":9.44,"parLevel":8,"supplierRef":""},{"id":"mtmvr1azgl0tg","name":"Sarrasin Kasha","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":4.38,"parLevel":1,"supplierRef":""},{"id":"mtmvsr6rvo1hh","name":"Fruibon Mélange salade (Multi Grains)","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":10.19,"parLevel":2,"supplierRef":""},{"id":"mtmvvkh1sq24d","name":"Sucre Blanc poudre","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":6000,"piecesPerOrderUnit":null,"unitPrice":6.97,"parLevel":3,"supplierRef":""},{"id":"mtmvz62q559ue","name":"SUCRE DE CANNE EN POUDRE BRUN SWB","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"pack","gramsPerOrderUnit":300,"piecesPerOrderUnit":null,"unitPrice":1.76,"parLevel":4,"supplierRef":""},{"id":"mtmw0clasmbru","name":"Cannelle ENTIERE","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":10.17,"parLevel":1,"supplierRef":""},{"id":"mtmw2b96tvkzc","name":"Jujube Sec","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"pack","gramsPerOrderUnit":454,"piecesPerOrderUnit":null,"unitPrice":4.32,"parLevel":2,"supplierRef":""},{"id":"mtmw4crz8njlr","name":"Farine T45","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":10000,"piecesPerOrderUnit":null,"unitPrice":10.2,"parLevel":2,"supplierRef":""},{"id":"mtmw5ml1m32w8","name":"Fécule PDT","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"bag","gramsPerOrderUnit":5000,"piecesPerOrderUnit":null,"unitPrice":17.38,"parLevel":1,"supplierRef":""},{"id":"mtmw6soto6cjn","name":"Pignon PIN","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":45.66,"parLevel":2,"supplierRef":""},{"id":"mtmw7vs68imzh","name":"Ketchup Heinz","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"bottle","gramsPerOrderUnit":4000,"piecesPerOrderUnit":null,"unitPrice":14.44,"parLevel":1,"supplierRef":""},{"id":"mtmw96khte5q9","name":"aro Vinaigre blanc 8°","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"bottle","gramsPerOrderUnit":10000,"piecesPerOrderUnit":null,"unitPrice":7.87,"parLevel":1,"supplierRef":""},{"id":"mtmwa9m1ynjkw","name":"Huile Friture","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"bottle","gramsPerOrderUnit":5000,"piecesPerOrderUnit":null,"unitPrice":12.12,"parLevel":9,"supplierRef":""},{"id":"mtmwbiw3iziox","name":"Poivre Blanc moulu","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":23.12,"parLevel":2,"supplierRef":""},{"id":"mtmzf60vx0jf0","name":"Sel Fin","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":5000,"piecesPerOrderUnit":null,"unitPrice":4.29,"parLevel":4,"supplierRef":""},{"id":"mtmzh02wg5ixz","name":"Lait entier","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":6000,"piecesPerOrderUnit":null,"unitPrice":7.71,"parLevel":3,"supplierRef":""},{"id":"mtmziyh6x6vpc","name":"Badoit Eau minérale gazeuse verre consigné","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":6000,"piecesPerOrderUnit":null,"unitPrice":16.54,"parLevel":1,"supplierRef":""},{"id":"mtmzl1wx8qj29","name":"Coca-Cola goût original verre consigné","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":8000,"piecesPerOrderUnit":null,"unitPrice":28.52,"parLevel":1,"supplierRef":""},{"id":"mtmzlrqlhdnpp","name":"Coca-Cola sans sucres verre consigné","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":8000,"piecesPerOrderUnit":null,"unitPrice":26.25,"parLevel":1,"supplierRef":""},{"id":"mtmznayiskiz7","name":"Evian Eau minérale verre consigné (Bte 1L)","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":12000,"piecesPerOrderUnit":null,"unitPrice":15.66,"parLevel":1,"supplierRef":""},{"id":"mtmzpkjk25q44","name":"La French Ginger Beer","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":6000,"piecesPerOrderUnit":null,"unitPrice":30.67,"parLevel":1,"supplierRef":""},{"id":"mtmzr4k9cq7uk","name":"Couvercle bol à salade 500/750/1000 RPET","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":50,"unitPrice":3.19,"parLevel":4,"supplierRef":""},{"id":"mtmzs31ftiqub","name":"Bol à salade kraft 750 ml (Emporter)","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":50,"unitPrice":6.27,"parLevel":2,"supplierRef":""},{"id":"mtmzsxmu98fgq","name":"Bol à salade kraft 500 ml (Emporter)","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":50,"unitPrice":5.68,"parLevel":2,"supplierRef":""},{"id":"mtmzu33gmocax","name":"Film alimentaire 44 cm x300 m","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"box","gramsPerOrderUnit":null,"piecesPerOrderUnit":4,"unitPrice":30.85,"parLevel":1,"supplierRef":""},{"id":"cfg-070","name":"Solia Pot sauce + couvercle 60 ml","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":100,"unitPrice":3.59,"parLevel":null,"supplierRef":"189688"},{"id":"cfg-071","name":"Useo Kit couverts 4 en 1 bois","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":50,"unitPrice":8.35,"parLevel":null,"supplierRef":"275939"},{"id":"cfg-072","name":"Sigma Bobine caisse enregistreuse 80x77x12 mm","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":10,"unitPrice":23.94,"parLevel":null,"supplierRef":"259413"},{"id":"cfg-073","name":"Sigma Bobine TPE 57x40x12 mm","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":20,"unitPrice":13.24,"parLevel":null,"supplierRef":"259417"},{"id":"cfg-074","name":"Sac avec poigné kraft 32x22x24 cm (Emporter)","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":50,"unitPrice":6.83,"parLevel":null,"supplierRef":"239596"},{"id":"cfg-075","name":"Sac en papier kraft 22x11x28 cm (Emporter)","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":50,"unitPrice":5.02,"parLevel":null,"supplierRef":"228590"},{"id":"cfg-076","name":"Sac bretelle plastique 26x12x45 cm (Emporter)","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":500,"unitPrice":27.19,"parLevel":null,"supplierRef":"194106"},{"id":"cfg-078","name":"Sac lisse de conservation 15x30 cm (Sous-vide)","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":100,"unitPrice":18.94,"parLevel":null,"supplierRef":"240677"},{"id":"cfg-079","name":"Sac lisse de conservation 30x40 cm (Sous-vide)","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":100,"unitPrice":42.56,"parLevel":null,"supplierRef":"240684"},{"id":"cfg-080","name":"Sac congélation liens 3 L x75","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":3,"unitPrice":6.39,"parLevel":null,"supplierRef":"216522"},{"id":"cfg-081","name":"aro Eponge métallique","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":30,"unitPrice":9.48,"parLevel":null,"supplierRef":"245843"},{"id":"cfg-082","name":"aro Liquide vaisselle citron 1 L","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":3,"unitPrice":4.51,"parLevel":null,"supplierRef":"192689"},{"id":"cfg-083","name":"Gant en latex taille M","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":100,"unitPrice":4.91,"parLevel":null,"supplierRef":"210458"},{"id":"cfg-084","name":"Gant en latex taille S","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":100,"unitPrice":5.06,"parLevel":null,"supplierRef":"210442"},{"id":"cfg-085","name":"Sac poubelle avec liens 100 L","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":30,"unitPrice":5.78,"parLevel":null,"supplierRef":"225677"},{"id":"cfg-086","name":"Sac poubelle coulissant 50 L","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":30,"unitPrice":3.39,"parLevel":null,"supplierRef":"225661"},{"id":"cfg-087","name":"Lavette non-tissé bleu","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":10,"unitPrice":3.54,"parLevel":null,"supplierRef":"4555"},{"id":"cfg-088","name":"Solivaisselle lave-vaisselle cycle court (Kitchen / White)","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":5000,"piecesPerOrderUnit":1,"unitPrice":20.77,"parLevel":null,"supplierRef":"156415"},{"id":"cfg-089","name":"Solivaisselle rinçage séchage (Kitchen / Blue)","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":5000,"piecesPerOrderUnit":1,"unitPrice":21.04,"parLevel":null,"supplierRef":"4686"},{"id":"cfg-090","name":"Liquide lave-verre machine (Dishwasher Service)","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":5000,"piecesPerOrderUnit":1,"unitPrice":21.33,"parLevel":null,"supplierRef":"205046"},{"id":"cfg-091","name":"Détartrant anti-calcaire","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":5000,"piecesPerOrderUnit":1,"unitPrice":12.83,"parLevel":null,"supplierRef":"188621"},{"id":"cfg-092","name":"Gel décapant four","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":5000,"piecesPerOrderUnit":1,"unitPrice":20.46,"parLevel":null,"supplierRef":"7533"},{"id":"cfg-093","name":"Sanytol Désinfectant sol et surfaces","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":5000,"piecesPerOrderUnit":1,"unitPrice":18.12,"parLevel":null,"supplierRef":"149418"},{"id":"cfg-094","name":"Bobine 2 plis 450 feuilles (Sopalin)","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":6,"unitPrice":11.14,"parLevel":null,"supplierRef":"304082"},{"id":"cfg-095","name":"Papier toilette rouleau extra doux 140 feuilles","subCategory":"Staple Stock","suppliers":["Metro"],"orderUnit":"pack","gramsPerOrderUnit":null,"piecesPerOrderUnit":24,"unitPrice":10.44,"parLevel":null,"supplierRef":"286331"},{"id":"cfg-096","name":"Gochujang","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"box","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":5.65,"parLevel":null,"supplierRef":""},{"id":"cfg-097","name":"Doenjang","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"box","gramsPerOrderUnit":500,"piecesPerOrderUnit":null,"unitPrice":3.52,"parLevel":null,"supplierRef":""},{"id":"cfg-098","name":"Thé Prune","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"pot","gramsPerOrderUnit":480,"piecesPerOrderUnit":null,"unitPrice":5.37,"parLevel":null,"supplierRef":""},{"id":"cfg-099","name":"Sauce soja corén","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"bottle","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":3.83,"parLevel":null,"supplierRef":""},{"id":"cfg-100","name":"Poudre piment Gros","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"bag","gramsPerOrderUnit":1360,"piecesPerOrderUnit":null,"unitPrice":13.2,"parLevel":null,"supplierRef":""},{"id":"cfg-101","name":"Poudre piment \"Très Fin\"","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"bag","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":7.84,"parLevel":null,"supplierRef":""},{"id":"cfg-102","name":"Poudre Riz Gluant","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"bag","gramsPerOrderUnit":400,"piecesPerOrderUnit":null,"unitPrice":1.57,"parLevel":null,"supplierRef":""},{"id":"cfg-103","name":"Sésame blanc","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"bag","gramsPerOrderUnit":434,"piecesPerOrderUnit":null,"unitPrice":2.71,"parLevel":null,"supplierRef":""},{"id":"cfg-104","name":"Grain de Azuki","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"bag","gramsPerOrderUnit":400,"piecesPerOrderUnit":null,"unitPrice":2.47,"parLevel":null,"supplierRef":""},{"id":"cfg-105","name":"Sauce Poisson","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"bottle","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":4.7,"parLevel":null,"supplierRef":""},{"id":"cfg-106","name":"Huile de sésame (jia) (Bte 2.5L)","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"bottle","gramsPerOrderUnit":2300,"piecesPerOrderUnit":null,"unitPrice":24.61,"parLevel":null,"supplierRef":""},{"id":"cfg-107","name":"Mirin (WADAKAN) 9%","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"bottle","gramsPerOrderUnit":1000,"piecesPerOrderUnit":null,"unitPrice":5.75,"parLevel":null,"supplierRef":""},{"id":"cfg-108","name":"Shitake (entier) sec","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"bag","gramsPerOrderUnit":500,"piecesPerOrderUnit":null,"unitPrice":14.72,"parLevel":null,"supplierRef":""},{"id":"cfg-109","name":"Kombu sec","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"bag","gramsPerOrderUnit":170,"piecesPerOrderUnit":null,"unitPrice":4.7,"parLevel":null,"supplierRef":""},{"id":"cfg-110","name":"Poivre Sichuan","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"bag","gramsPerOrderUnit":100,"piecesPerOrderUnit":null,"unitPrice":2.94,"parLevel":null,"supplierRef":""},{"id":"cfg-111","name":"Riz (Miki)","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"bag","gramsPerOrderUnit":20000,"piecesPerOrderUnit":null,"unitPrice":44.5,"parLevel":null,"supplierRef":""},{"id":"cfg-112","name":"Milkis","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"carton","gramsPerOrderUnit":null,"piecesPerOrderUnit":30,"unitPrice":30.3,"parLevel":null,"supplierRef":""},{"id":"cfg-113","name":"Jus Poire Corén","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"carton","gramsPerOrderUnit":null,"piecesPerOrderUnit":12,"unitPrice":15.84,"parLevel":null,"supplierRef":""},{"id":"cfg-114","name":"Jus Raisin Corén (bongbong)","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"carton","gramsPerOrderUnit":null,"piecesPerOrderUnit":12,"unitPrice":14.64,"parLevel":null,"supplierRef":""},{"id":"cfg-115","name":"Aloe Wang","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"carton","gramsPerOrderUnit":null,"piecesPerOrderUnit":20,"unitPrice":32,"parLevel":null,"supplierRef":""},{"id":"cfg-116","name":"CASS","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"carton","gramsPerOrderUnit":null,"piecesPerOrderUnit":24,"unitPrice":37.5,"parLevel":null,"supplierRef":""},{"id":"cfg-117","name":"Asahi","subCategory":"Staple Stock","suppliers":["Leaf Market"],"orderUnit":"carton","gramsPerOrderUnit":null,"piecesPerOrderUnit":24,"unitPrice":31.5,"parLevel":null,"supplierRef":""}];
+const SEED_MANAGERS = /*__MANAGERS__*/["Yishan LEE","Sunghee KIM","Namheon KIM"];
+const MIN_ORDER = {Metro:400,Tapfruit:50,"Leaf Market":200,Beauvallet:200,Acemart:200,Internet:0};
+const LS='tapfruit_order_v1';
+
+let items = SEED.slice();
+let managers = SEED_MANAGERS.slice();
+let live = false;
+let filter = 'All';
+const qty = {};          // id -> number
+const choice = {};       // id -> chosen supplier (locked when ordered)
+let executor = '';
+
+/* ---------- helpers ---------- */
+const eur = n => (n||0).toFixed(2).replace('.',',')+' €';
+const $ = s => document.querySelector(s);
+function primary(it){ return it.suppliers[0]; }
+function effSupplier(it){
+  if(choice[it.id]) return choice[it.id];
+  if(filter!=='All' && it.suppliers.includes(filter)) return filter;
+  return primary(it);
+}
+function sizeStr(it){
+  if(it.gramsPerOrderUnit!=null){
+    const g=it.gramsPerOrderUnit;
+    return g>=1000 ? (g/1000).toString().replace('.',',')+' kg' : g+' g';
+  }
+  if(it.piecesPerOrderUnit!=null) return '×'+it.piecesPerOrderUnit;
+  return '';
+}
+function supplierList(){
+  const order=['Metro','Tapfruit','Leaf Market','Beauvallet','Acemart','Internet'];
+  const present=new Set(); items.forEach(i=>i.suppliers.forEach(s=>present.add(s)));
+  return order.filter(s=>present.has(s));
+}
+
+/* ---------- filters ---------- */
+function renderFilters(){
+  const el=$('#filters'); el.innerHTML='';
+  const mk=(label,val,n)=>{
+    const b=document.createElement('button');
+    b.className='chip'+(filter===val?' on':'');
+    b.innerHTML=label+(n!=null?' <span class="n">'+n+'</span>':'');
+    b.onclick=()=>{filter=val;renderFilters();renderList();};
+    el.appendChild(b);
+  };
+  mk('All','All',items.length);
+  supplierList().forEach(s=>mk(s,s,items.filter(i=>i.suppliers.includes(s)).length));
+}
+
+/* ---------- catalog ---------- */
+function itemRow(it){
+  const q=qty[it.id]||0;
+  const row=document.createElement('div');
+  row.className='row'+(q>0?' on':'');
+  row.id='row-'+it.id;
+
+  const cell=document.createElement('div'); cell.className='cell';
+  let meta='<span>'+it.orderUnit+'</span>';
+  const sz=sizeStr(it); if(sz){meta+='<span class="dot"></span><span>'+sz+'</span>';}
+  if(it.parLevel!=null){meta+='<span class="dot"></span><span class="par">par '+it.parLevel+'</span>';}
+  cell.innerHTML='<div class="name">'+it.name+'</div><div class="meta" id="meta-'+it.id+'">'+meta+'</div>';
+  // supplier control
+  const metaEl=cell.querySelector('.meta');
+  metaEl.appendChild(document.createElement('span')).className='dot';
+  if(it.suppliers.length>1){
+    const sel=document.createElement('select'); sel.className='supsel';
+    it.suppliers.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;sel.appendChild(o);});
+    sel.value=effSupplier(it);
+    sel.onchange=()=>{choice[it.id]=sel.value;renderSummary();save();};
+    metaEl.appendChild(sel);
+  }else{
+    const p=document.createElement('span'); p.className='suppill'; p.textContent=it.suppliers[0];
+    metaEl.appendChild(p);
+  }
+
+  const price=document.createElement('div'); price.className='price';
+  price.innerHTML='<b>'+eur(it.unitPrice)+'</b><small>/ '+it.orderUnit+'</small>';
+
+  const ctrl=document.createElement('div'); ctrl.className='qty';
+  const minus=document.createElement('button'); minus.className='qbtn'; minus.textContent='−';
+  minus.setAttribute('aria-label','decrease'); minus.onclick=()=>bump(it.id,-1);
+  const inp=document.createElement('input'); inp.className='qin'; inp.type='number'; inp.min='0';
+  inp.inputMode='numeric'; inp.value=q; inp.id='q-'+it.id;
+  inp.setAttribute('aria-label','quantity for '+it.name);
+  inp.oninput=()=>setQty(it.id,parseInt(inp.value,10));
+  const plus=document.createElement('button'); plus.className='qbtn'; plus.textContent='+';
+  plus.setAttribute('aria-label','increase'); plus.onclick=()=>bump(it.id,1);
+  ctrl.append(minus,inp,plus);
+
+  row.append(cell,price,ctrl);
+  return row;
+}
+function renderList(){
+  const el=$('#list'); el.innerHTML='';
+  if(filter==='All'){
+    supplierList().forEach(sup=>{
+      const group=items.filter(i=>primary(i)===sup);
+      if(!group.length) return;
+      const wrap=document.createElement('div'); wrap.className='group';
+      const head=document.createElement('div'); head.className='group-head';
+      head.innerHTML='<span class="group-name">'+sup+'</span><span class="group-min">min '+eur(MIN_ORDER[sup]||0)+' · '+group.length+' items</span>';
+      wrap.appendChild(head);
+      group.forEach(it=>wrap.appendChild(itemRow(it)));
+      el.appendChild(wrap);
+    });
+  }else{
+    const group=items.filter(i=>i.suppliers.includes(filter));
+    const wrap=document.createElement('div'); wrap.className='group';
+    const head=document.createElement('div'); head.className='group-head';
+    head.innerHTML='<span class="group-name">'+filter+'</span><span class="group-min">min '+eur(MIN_ORDER[filter]||0)+' · '+group.length+' items</span>';
+    wrap.appendChild(head);
+    group.forEach(it=>wrap.appendChild(itemRow(it)));
+    el.appendChild(wrap);
+  }
+}
+
+/* ---------- qty ---------- */
+function lockChoice(id){ const it=items.find(i=>i.id===id); if(it && !choice[id]) choice[id]=effSupplier(it); }
+function setQty(id,val){
+  let v=isNaN(val)?0:Math.max(0,val);
+  qty[id]=v;
+  if(v>0) lockChoice(id); else delete choice[id];
+  const row=$('#row-'+id); if(row) row.className='row'+(v>0?' on':'');
+  renderSummary(); save();
+}
+function bump(id,d){
+  const v=Math.max(0,(qty[id]||0)+d);
+  const inp=$('#q-'+id); if(inp) inp.value=v;
+  setQty(id,v);
+}
+
+/* ---------- summary ---------- */
+function computed(){
+  const bySup={}; let total=0, refs=0;
+  items.forEach(it=>{
+    const q=qty[it.id]||0; if(q<=0) return;
+    refs++; const s=effSupplier(it); const line=q*(it.unitPrice||0); total+=line;
+    (bySup[s]=bySup[s]||{sub:0,lines:[]});
+    bySup[s].sub+=line;
+    bySup[s].lines.push({id:it.id,name:it.name,supplier:s,orderUnit:it.orderUnit,qty:q,
+      unitPrice:it.unitPrice,lineTotal:line,supplierRef:it.supplierRef});
+  });
+  return {bySup,total,refs};
+}
+function renderSummary(){
+  const {bySup,total,refs}=computed();
+  $('#grand').textContent=eur(total);
+  $('#refCount').textContent = refs? (refs+' item'+(refs>1?'s':'')+' selected') : 'No items yet';
+  const bd=$('#breakdown');
+  const order=supplierList().filter(s=>bySup[s]);
+  if(!order.length){
+    bd.innerHTML='<div class="empty">Set quantities with the − / + buttons or by typing.<br>Totals appear here per supplier.</div>';
+  }else{
+    bd.innerHTML='';
+    order.forEach(s=>{
+      const sub=bySup[s].sub, min=MIN_ORDER[s]||0, met=sub>=min;
+      const div=document.createElement('div'); div.className='brk';
+      const status = met ? '<span class="brk-status met">✓ minimum met</span>'
+        : '<span class="brk-status under">+'+eur(min-sub)+' to reach '+eur(min)+'</span>';
+      div.innerHTML='<div class="brk-l"><div class="brk-name">'+s+'</div>'+status+'</div>'
+        +'<div class="brk-val">'+eur(sub)+'</div>';
+      bd.appendChild(div);
+    });
+  }
+  $('#place').disabled = refs===0;
+  $('#clearBtn').disabled = refs===0;
+}
+
+/* ---------- persistence ---------- */
+function save(){ try{ localStorage.setItem(LS,JSON.stringify({qty,choice,executor,filter})); }catch(e){} }
+function load(){
+  try{
+    const s=JSON.parse(localStorage.getItem(LS)||'{}');
+    if(s.qty) Object.assign(qty,s.qty);
+    if(s.choice) Object.assign(choice,s.choice);
+    if(s.executor) executor=s.executor;
+    if(s.filter) filter=s.filter;
+  }catch(e){}
+}
+function clearAll(){
+  Object.keys(qty).forEach(k=>delete qty[k]);
+  Object.keys(choice).forEach(k=>delete choice[k]);
+  $('#review').hidden=true;
+  renderList(); renderSummary(); save(); toast('Cleared');
+}
+
+/* ---------- managers ---------- */
+function renderManagers(){
+  const sel=$('#executor'); sel.innerHTML='';
+  const ph=document.createElement('option'); ph.value=''; ph.textContent='Select a manager…'; sel.appendChild(ph);
+  managers.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;sel.appendChild(o);});
+  sel.value=executor||'';
+  sel.onchange=()=>{executor=sel.value;save();};
+}
+
+/* ---------- place / export ---------- */
+function orderPayload(){
+  const {bySup,total,refs}=computed();
+  const suppliers=supplierList().filter(s=>bySup[s]).map(s=>({
+    name:s, subtotal:bySup[s].sub, min:MIN_ORDER[s]||0, met:bySup[s].sub>=(MIN_ORDER[s]||0),
+    lines:bySup[s].lines
+  }));
+  return {executor, date:new Date().toISOString(), refs, total, suppliers};
+}
+function orderText(p){
+  let out='TAPFRUIT ORDER  —  '+new Date(p.date).toLocaleDateString('en-GB')+'\nOrdered by: '+(p.executor||'?')+'\n';
+  p.suppliers.forEach(s=>{
+    out+='\n['+s.name+']  '+eur(s.subtotal)+(s.met?'  (min ok)':'  (BELOW min '+eur(s.min)+')')+'\n';
+    s.lines.forEach(l=>{ out+='  '+String(l.qty).padStart(3)+' × '+l.name+(l.supplierRef?'  #'+l.supplierRef:'')+'  ('+eur(l.lineTotal)+')\n'; });
+  });
+  out+='\nGRAND TOTAL: '+eur(p.total);
+  return out;
+}
+function place(){
+  if(!executor){ toast('Choose who is ordering first',true); $('#executor').focus(); return; }
+  const p=orderPayload();
+  if(!p.refs){ toast('No items selected',true); return; }
+  const under=p.suppliers.filter(s=>!s.met && s.min>0);
+  if(under.length && !confirmUnder(under)) return;
+  const btn=$('#place');
+  if(live && typeof google!=='undefined'){
+    btn.disabled=true; btn.textContent='Saving…';
+    google.script.run.withSuccessHandler(()=>{
+      btn.classList.add('ok'); btn.textContent='✓ Order saved';
+      toast('Order saved to the sheet');
+      setTimeout(()=>{btn.classList.remove('ok');btn.textContent='Place order';btn.disabled=false;},3500);
+    }).withFailureHandler(err=>{
+      btn.disabled=false; btn.textContent='Place order'; toast('Save failed: '+err.message,true);
+    }).saveOrder(p);
+  }else{
+    const txt=orderText(p);
+    $('#review').hidden=false; const ta=$('#reviewText'); ta.value=txt; ta.select();
+    let copied=false;
+    try{ navigator.clipboard.writeText(txt); copied=true; }catch(e){}
+    toast(copied?'Order copied to clipboard':'Order ready — select & copy below');
+  }
+}
+let underAck=false;
+function confirmUnder(under){
+  if(underAck) return true;
+  toast(under.map(s=>s.name+' below minimum').join(', ')+' — tap Place again to confirm',true);
+  underAck=true; setTimeout(()=>underAck=false,6000);
+  return false;
+}
+
+/* ---------- toast ---------- */
+let tt;
+function toast(msg,err){
+  const t=$('#toast'); t.textContent=msg; t.className='toast show'+(err?' err':'');
+  clearTimeout(tt); tt=setTimeout(()=>t.className='toast',3200);
+}
+
+/* ---------- live backend (Apps Script) ---------- */
+function hasGSR(){ return typeof google!=='undefined' && google.script && google.script.run; }
+function goLive(){
+  if(!hasGSR()) return;
+  google.script.run.withSuccessHandler(data=>{
+    if(!data||!data.items) return;
+    items = data.items.filter(i=>Array.isArray(i.suppliers)&&i.suppliers.length)
+      .map(i=>({id:i.id,name:i.name,subCategory:i.subCategory,suppliers:i.suppliers,
+        orderUnit:i.orderUnit,gramsPerOrderUnit:i.gramsPerOrderUnit,piecesPerOrderUnit:i.piecesPerOrderUnit,
+        unitPrice:i.unitPrice,parLevel:i.parLevel,supplierRef:i.supplierRef}));
+    if(Array.isArray(data.managers)&&data.managers.length) managers=data.managers;
+    if(Array.isArray(data.suppliers)) data.suppliers.forEach(s=>{ if(s&&s.name&&s.minOrder!=null) MIN_ORDER[s.name]=s.minOrder; });
+    live=true; const b=$('#srcBadge'); b.textContent='Live sheet'; b.classList.add('live');
+    renderManagers(); renderFilters(); renderList(); renderSummary();
+  }).withFailureHandler(()=>{}).getData();
+}
+
+/* ---------- boot ---------- */
+function boot(){
+  $('#dateLabel').textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'});
+  load();
+  renderManagers(); renderFilters(); renderList(); renderSummary();
+  goLive();
+}
+boot();
+</script>
+</body>
+</html>
