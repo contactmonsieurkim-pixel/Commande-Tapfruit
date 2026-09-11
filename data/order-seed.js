@@ -2,29 +2,29 @@
 // Keep ONLY items whose `suppliers` field is non-empty (= things we order).
 const fs = require('fs');
 const RAW = `
-mtlyhsaviof8p | Haricot vert | Supplier Goods | Fresh Raw Goods | Bibimbap | 7 | Metro, Tapfruit | g | 500 |  | 4,72 |  |  |  | | | | | |
-mtlym8ue09ufm | Mâche | Supplier Goods | Direct Goods | Bibimbap | 7 | Metro, Tapfruit | bag | 300 |  | 3,25 |  |  |  | | | | | |
-mtlyo3vg8hr4h | Radis Rouge | Supplier Goods | Fresh Raw Goods | Bibimbap | 7 | Metro, Tapfruit | bag | 1500 |  | 6,28 |  |  |  | | | | | |
-mtlyt7jvnbdg8 | Shiitake Sec | Supplier Goods | Staple Stock | Bibimbap | 120 | Leaf Market | g | 500 |  | 15,5 | 4 |  |  | | | | | |
-mtlz3ahboz0dc | Carotte Rapée | Supplier Goods | Fresh Raw Goods | Bibimbap | 7 | Metro, Tapfruit | g | 1000 |  | 3,51 |  |  |  | | | | | |
-mtmqybib5vovw | Échine de Porc | Supplier Goods | Fresh Raw Goods | BBQ Porc | 9 | Beauvallet | bag | 2200 |  | 14,74 |  |  |  | | | | | |
-mtmr1i7x7k8y7 | Faux-Fillet Boeuf Angus Argentin | Supplier Goods | Fresh Raw Goods | BBQ Beef | 14 | Beauvallet | bag | 4500 |  | 112,5 |  |  |  | | | | | |
-mtmr3ku4xs41q | Viande Cuisse Poulet Halal | Supplier Goods | Fresh Raw Goods | BBQ DAK, Chicken | 7 | Metro | bag | 2500 |  | 21,6 |  |  |  | | | | | |
-mtmr8xinz9egs | Tartare Boeuf Charolais Couteaux | Supplier Goods | Fresh Raw Goods | Bibimbap | 7 | Beauvallet | box | 2880 |  | 57 |  |  |  | | | | | |
-mtmrcnkljdu86 | Mascarpone Galbani | Supplier Goods | Staple Stock | Tiramisu | 28 | Metro | box | 500 |  | 6,44 | 3 |  |  | | | | | |
-mtmrdlenxwaay | Mascarapone Bianco | Supplier Goods | Staple Stock | Tiramisu | 28 | Metro | box | 500 |  | 5 | 3 |  |  | | | | | |
-mtmt5f3gs1wgl | Salade Romaine | Supplier Goods | Staple Stock | BBQ Porc, BBQ DAK, BBQ Beef | 7 | Metro, Tapfruit | bag | 500 |  | 3,07 | 16 |  |  | | | | | |
-mtmt9k5lkd4tk | Chou Chinois | Supplier Goods | Fresh Raw Goods | Kimchi Rouge | 7 | Metro, Tapfruit | piece | 700 |  | 2,74 |  |  |  | | | | | |
-mtmtcpfd7ko9k | Poireau | Supplier Goods | Fresh Raw Goods | Bibimbap | 7 | Metro, Tapfruit | bunch | 1000 |  | 3,07 |  |  |  | | | | | |
-mtmtjvyrrrer3 | Pomme Golden | Supplier Goods | Fresh Raw Goods | Kimchi Rouge, Kimchi Blanc | 7 | Metro | box | 3200 |  | 8,77 |  |  |  | | | | | |
-mtmtljy1o48ul | Choudou | Supplier Goods | Fresh Raw Goods | BBQ Porc, BBQ DAK, BBQ Beef | 7 | Metro | piece | 1000 |  | 3,07 |  |  |  | | | | | |
-mtmtnwbi1y5ip | Celeri Botte | Supplier Goods | Fresh Raw Goods | Jang-A-Chi | 7 | Metro, Tapfruit | piece | 800 |  | 2,08 |  |  |  | | | | | |
-mtmtqfo12eh4w | Gingembre frais | Supplier Goods | Staple Stock | Kimchi Rouge, Kimchi Blanc | 21 | Metro, Tapfruit | box | 500 |  | 3,84 | 1 |  |  | | | | | |
-mtmtyr7nwq1rc | Purée Gingembre | Supplier Goods | Staple Stock | BBQ Porc, BBQ DAK, BBQ Beef | 28 | Metro | box | 450 |  | 6,59 | 6 |  |  | | | | | |
-mtmu05i8e2uqm | Ail pelé | Supplier Goods | Staple Stock | Kimchi Rouge, Kimchi Blanc | 14 | Metro | box | 1000 |  | 6,37 | 1 |  |  | | | | | |
-mtmu3svqpy1qm | Pulpe d'Ail | Supplier Goods | Staple Stock | Kimchi Rouge, Kimchi Blanc | 28 | Metro | box | 1000 |  | 6,59 | 4 |  |  | | | | | |
-mtmudlro1za5t | Concombre | Supplier Goods | Staple Stock | Courgette | 7 | Metro, Tapfruit | piece | 500 |  | 1,64 | 2 |  |  | | | | | |
-mtmuhb8bu61t0 | Piment vert | Supplier Goods | Fresh Raw Goods | Jang-A-Chi, Chicken | 10 | Metro, Tapfruit | pack | 3000 |  | 11,51 |  |  |  | | | | | |
+mtlyhsaviof8p | Haricot vert | Supplier Goods | Fresh Raw Goods | Bibimbap | 7 | Metro, Tapfruit | 1 Pack | 500 |  | 4,72 |  |  |  | | | | | |
+mtlym8ue09ufm | Mâche | Supplier Goods | Direct Goods | Bibimbap | 7 | Metro, Tapfruit | 1 Bag | 300 |  | 3,25 |  |  |  | | | | | |
+mtlyo3vg8hr4h | Radis Rouge | Supplier Goods | Fresh Raw Goods | Bibimbap | 7 | Metro, Tapfruit | 1 Bag | 1500 |  | 6,28 |  |  |  | | | | | |
+mtlyt7jvnbdg8 | Shiitake Sec | Supplier Goods | Staple Stock | Bibimbap | 120 | Leaf Market | 1 Pack | 500 |  | 15,5 | 4 |  |  | | | | | |
+mtlz3ahboz0dc | Carotte Rapée | Supplier Goods | Fresh Raw Goods | Bibimbap | 7 | Metro, Tapfruit | 1 Bag | 1000 |  | 3,51 |  |  |  | | | | | |
+mtmqybib5vovw | Échine de Porc | Supplier Goods | Fresh Raw Goods | BBQ Porc | 9 | Beauvallet | 1 Pack | 2200 |  | 14,74 |  |  |  | | | | | |
+mtmr1i7x7k8y7 | Faux-Fillet Boeuf Angus Argentin | Supplier Goods | Fresh Raw Goods | BBQ Beef | 14 | Beauvallet | 1 Pack | 4500 |  | 112,5 |  |  |  | | | | | |
+mtmr3ku4xs41q | Viande Cuisse Poulet Halal | Supplier Goods | Fresh Raw Goods | BBQ DAK, Chicken | 7 | Metro | 1 Pack | 2500 |  | 21,6 |  |  |  | | | | | |
+mtmr8xinz9egs | Tartare Boeuf Charolais Couteaux | Supplier Goods | Fresh Raw Goods | Bibimbap | 7 | Beauvallet | 32 portions | 2880 |  | 57 |  |  |  | | | | | |
+mtmrcnkljdu86 | Mascarpone Galbani | Supplier Goods | Staple Stock | Tiramisu | 28 | Metro | 1 Box | 500 |  | 6,44 | 3 |  |  | | | | | |
+mtmrdlenxwaay | Mascarapone Bianco | Supplier Goods | Staple Stock | Tiramisu | 28 | Metro | 1 Box | 500 |  | 5 | 3 |  |  | | | | | |
+mtmt5f3gs1wgl | Salade Romaine | Supplier Goods | Staple Stock | BBQ Porc, BBQ DAK, BBQ Beef | 7 | Metro, Tapfruit | 1 Box | 500 |  | 3,07 | 16 |  |  | | | | | |
+mtmt9k5lkd4tk | Chou Chinois | Supplier Goods | Fresh Raw Goods | Kimchi Rouge | 7 | Metro, Tapfruit | 2 Pieces | 700 |  | 2,74 |  |  |  | | | | | |
+mtmtcpfd7ko9k | Poireau | Supplier Goods | Fresh Raw Goods | Bibimbap | 7 | Metro, Tapfruit | 1 bunch | 1000 |  | 3,07 |  |  |  | | | | | |
+mtmtjvyrrrer3 | Pomme Golden | Supplier Goods | Fresh Raw Goods | Kimchi Rouge, Kimchi Blanc | 7 | Metro | 1 box | 3200 |  | 8,77 |  |  |  | | | | | |
+mtmtljy1o48ul | Choudou | Supplier Goods | Fresh Raw Goods | BBQ Porc, BBQ DAK, BBQ Beef | 7 | Metro | 1 Piece | 1000 |  | 3,07 |  |  |  | | | | | |
+mtmtnwbi1y5ip | Celeri Botte | Supplier Goods | Fresh Raw Goods | Jang-A-Chi | 7 | Metro, Tapfruit | 1 bunch | 800 |  | 2,08 |  |  |  | | | | | |
+mtmtqfo12eh4w | Gingembre frais | Supplier Goods | Staple Stock | Kimchi Rouge, Kimchi Blanc | 21 | Metro, Tapfruit | 1 box | 500 |  | 3,84 | 1 |  |  | | | | | |
+mtmtyr7nwq1rc | Purée Gingembre | Supplier Goods | Staple Stock | BBQ Porc, BBQ DAK, BBQ Beef | 28 | Metro | 1 box | 450 |  | 6,59 | 6 |  |  | | | | | |
+mtmu05i8e2uqm | Ail pelé | Supplier Goods | Staple Stock | Kimchi Rouge, Kimchi Blanc | 14 | Metro | 1 box | 1000 |  | 6,37 | 1 |  |  | | | | | |
+mtmu3svqpy1qm | Pulpe d'Ail | Supplier Goods | Staple Stock | Kimchi Rouge, Kimchi Blanc | 28 | Metro | 1 box | 1000 |  | 6,59 | 4 |  |  | | | | | |
+mtmudlro1za5t | Concombre | Supplier Goods | Staple Stock | Courgette | 7 | Metro, Tapfruit | 1 Piece | 500 |  | 1,64 | 2 |  |  | | | | | |
+mtmuhb8bu61t0 | Piment vert | Supplier Goods | Fresh Raw Goods | Jang-A-Chi, Chicken | 10 | Metro, Tapfruit | 1 box | 3000 |  | 11,51 |  |  |  | | | | | |
 mtmujkfwxwy40 | Poivron Padron | Supplier Goods | Staple Stock | Bibimbap | 10 | Metro | bag | 500 |  | 3,84 | 2 |  |  | | | | | |
 mtmumc7hkjlja | Germe Poireau | Supplier Goods | Staple Stock | Chicken, BBQ Porc | 10 | Metro, Tapfruit | pack | 50 |  | 2,1 | 12 |  |  | | | | | |
 mtmunvh95945u | Tofu ferme | Supplier Goods | Staple Stock | Courgette | 14 | Leaf Market | pack | 450 |  | 2,33 | 3 |  |  | | | | | |
