@@ -1,117 +1,78 @@
 # Situation Log — Issue & Report Ledger
 
-A lightweight web app that records reports into a **single accumulated Google
-Sheet ledger**, the way a military-style situation log (상황일지) works: every
-report is one concise line. It follows a two-stage process — accumulate lightly
-in one ledger, then convert to formal documentation only when a trigger is hit.
+A military-style situation log (상황일지) as a web app. Every report is one
+concise line in a **single Google Sheet ledger**. Two-stage process: accumulate
+lightly in one ledger, then convert to formal documentation only when a trigger
+is hit.
 
-- **Receipt Date/Time is stamped automatically** on the server the moment a
-  report is submitted (the reporter never types it).
-- **Incident Date/Time is required** — the author must record *when the event
-  actually occurred*, which is not the same as the submit time.
-- **Log No.** is assigned automatically and increments by one per report.
+- **Receipt Date/Time is stamped automatically** on the server at submit.
+- **Incident Date/Time is required** — the author records *when the event
+  occurred* (not the same as the submit time).
+- **Log No.** auto-increments per report.
 - Language: **English**.
 
-## Files
+## How it works (important)
 
-| File | Role |
-|------|------|
-| `index.html` | The web app (form + "Log & Analysis" dashboard). Static — host it anywhere, or open locally. |
-| `Code.gs` | Google Apps Script backend. Stamps the receipt time and appends rows to the sheet. |
-| `README.md` | This file. |
+The whole app is **one Google Apps Script project**. Apps Script serves the web
+page *and* stores the data, so you just open the deployed `/exec` URL in any
+browser (phone included) — it runs there and saves straight to the sheet. No
+hosting, no file downloads, no CORS hacks.
 
-It reuses the same pattern already used by `commande_tapfruit.html` in this
-repo: a static page that POSTs to a Google Apps Script web app, which writes to
-a Google Sheet.
+`situation-log/Code.gs` is the entire app — the UI HTML is inlined inside it.
+
+**Ledger spreadsheet:**
+[Situation Log — Issue & Report Ledger](https://docs.google.com/spreadsheets/d/1P9OLYvPPePr-YPruuZjhEthuW7ZyGE2KjKCfo01gpcw/edit)
+
+## Deploy / update (3 steps)
+
+You must do this in your own Google account (Google requires you to authorize
+code that runs as you).
+
+1. Open your Apps Script project → select everything in `Code.gs` → paste this
+   folder's `Code.gs` (replace all).
+2. **Deploy → Manage deployments → ✏️ Edit → Version: “New version” → Deploy.**
+   Keep *Execute as: Me* and *Who has access: Anyone*. (Editing the existing
+   deployment keeps the same `/exec` URL.)
+3. Open the Web app `/exec` URL in a browser. That's your app.
+
+> The `/exec` URL only shows the app **after** you paste this single-file
+> `Code.gs` and redeploy. Before that, the old deployment returns raw JSON.
 
 ## Ledger columns
 
-| # | Column | Source | Notes |
-|---|--------|--------|-------|
-| 1 | Log No. | auto | Sequential. |
-| 2 | Receipt Date/Time | **auto (submit)** | Server timestamp, `Europe/Paris`. |
-| 3 | Incident Date/Time | **reporter (required)** | When the event occurred. |
-| 4 | Reporter | reporter | The author of the entry. |
-| 5 | Subject / Process | reporter | Worker name or work stage. Keep it consistent so repeats are counted. |
-| 6 | Report Content | reporter | Objective, short, fact-based. |
-| 7 | Category | reporter | Quality / Hygiene / Safety / Legal / Financial / Other. |
-| 8 | Cross-Verification | reporter | Pending / Verified / Not Verified (checked against objective data). |
-| 9 | Verification Source | reporter | e.g. checklist, CCTV, POS log. |
-| 10 | Action Status | reporter | Observation / Resolved / Escalated. |
+| # | Column | Source |
+|---|--------|--------|
+| 1 | Log No. | auto |
+| 2 | Receipt Date/Time | auto (server, at submit) |
+| 3 | Incident Date/Time | reporter (required) |
+| 4 | Reporter | reporter |
+| 5 | Subject / Process | reporter |
+| 6 | Report Content | reporter |
+| 7 | Category | reporter (Quality/Hygiene/Safety/Legal/Financial/Other) |
+| 8 | Cross-Verification | reporter (Pending/Verified/Not Verified) |
+| 9 | Verification Source | reporter |
+| 10 | Action Status | reporter (Observation/Resolved/Escalated) |
 
-## Setup
+## Two-stage process (built in)
 
-The recording spreadsheet is already created and `Code.gs` is already wired to
-it via `SHEET_ID`, so the only step left is the one that must run under your own
-Google account: deploying the Apps Script (Google requires *you* to authorize
-code that runs as you and writes to your Sheet — a third party cannot do this
-step for you).
+**Stage 1 — accumulate (daily):** every report is one line via the form.
 
-**Ledger spreadsheet (already created):**
-[Situation Log — Issue & Report Ledger](https://docs.google.com/spreadsheets/d/1P9OLYvPPePr-YPruuZjhEthuW7ZyGE2KjKCfo01gpcw/edit)
-(`SHEET_ID = 1P9OLYvPPePr-YPruuZjhEthuW7ZyGE2KjKCfo01gpcw`)
+**Stage 2 — convert to formal documentation only on a trigger.** The
+**Log & Analysis** tab reviews accumulated data and flags:
 
-1. Go to **[script.google.com](https://script.google.com) → New project**.
-2. Delete the default code and paste this folder's `Code.gs`. (It already
-   points at the sheet above. Adjust `TIMEZONE` if you are not in `Europe/Paris`.)
-3. (Optional) Select the `setup` function and **Run** it once to create the
-   header row and approve the authorization prompt.
-4. **Deploy → New deployment → Web app**
-   - *Execute as:* **Me**
-   - *Who has access:* **Anyone**
-   - **Authorize** when prompted.
-5. Copy the **Web app URL** (it ends with `/exec`).
-6. Open `index.html` and set it near the top:
-   ```js
-   var SCRIPT_URL = 'https://script.google.com/macros/s/XXXXXXXX/exec';
-   ```
-7. Open `index.html` in a browser. Submit a test report, then check the
-   **Log & Analysis** tab and the spreadsheet.
-
-> After any change to `Code.gs`, re-deploy via **Manage deployments → Edit →
-> New version**, or the live URL keeps serving the old code.
-
-### Hosting `index.html`
-
-It's a single static file. You can open it directly, or publish it (e.g. via
-GitHub Pages) so a team can reach it. No secrets live in the page — it only
-holds the public `/exec` URL, same as `commande_tapfruit.html`.
-
-## How it implements the two-stage process
-
-**Stage 1 — Accumulate in one ledger (daily).**
-Every report goes in as a single line via the form. The receipt time and log
-number are added automatically; the reporter only supplies the facts.
-
-**Stage 2 — Convert to formal documentation only on a trigger.**
-The **Log & Analysis** tab reviews the accumulated data (the weekly/monthly
-pattern check) and surfaces the trigger points from the guideline:
-
-- **Repetition** — when the same *Subject / Process* reaches **≥ 3** accumulated
-  reports, the row is highlighted and a "Repetition trigger" alert appears,
-  suggesting formal documentation (interview record, written notice).
-- **Severity** — reports categorized as **Hygiene / Safety / Legal / Financial**
-  that are not yet resolved raise a "Severity trigger" alert for immediate
-  formal handling.
-- **Formal sanction stage** — setting a report's **Action Status** to
-  **Escalated** marks that the formal process has begun; the dashboard counts
-  these separately.
-
-This keeps day-to-day admin light while building an objective, timestamped
-evidence trail for any later HR or legal action.
+- **Repetition** — same *Subject / Process* reaches **≥ 3** reports → highlighted
+  row + alert.
+- **Severity** — unresolved **Hygiene / Safety / Legal / Financial** reports →
+  alert.
+- **Formal sanction stage** — *Escalated* status is counted separately.
 
 ## Tuning
 
-- Repetition threshold: change `REPEAT_THRESHOLD` in `index.html` (default `3`).
-- Severity categories: change the `SEVERITY` array in `index.html` and the
-  category options in the form.
-- Timezone for the receipt stamp: `TIMEZONE` in `Code.gs`.
+- `REPEAT_THRESHOLD` and `SEVERITY` — in the inlined page inside `Code.gs`.
+- `TIMEZONE` — top of `Code.gs` (default `Europe/Paris`).
 
-## Notes & limits
+## Notes
 
-- The dashboard reads the ledger through JSONP, so the Apps Script must be
-  deployed with access **Anyone**. Anyone with the `/exec` URL can read and
-  append. If you need access control, deploy with restricted access and use an
-  authenticated front end instead.
-- To edit or delete an entry (e.g. move a status to *Resolved* or *Escalated*),
-  edit the row directly in the Google Sheet — the ledger is the source of truth.
+- Deployed with access **Anyone**, so anyone with the `/exec` link can open the
+  app and add reports. Share the link accordingly.
+- To change/resolve/escalate an entry, edit the row directly in the sheet.
