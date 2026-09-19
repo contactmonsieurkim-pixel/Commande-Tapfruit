@@ -31,10 +31,11 @@
 
 // ==== Configuration =========================================================
 
-// Leave empty to use the spreadsheet this script is bound to (recommended:
-// open the sheet, then Extensions > Apps Script). Otherwise paste a spreadsheet
-// ID to target a specific standalone spreadsheet.
-var SHEET_ID = '';
+// Pre-wired to the "Situation Log — Issue & Report Ledger" spreadsheet created
+// for this project. The script therefore works as a STANDALONE project (no need
+// to bind it to the sheet). Leave empty only if you bind the script to a sheet
+// via Extensions > Apps Script instead.
+var SHEET_ID = '1P9OLYvPPePr-YPruuZjhEthuW7ZyGE2KjKCfo01gpcw';
 
 // Tab (worksheet) name used for the ledger. Created automatically if missing.
 var SHEET_NAME = 'Situation Log';

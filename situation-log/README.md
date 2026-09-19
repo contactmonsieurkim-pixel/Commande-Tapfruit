@@ -39,26 +39,34 @@ a Google Sheet.
 | 9 | Verification Source | reporter | e.g. checklist, CCTV, POS log. |
 | 10 | Action Status | reporter | Observation / Resolved / Escalated. |
 
-## Setup (about 5 minutes)
+## Setup
 
-1. **Create the Google Sheet** that will hold the ledger (any empty spreadsheet).
-2. In that sheet: **Extensions → Apps Script**. Delete the default `Code.gs`
-   content and paste the contents of this folder's `Code.gs`.
-   - If you keep the script *standalone* instead of bound to the sheet, set
-     `SHEET_ID` at the top of `Code.gs` to your spreadsheet's ID.
-   - Adjust `TIMEZONE` if you are not in `Europe/Paris`.
-3. (Optional) Run the `setup` function once from the editor to create the
+The recording spreadsheet is already created and `Code.gs` is already wired to
+it via `SHEET_ID`, so the only step left is the one that must run under your own
+Google account: deploying the Apps Script (Google requires *you* to authorize
+code that runs as you and writes to your Sheet — a third party cannot do this
+step for you).
+
+**Ledger spreadsheet (already created):**
+[Situation Log — Issue & Report Ledger](https://docs.google.com/spreadsheets/d/1P9OLYvPPePr-YPruuZjhEthuW7ZyGE2KjKCfo01gpcw/edit)
+(`SHEET_ID = 1P9OLYvPPePr-YPruuZjhEthuW7ZyGE2KjKCfo01gpcw`)
+
+1. Go to **[script.google.com](https://script.google.com) → New project**.
+2. Delete the default code and paste this folder's `Code.gs`. (It already
+   points at the sheet above. Adjust `TIMEZONE` if you are not in `Europe/Paris`.)
+3. (Optional) Select the `setup` function and **Run** it once to create the
    header row and approve the authorization prompt.
 4. **Deploy → New deployment → Web app**
    - *Execute as:* **Me**
    - *Who has access:* **Anyone**
+   - **Authorize** when prompted.
 5. Copy the **Web app URL** (it ends with `/exec`).
-6. Open `index.html`, and set:
+6. Open `index.html` and set it near the top:
    ```js
    var SCRIPT_URL = 'https://script.google.com/macros/s/XXXXXXXX/exec';
    ```
 7. Open `index.html` in a browser. Submit a test report, then check the
-   **Log & Analysis** tab and the Google Sheet.
+   **Log & Analysis** tab and the spreadsheet.
 
 > After any change to `Code.gs`, re-deploy via **Manage deployments → Edit →
 > New version**, or the live URL keeps serving the old code.
