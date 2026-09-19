@@ -162,9 +162,18 @@ function respond_(obj, callback) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// Optional: run once from the editor to create the sheet + header row early,
-// and to trigger the authorization prompt before the first real submit.
+// Optional: run once from the editor to create the ledger tab + header row
+// early, tidy up the empty default tab, and trigger the authorization prompt
+// before the first real submit.
 function setup() {
-  getSheet_();
-  Logger.log('Ledger ready: "%s" in %s', SHEET_NAME, (SHEET_ID || 'bound spreadsheet'));
+  var sh = getSheet_();
+  var ss = sh.getParent();
+  // Remove any leftover empty default tab (e.g. "Sheet1" / "Feuille 1"),
+  // whatever the account locale named it, without touching the ledger.
+  ss.getSheets().forEach(function (s) {
+    if (s.getSheetId() !== sh.getSheetId() && s.getLastRow() === 0 && s.getLastColumn() <= 1) {
+      try { ss.deleteSheet(s); } catch (e) {}
+    }
+  });
+  Logger.log('Ledger ready: "%s" (%s)', SHEET_NAME, SHEET_ID || 'bound spreadsheet');
 }
