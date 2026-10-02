@@ -227,40 +227,49 @@ def load_keys():
     return {n: bytes.fromhex(k[n]) for n in ("K0_MASTER", "K1_SDM_META", "K2_SDM_FILE")}
 
 
-def auth_master(tag, keys):
-    """공장 키(0x00..)로 먼저 시도하고, 실패하면 keys.json 의 K0 로 시도."""
+KEY_NAMES = {0: "K0_MASTER", 1: "K1_SDM_META", 2: "K2_SDM_FILE"}
+
+
+def probe_keys(tag, keys):
+    """Key 0/1/2 가 각각 지금 공장 키(0x00..)인지 keys.json 의 키인지 인증해서 확인.
+    중간에 끊겨 일부 키만 바뀐 태그도 이어서 설정할 수 있게 함."""
+    current = {}
+    for n, name in KEY_NAMES.items():
+        for candidate in (ZERO_KEY, keys[name]):
+            tag.select_app()
+            if tag.authenticate(n, candidate):
+                current[n] = candidate
+                break
+        else:
+            raise CardError(f"Key {n} 인증 실패: 공장 키도 keys.json 의 키도 아닙니다. "
+                            "다른 keys.json 으로 설정된 태그일 수 있습니다.")
+    return current
+
+
+def auth_master(tag, key):
     tag.select_app()
-    if tag.authenticate(0, ZERO_KEY):
-        return "factory"
-    tag.select_app()
-    if tag.authenticate(0, keys["K0_MASTER"]):
-        return "ours"
-    raise CardError("Key 0 인증 실패: 공장 키도 keys.json 의 키도 아닙니다. "
-                    "다른 keys.json 으로 설정된 태그일 수 있습니다.")
+    if not tag.authenticate(0, key):
+        raise CardError("Key 0 재인증 실패")
 
 
 def program(tag, keys, base, action):
     url, file_data, picc_off, mac_in_off, mac_off = build_ndef(base, action)
-    state = auth_master(tag, keys)
-    old = ({1: ZERO_KEY, 2: ZERO_KEY} if state == "factory"
-           else {1: keys["K1_SDM_META"], 2: keys["K2_SDM_FILE"]})
+    current = probe_keys(tag, keys)
 
     # 1) 파일을 잠시 '누구나 쓰기' 로 열고 URL 을 기록
+    auth_master(tag, current[0])
     tag.change_file_settings(PLAIN_FILE_SETTINGS)
     tag.select_app()
     tag.select_ndef_file()
     tag.update_binary(file_data)
 
-    # 2) SDM 켜고 쓰기 잠금, 키 교체 (Key 0 은 맨 마지막)
-    tag.select_app()
-    master = ZERO_KEY if state == "factory" else keys["K0_MASTER"]
-    if not tag.authenticate(0, master):
-        raise CardError("재인증 실패")
+    # 2) SDM 켜고 쓰기 잠금, 아직 안 바뀐 키만 교체 (Key 0 은 맨 마지막)
+    auth_master(tag, current[0])
     tag.change_file_settings(sdm_file_settings(picc_off, mac_in_off, mac_off))
-    tag.change_key(1, keys["K1_SDM_META"], old[1])
-    tag.change_key(2, keys["K2_SDM_FILE"], old[2])
-    if state == "factory":
-        tag.change_key(0, keys["K0_MASTER"], ZERO_KEY)
+    for n in (1, 2, 0):
+        target = keys[KEY_NAMES[n]]
+        if current[n] != target:
+            tag.change_key(n, target, current[n])
     return url, len(file_data)
 
 
@@ -279,13 +288,12 @@ def read_and_verify(tag, keys, length=None):
 
 
 def reset(tag, keys):
-    tag.select_app()
-    if not tag.authenticate(0, keys["K0_MASTER"]):
-        raise CardError("keys.json 의 K0 로 인증 실패 (이미 공장 상태이거나 다른 키)")
+    current = probe_keys(tag, keys)
+    auth_master(tag, current[0])
     tag.change_file_settings(PLAIN_FILE_SETTINGS)
-    tag.change_key(1, ZERO_KEY, keys["K1_SDM_META"])
-    tag.change_key(2, ZERO_KEY, keys["K2_SDM_FILE"])
-    tag.change_key(0, ZERO_KEY, keys["K0_MASTER"])
+    for n in (1, 2, 0):
+        if current[n] != ZERO_KEY:
+            tag.change_key(n, ZERO_KEY, current[n])
 
 
 # ---------------------------------------------------------------- CLI
@@ -306,7 +314,12 @@ def connect_reader():
         sys.exit("태그가 감지되지 않습니다. 태그를 리더기 위에 올려두고 다시 실행하세요.")
 
     def transmit(apdu):
-        data, sw1, sw2 = conn.transmit(list(apdu))
+        try:
+            data, sw1, sw2 = conn.transmit(list(apdu))
+        except Exception as e:
+            raise CardError("태그와 통신이 끊겼습니다. 태그를 리더기 정중앙에 평평하게 올려두고 "
+                            "같은 명령을 다시 실행하세요. (중간에 끊겨도 다시 실행하면 이어서 설정됩니다)"
+                            f"\n  상세: {e}")
         return bytes(data), (sw1 << 8) | sw2
 
     return Tag(transmit)

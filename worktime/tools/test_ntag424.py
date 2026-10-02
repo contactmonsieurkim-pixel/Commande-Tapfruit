@@ -184,6 +184,39 @@ class Flow(unittest.TestCase):
         self.assertEqual(self.card.keys[:3], [bytes(16)] * 3)
         self.assertEqual(self.card.settings, nt.PLAIN_FILE_SETTINGS)
 
+    def _drop_once(self, key_no, applied):
+        """Key n 의 ChangeKey 도중 통신 끊김을 한 번 흉내 (applied=태그는 적용했는데 응답만 유실)."""
+        real = self.card.transmit
+        state = {"done": False}
+
+        def transmit(apdu):
+            if not state["done"] and apdu[:2] == b"\x90\xC4" and apdu[5] == key_no:
+                state["done"] = True
+                if applied:
+                    real(apdu)
+                self.card.session = None
+                raise nt.CardError("Transaction failed (simulated)")
+            return real(apdu)
+        return nt.Tag(transmit)
+
+    def test_resume_after_drop(self):
+        for key_no in (1, 2, 0):
+            for applied in (False, True):
+                with self.subTest(key_no=key_no, applied=applied):
+                    self.setUp()
+                    with self.assertRaises(nt.CardError):
+                        nt.program(self._drop_once(key_no, applied), self.keys, BASE, "END")
+                    nt.program(self.tag, self.keys, BASE, "END")
+                    _, a, _, _ = nt.read_and_verify(self.tag, self.keys)
+                    self.assertEqual(a, "END")
+                    self.assertEqual(self.card.keys[:3], [self.keys[n] for n in ("K0_MASTER","K1_SDM_META","K2_SDM_FILE")])
+
+    def test_reset_after_partial(self):
+        with self.assertRaises(nt.CardError):
+            nt.program(self._drop_once(2, False), self.keys, BASE, "START")
+        nt.reset(self.tag, self.keys)
+        self.assertEqual(self.card.keys[:3], [bytes(16)] * 3)
+
     def test_unknown_key_rejected(self):
         self.card.keys[0] = os.urandom(16)
         with self.assertRaises(nt.CardError):
