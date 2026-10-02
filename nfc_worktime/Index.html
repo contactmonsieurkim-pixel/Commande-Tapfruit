@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+    <title>Work Time Log</title>
+    <style>
+      body { font-family: -apple-system, sans-serif; text-align: center; padding: 40px 20px; background-color: #f4f4f9; }
+      .card { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+      h1 { color: #333; font-size: 22px; margin-bottom: 20px; }
+      #status { font-size: 16px; color: #555; line-height: 1.6; }
+      .success { color: #28a745; font-weight: bold; font-size: 18px; margin-top: 10px; }
+      .error { color: #dc3545; font-weight: bold; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1 id="greeting">Tag START or FINISh</h1>
+      <div id="status">Loading...</div>
+    </div>
+
+    <script>
+      // Apps Script 웹앱은 googleusercontent.com 의 iframe 안에서 실행되므로
+      // window.location.search 에는 /exec?... 의 파라미터가 들어있지 않음.
+      // 반드시 google.script.url.getLocation 으로 상위 URL 파라미터를 읽어야 함.
+      window.onload = function() {
+        google.script.url.getLocation(init);
+      };
+
+      function init(location) {
+        // 1. URL에서 암호화된 파라미터 읽기
+        const params = location.parameter;
+        const action = params.action; // Start 또는 Finish
+        const uid = params.uid;       // 태그 일련번호
+        const ctr = params.ctr;       // 태그 카운터 (재사용 방지)
+        const cmac = params.cmac;     // 동적 암호
+
+        const statusDiv = document.getElementById('status');
+
+        // 2. 로컬 스토리지에서 직원 이름 확인 (없으면 입력받기)
+        let empName = localStorage.getItem('empName');
+        if (!empName) {
+          empName = prompt("Type your name");
+          if (empName && empName.trim() !== "") {
+            localStorage.setItem('empName', empName.trim());
+          } else {
+            statusDiv.innerHTML = "<span class='error'>We cannot log without your name!!</span>";
+            return;
+          }
+        }
+        
+        document.getElementById('greeting').innerText = empName;
+
+        // 3. 파라미터가 없으면 PWA 기본 화면 표시 (그냥 앱을 열었을 때)
+        if (!action || !uid || !cmac) {
+          statusDiv.innerHTML = "Tag with your phone START or FINISH";
+          return;
+        }
+
+        // 4. 파라미터가 있으면 서버(GAS)로 검증 및 기록 요청
+        statusDiv.innerHTML = "Verify and Logging... ⏳";
+        
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if(res.success) {
+              const actionKr = res.action === "Start" ? "START" : "FINISH";
+              statusDiv.innerHTML = `<div class="success">✅ ${res.date} | ${res.time} <br>${actionKr} Success to log</div>`;
+            } else {
+              statusDiv.innerHTML = `<span class="error">❌ ${res.errorMsg}</span>`;
+            }
+          })
+          .withFailureHandler(function(err) {
+            statusDiv.innerHTML = "<span class='error'>Problem occured in network...</span>";
+          })
+          .processNfcLog(empName, action, uid, ctr, cmac);
+      }
+    </script>
+  </body>
+</html>
