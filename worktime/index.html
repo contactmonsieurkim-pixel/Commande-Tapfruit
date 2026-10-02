@@ -128,13 +128,27 @@
   }
 
   async function api(body) {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // CORS preflight 회피
-      body: JSON.stringify(body),
-    });
-    return res.json();
+    let res;
+    try {
+      res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // CORS preflight 회피
+        body: JSON.stringify(body),
+      });
+    } catch (e) {
+      throw new Error('fetch: ' + e.message);
+    }
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      // 서버가 JSON 대신 오류 페이지를 돌려준 경우: 원인 파악용으로 앞부분을 보여줌
+      const plain = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      throw new Error('HTTP ' + res.status + ': ' + plain.slice(0, 160));
+    }
   }
+
+  const detail = (e) => ' (' + e.message + ')';
 
   // 1) 태그로 열렸으면 URL 파라미터를 꺼내고 주소창에서 즉시 지움 (새로고침/복사 방지)
   function takeTagParams() {
@@ -164,7 +178,7 @@
       r = await api({ action: 'tap', token: store.get('wt_token'), a: tap.a, p: tap.p, c: tap.c });
     } catch (e) {
       // 네트워크 오류: 같은 태그 값으로 재시도 가능하도록 pending 유지
-      result('⚠️', '', '', 'Network problem. Check your connection and tap the tag again.', 'err');
+      result('⚠️', '', '', 'Network problem. Check your connection and tap the tag again.' + detail(e), 'err');
       return;
     }
     sessionStorage.removeItem('wt_pending');
@@ -198,7 +212,7 @@
       const pending = takeTagParams();
       pending ? submitTap(pending) : show('home');
     } catch (e) {
-      $('login-msg').textContent = 'Network problem. Please try again.';
+      $('login-msg').textContent = 'Network problem. Please try again.' + detail(e);
     } finally {
       btn.disabled = false;
     }
@@ -223,7 +237,7 @@
       result('📝', lastTap.info, lastTap.date + '  ' + lastTap.time,
              'Time change requested: ' + r.time + '. Your manager will review it.', 'ok');
     } catch (e) {
-      $('m-msg').textContent = 'Network problem. Please try again.';
+      $('m-msg').textContent = 'Network problem. Please try again.' + detail(e);
     } finally {
       btn.disabled = false;
     }
