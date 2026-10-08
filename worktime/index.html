@@ -32,8 +32,24 @@
     }
     main { width: 100%; max-width: 420px; }
     header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    header .logo { height: 84px; width: auto; display: block; }
-    @media (prefers-color-scheme: dark) { header .logo { background: #fff; border-radius: 10px; padding: 4px 8px; } }
+    .brand {
+      width: 52px; height: 52px; border-radius: 50%; background: #fff; display: flex;
+      align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0, 0, 0, .12);
+    }
+    .brand img { height: 34px; width: auto; display: block; }
+    .who { display: flex; align-items: center; gap: 4px; }
+    .bell {
+      width: 44px; height: 44px; margin: 0; padding: 10px; border-radius: 50%;
+      background: transparent; color: var(--muted); position: relative;
+    }
+    .bell svg { width: 24px; height: 24px; display: block; }
+    .bell.on { color: var(--brand); }
+    .bell .slash { display: none; }
+    .bell.off .slash { display: inline; }
+    .toast {
+      background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
+      margin: -6px 0 14px; font-size: 14px; color: var(--text);
+    }
     .who { color: var(--muted); font-size: 14px; }
     .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px; }
     .hidden { display: none !important; }
@@ -119,9 +135,18 @@
 <body>
 <main>
   <header>
-    <img src="logo.png" alt="monsieur Kim" class="logo">
-    <span class="who"><span id="who"></span> <button id="logout" class="link hidden">Log out</button></span>
+    <span class="brand"><img src="logo-mark.png" alt="monsieur Kim"></span>
+    <span class="who">
+      <span id="who"></span>
+      <button id="b-bell" class="bell hidden" aria-label="Notifications" title="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          <line class="slash" x1="3" y1="3" x2="21" y2="21"/>
+        </svg>
+      </button>
+    </span>
   </header>
+  <div id="toast" class="toast hidden"></div>
 
   <!-- 로그인 -->
   <section id="v-login" class="card hidden">
@@ -145,8 +170,6 @@
       </div>
     </div>
     <button id="b-anns" class="secondary">Announcements<span id="badge" class="badge hidden"></span></button>
-    <button id="b-push" class="secondary hidden">Turn on notifications</button>
-    <p id="push-msg" class="hint"></p>
     <button id="b-admin" class="secondary hidden">Manager: announcements</button>
   </section>
 
@@ -241,11 +264,52 @@
   const API_URL = 'https://script.google.com/macros/s/AKfycbwAsI9mtqQC34_IuSd4YjmAgpoi91DwFxPUdkBzV73Ix0fvXYrqFW0au4Ii3ejKf5AipQ/exec';
 
   const $ = (id) => document.getElementById(id);
+  // 로그인 정보는 localStorage 와 IndexedDB 두 곳에 저장 (한쪽이 지워져도 앱을 다시 열 때 복구)
+  const SESSION_KEYS = ['wt_token', 'wt_name', 'wt_admin'];
+  const idb = {
+    open() {
+      return new Promise((resolve, reject) => {
+        const r = indexedDB.open('monsieurkim', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('kv');
+        r.onsuccess = () => resolve(r.result);
+        r.onerror = () => reject(r.error);
+      });
+    },
+    async run(mode, fn) {
+      const db = await this.open();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('kv', mode), req = fn(tx.objectStore('kv'));
+        tx.oncomplete = () => resolve(req && req.result);
+        tx.onerror = () => reject(tx.error);
+      });
+    },
+    get(k) { return this.run('readonly', (s) => s.get(k)).catch(() => null); },
+    set(k, v) { return this.run('readwrite', (s) => s.put(v, k)).catch(() => {}); },
+    del(k) { return this.run('readwrite', (s) => s.delete(k)).catch(() => {}); },
+  };
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
-    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
-    del(k) { try { localStorage.removeItem(k); } catch (e) {} },
+    set(k, v) {
+      try { localStorage.setItem(k, v); } catch (e) {}
+      if (SESSION_KEYS.includes(k)) idb.set(k, v);
+    },
+    del(k) {
+      try { localStorage.removeItem(k); } catch (e) {}
+      if (SESSION_KEYS.includes(k)) idb.del(k);
+    },
   };
+
+  async function restoreSession() {
+    try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
+    if (store.get('wt_token')) {
+      for (const k of SESSION_KEYS) if (store.get(k) != null) idb.set(k, store.get(k)); // 백업 최신화
+      return;
+    }
+    for (const k of SESSION_KEYS) {
+      const v = await idb.get(k);
+      if (v != null) { try { localStorage.setItem(k, v); } catch (e) {} }
+    }
+  }
   const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed'];
   let lastTap = null;
   let annReturn = 'home';
@@ -254,7 +318,7 @@
     for (const v of VIEWS) $('v-' + v).classList.toggle('hidden', v !== view);
     const name = store.get('wt_name');
     $('who').textContent = name || '';
-    $('logout').classList.toggle('hidden', !name);
+    $('b-bell').classList.toggle('hidden', !name || view === 'login');
     $('b-admin').classList.toggle('hidden', store.get('wt_admin') !== '1');
     window.scrollTo(0, 0);
   }
@@ -377,13 +441,13 @@
   });
 
   function closeTab() {
-    if (standalone()) return goHome(false); // 설치된 앱에서는 홈 화면으로
+    if (standalone()) return goHome(); // 설치된 앱에서는 홈 화면으로
     window.close();
     // 스크립트로 창을 닫을 수 없는 브라우저(iPhone 등)에서는 완료 화면 표시
     setTimeout(() => show('closed'), 400);
   }
 
-  $('b-closed-home').addEventListener('click', () => goHome(false));
+  $('b-closed-home').addEventListener('click', () => goHome());
 
   async function submitTap(tap) {
     $('b-modify').classList.add('hidden');
@@ -428,15 +492,16 @@
     showNextAnn();
   }
 
+  // 로그아웃 버튼은 없음. 서버가 토큰을 거부할 때(퇴사 처리 등)만 로그인 화면으로.
   function logout(msg) {
-    store.del('wt_token'); store.del('wt_name'); store.del('wt_admin');
+    for (const k of SESSION_KEYS) store.del(k);
     $('login-msg').textContent = msg || '';
     show('login');
   }
 
-  async function goHome(autoOpen = true) {
+  async function goHome() {
     show('home');
-    updatePushButton();
+    updateBell();
     try {
       const r = await api({ action: 'me', token: token() });
       if (r.code === 'AUTH') return logout(r.error);
@@ -445,7 +510,6 @@
         $('b-admin').classList.toggle('hidden', !r.admin);
         setBadge(r.unread);
         saveTips(r.tips);
-        if (r.unread > 0 && autoOpen) openAnns('home');
       }
     } catch (e) { /* 오프라인이어도 홈 화면은 유지 */ }
   }
@@ -536,25 +600,26 @@
   }
 
   $('b-anns').addEventListener('click', () => openAnns('home'));
-  $('b-ann-back').addEventListener('click', () => (annReturn === 'result' ? show('result') : goHome(false)));
+  $('b-ann-back').addEventListener('click', () => (annReturn === 'result' ? show('result') : goHome()));
 
   // ---------------------------------------------------------------- 알림 (웹 푸시)
   const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
   const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
   const standalone = () => navigator.standalone || matchMedia('(display-mode: standalone)').matches;
 
-  function updatePushButton() {
-    const msg = $('push-msg');
-    msg.textContent = '';
-    if (!pushSupported()) {
-      $('b-push').classList.add('hidden');
-      if (isIOS && !standalone()) {
-        msg.textContent = 'To get notifications on iPhone: tap Share → Add to Home Screen, ' +
-          'open monsieur Kim from the Home Screen, log in, then turn on notifications.';
-      }
-      return;
-    }
-    $('b-push').classList.toggle('hidden', Notification.permission === 'granted' && store.get('wt_push') === token());
+  let toastTimer = null;
+  function toast(msg) {
+    $('toast').textContent = msg;
+    $('toast').classList.remove('hidden');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => $('toast').classList.add('hidden'), 6000);
+  }
+
+  const pushOn = () => pushSupported() && Notification.permission === 'granted' && store.get('wt_push') === token();
+
+  function updateBell() {
+    $('b-bell').classList.toggle('on', pushOn());
+    $('b-bell').classList.toggle('off', !pushOn());
   }
 
   function b64ToBytes(b64) {
@@ -580,16 +645,22 @@
     store.set('wt_push', token());
   }
 
-  $('b-push').addEventListener('click', async () => {
-    $('b-push').disabled = true;
+  $('b-bell').addEventListener('click', async () => {
+    if (pushOn()) return toast('Notifications are on.');
+    if (!pushSupported()) {
+      return toast(isIOS && !standalone()
+        ? 'To get notifications on iPhone: tap Share → Add to Home Screen, open monsieur Kim from the Home Screen, then tap the bell.'
+        : 'This browser cannot show notifications.');
+    }
+    $('b-bell').disabled = true;
     try {
       await syncPush(true);
-      $('push-msg').textContent = 'Notifications are on.';
+      toast('Notifications are on.');
     } catch (e) {
-      $('push-msg').textContent = e.message;
+      toast(e.message);
     } finally {
-      $('b-push').disabled = false;
-      updatePushButton();
+      $('b-bell').disabled = false;
+      updateBell();
     }
   });
 
@@ -750,7 +821,7 @@
   }
 
   $('b-admin').addEventListener('click', () => { show('admin'); loadStatus(); loadStaff(); });
-  $('b-admin-back').addEventListener('click', () => goHome(false));
+  $('b-admin-back').addEventListener('click', () => goHome());
 
   // ---------------------------------------------------------------- 로그인 / 시간 변경
   function afterLogin() {
@@ -780,8 +851,6 @@
     }
   });
 
-  $('logout').addEventListener('click', () => logout());
-
   $('b-modify').addEventListener('click', () => {
     $('m-time').value = lastTap ? lastTap.time : '';
     $('m-msg').textContent = '';
@@ -808,11 +877,11 @@
   // 시작
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   takeTagParams();
-  if (!token()) show('login');
-  else {
+  restoreSession().then(() => {
+    if (!token()) return show('login');
     afterLogin();
-    syncPush(false).catch(() => {}); // 이미 허용된 기기는 구독 정보를 조용히 갱신
-  }
+    syncPush(false).catch(() => {}).then(updateBell); // 이미 허용된 기기는 구독 정보를 조용히 갱신
+  });
 </script>
 </body>
 </html>
