@@ -339,7 +339,7 @@ function notify_(emp, anns, isNew) {
     try {
       var mail = buildMail_(anns, appUrl, isNew);
       MailApp.sendEmail({ to: emp.email, subject: PUSH_TITLE, htmlBody: mail.html,
-                          inlineImages: mail.images, name: 'Work Time' });
+                          inlineImages: mail.images, name: 'monsieur Kim' });
       results.push(['email', 'sent']);
     } catch (err2) {
       results.push(['email', 'error: ' + err2.message]);
@@ -389,13 +389,18 @@ function buildMail_(anns, appUrl, withPhotos) {
       '<h2 style="margin:4px 0 8px;font-size:18px">' + esc_(a.title) + '</h2>' +
       '<div style="white-space:pre-wrap">' + esc_(a.content) + '</div>' + imgs + '</div>';
   });
+  // 같은 제목의 메일이 쌓이면 Gmail 이 반복되는 뒷부분을 "…" 로 접어버림.
+  // -> 버튼을 맨 위에 두고, 메일마다 다른 발송 시각·참조 번호를 끝에 넣어 접히지 않게 함.
+  var button = '<p style="margin:16px 0"><a href="' + esc_(appUrl) + '" style="display:inline-block;' +
+    'background:#1f6f54;color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;' +
+    'font-weight:700;font-size:16px">Go to Confirm</a></p>';
+  var ref = anns.map(function (a) { return a.id; }).join(', ') + ' · sent ' + nowStamp_() + ' · ' +
+    Utilities.getUuid().slice(0, 8);
   var html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px">' +
-    '<h1 style="font-size:20px">' + PUSH_TITLE + '</h1>' + parts.join('') +
-    '<p><a href="' + esc_(appUrl) + '" style="display:inline-block;background:#1f6f54;color:#fff;' +
-    'padding:12px 20px;border-radius:10px;text-decoration:none;font-weight:600">' +
-    'Open Work Time and confirm</a></p>' +
-    '<p style="color:#66706b;font-size:13px">Please confirm in the Work Time app. ' +
-    'You will get a reminder every day until you confirm.</p></div>';
+    '<h1 style="font-size:20px;margin:0 0 4px">' + PUSH_TITLE + '</h1>' + button + parts.join('') + button +
+    '<p style="color:#66706b;font-size:13px">Please confirm in the app. ' +
+    'You will get a reminder every day until you confirm.</p>' +
+    '<p style="color:#9aa49f;font-size:11px">Ref ' + esc_(ref) + '</p></div>';
   return { html: html, images: images };
 }
 

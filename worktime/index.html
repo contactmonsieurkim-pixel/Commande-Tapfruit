@@ -31,7 +31,8 @@
     }
     main { width: 100%; max-width: 420px; }
     header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    header h1 { font-size: 18px; margin: 0; }
+    header .logo { height: 84px; width: auto; display: block; }
+    @media (prefers-color-scheme: dark) { header .logo { background: #fff; border-radius: 10px; padding: 4px 8px; } }
     .who { color: var(--muted); font-size: 14px; }
     .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 24px; }
     .hidden { display: none !important; }
@@ -117,7 +118,7 @@
 <body>
 <main>
   <header>
-    <h1>Work Time</h1>
+    <img src="logo.png" alt="monsieur Kim" class="logo">
     <span class="who"><span id="who"></span> <button id="logout" class="link hidden">Log out</button></span>
   </header>
 
