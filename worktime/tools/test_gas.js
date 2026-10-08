@@ -290,7 +290,7 @@ try { ece = require(process.env.HTTP_ECE_PATH || 'http_ece'); } catch (e) { /* o
 const recRows = (name) => {
   const sh = env.files[env.props.ANN_SHEET_ID].getSheetByName(name);
   return sh.getDataRange ? Array.from({ length: sh.getLastRow() - 1 }, (_, i) =>
-    sh.getRange(i + 2, 1, 1, 8).getValues()[0]) : [];
+    sh.getRange(i + 2, 1, 1, 9).getValues()[0]) : [];
 };
 
 test('setup: protected record sheets, daily trigger, VAPID keys', () => {
@@ -326,7 +326,7 @@ const photo = 'data:image/jpeg;base64,' + nodeCrypto.randomBytes(300).toString('
 let annId;
 test('admin posts announcement -> push + email to every active employee', () => {
   const before = { mail: env.sent.mail.length, push: env.sent.push.length };
-  const r = env.call({ action: 'post', token, title: 'Kitchen rules', content: 'Wash hands.\r\nWear caps.', photos: [photo] });
+  const r = env.call({ action: 'post', token, title: 'Kitchen rules', content: 'Wash hands.\r\nWear caps.', photos: [photo], rule: true });
   assert.ok(r.ok, JSON.stringify(r));
   annId = r.id;
   assert.strictEqual(annId, 'A0001');
@@ -334,6 +334,7 @@ test('admin posts announcement -> push + email to every active employee', () => 
   assert.deepStrictEqual(row.slice(2, 5), ['Nam KIM', 'Kitchen rules', 'Wash hands.\nWear caps.']);
   assert.match(row[5], /^https:\/\/drive\.google\.com\/file\/d\/file\d+\/view$/);
   assert.strictEqual(row[6], 'Nam KIM, Yuna, No Mail');
+  assert.strictEqual(row[7], 'Rule');
   const mails = env.sent.mail.slice(before.mail);
   assert.deepStrictEqual(mails.map((m) => m.to).sort(), ['nam@example.com', 'yuna@example.com']);
   assert.strictEqual(mails[0].subject, 'I have an unread announcement !');
@@ -368,6 +369,8 @@ test('unread count on me + on NFC tap', () => {
   const [t] = tagUrls(keys, 'START', 1);
   const r = env.call(Object.assign({ action: 'tap', token: yuna }, t));
   assert.ok(r.ok); assert.strictEqual(r.unread, 1);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(r.tips)),
+    [{ id: 'A0001', title: 'Kitchen rules', content: 'Wash hands.\nWear caps.' }]);
 });
 
 test('announcement list + photo for recipient', () => {
@@ -428,6 +431,8 @@ test('formula-looking content is stored as text and still verifies', () => {
   const r = env.call({ action: 'post', token, title: '=1+1', content: '=HYPERLINK("x")' });
   assert.ok(r.ok);
   assert.deepStrictEqual(recRows('Announcements')[1].slice(3, 5), ['=1+1', '=HYPERLINK("x")']);
+  assert.strictEqual(recRows('Announcements')[1][7], 'Notice');
+  assert.strictEqual(env.call({ action: 'me', token }).tips.length, 1, 'notices are not tips');
   assert.ok(env.ctx.verifyRecords().every((x) => x.ok));
 });
 

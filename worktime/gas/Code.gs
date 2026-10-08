@@ -102,7 +102,7 @@ function login_(req) {
 
 function me_(req) {
   var name = whoAmI_(req.token);
-  return { ok: true, name: name, admin: isAdmin_(name), unread: unreadCount_(name) };
+  return { ok: true, name: name, admin: isAdmin_(name), unread: unreadCount_(name), tips: tips_() };
 }
 
 function unreadCount_(name) {
@@ -144,7 +144,7 @@ function tap_(req) {
   CacheService.getScriptCache().put('edit_' + editToken,
     JSON.stringify({ ssId: ss.getId(), sheet: name, row: row, name: name }), EDIT_WINDOW_SEC);
   return { ok: true, name: name, date: date, time: time, info: a, editToken: editToken,
-           unread: unreadCount_(name) };
+           unread: unreadCount_(name), tips: tips_() };
 }
 
 function modify_(req) {

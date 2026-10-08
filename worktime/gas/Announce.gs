@@ -1,7 +1,8 @@
 // 공지사항 — 게시, 읽음 확인, 알림(웹 푸시 + 메일), 매일 리마인더, 위·변조 감지 기록
 //
 // "Announcement Records" 스프레드시트 (setup() 이 생성, 모든 시트 보호):
-//   Announcements : ID | Posted at | Posted by | Title | Content | Photos | Recipients | Hash
+//   Announcements : ID | Posted at | Posted by | Title | Content | Photos | Recipients | Type | Hash
+//                   (Type: Rule = 출근 도장 화면에 팁으로 랜덤 표시, Notice = 일반 공지)
 //   Confirmations : Announcement ID | Title | Name | Confirmed at | Hash
 //   Notifications : Sent at | Announcement IDs | Name | Channel | Result | Hash
 // 각 행의 Hash 는 직전 행 Hash + 내용으로 만든 HMAC 체인 -> verifyRecords() 로 수정 여부 검사.
@@ -12,7 +13,7 @@ var PUSH_TITLE = 'I have an unread announcement !';
 var MAX_PHOTOS = 6;
 
 var REC_SHEETS = {
-  Announcements: ['ID', 'Posted at', 'Posted by', 'Title', 'Content', 'Photos', 'Recipients', 'Hash'],
+  Announcements: ['ID', 'Posted at', 'Posted by', 'Title', 'Content', 'Photos', 'Recipients', 'Type', 'Hash'],
   Confirmations: ['Announcement ID', 'Title', 'Name', 'Confirmed at', 'Hash'],
   Notifications: ['Sent at', 'Announcement IDs', 'Name', 'Channel', 'Result', 'Hash'],
 };
@@ -111,6 +112,7 @@ function announcements_() {
       id: r[0], posted: r[1], by: r[2], title: r[3], content: r[4],
       photos: (r[5].match(/\/d\/[\w-]+/g) || []).map(function (s) { return s.slice(3); }),
       recipients: r[6] ? r[6].split(', ') : [],
+      rule: r[7] === 'Rule',
     };
   });
 }
@@ -127,6 +129,13 @@ function unreadFor_(name, anns, confs) {
   return anns.filter(function (a) {
     return a.recipients.indexOf(name) >= 0 && !confs[a.id + '\n' + name];
   });
+}
+
+/** 출근 도장 화면에 랜덤으로 보여줄 규칙 목록 (Type = Rule 인 공지 전체). */
+function tips_() {
+  if (!props_.getProperty('ANN_SHEET_ID')) return [];
+  return announcements_().filter(function (a) { return a.rule; })
+    .map(function (a) { return { id: a.id, title: a.title, content: a.content }; });
 }
 
 function nowStamp_() { return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm:ss'); }
@@ -151,7 +160,7 @@ function annList_(req) {
   var name = whoAmI_(req.token), confs = confirmations_();
   var list = announcements_().filter(function (a) { return a.recipients.indexOf(name) >= 0; })
     .map(function (a) {
-      return { id: a.id, posted: a.posted, by: a.by, title: a.title, content: a.content,
+      return { id: a.id, posted: a.posted, by: a.by, title: a.title, content: a.content, rule: a.rule,
                photos: a.photos.length, confirmedAt: confs[a.id + '\n' + name] || null };
     }).reverse();
   return { ok: true, announcements: list };
@@ -211,7 +220,8 @@ function post_(req) {
       return 'https://drive.google.com/file/d/' + file.getId() + '/view';
     });
     var posted = nowStamp_();
-    appendRecord_('Announcements', [id, posted, name, title, content, links.join('\n'), recipients.join(', ')]);
+    appendRecord_('Announcements', [id, posted, name, title, content, links.join('\n'), recipients.join(', '),
+                                    req.rule ? 'Rule' : 'Notice']);
     props_.setProperty('ANN_SEQ', String(seq));
     ann = announcements_().filter(function (x) { return x.id === id; })[0];
   } finally {
@@ -233,7 +243,7 @@ function annStatus_(req) {
       var at = confs[a.id + '\n' + r];
       if (at) done.push({ name: r, at: at }); else pending.push(r);
     });
-    return { id: a.id, posted: a.posted, title: a.title, confirmed: done, pending: pending };
+    return { id: a.id, posted: a.posted, title: a.title, rule: a.rule, confirmed: done, pending: pending };
   }).reverse();
   var integrity = verifyRecords().every(function (x) { return x.ok; });
   return { ok: true, announcements: list, integrity: integrity };

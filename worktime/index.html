@@ -84,6 +84,26 @@
     .names { font-size: 14px; margin: 6px 0 0; padding-left: 18px; }
     .pending { color: var(--err); }
     h3 { font-size: 16px; margin: 0 0 4px; }
+    .status { display: flex; align-items: center; gap: 14px; padding: 16px 20px; }
+    .status .s-icon { font-size: 34px; line-height: 1; }
+    .status .s-action { font-size: 22px; font-weight: 700; letter-spacing: .5px; }
+    .status .stamp { font-size: 17px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    #r-msg { margin: 10px 4px; }
+    .tip { background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--brand);
+           border-radius: 16px; padding: 18px; margin-top: 12px; }
+    .tip-label { color: var(--brand); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
+    .tip h2 { font-size: 19px; margin: 6px 0 8px; }
+    #r-ann { margin-top: 12px; }
+    #v-result { padding-bottom: 120px; }
+    #v-result #b-modify { display: block; margin: 14px auto 0; }
+    .dock {
+      position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center;
+      padding: 24px 16px max(16px, env(safe-area-inset-bottom));
+      background: linear-gradient(to bottom, transparent, var(--bg) 35%);
+    }
+    .dock button { max-width: 420px; margin: 0; padding: 18px; font-size: 19px; border-radius: 14px; }
+    .check { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 15px; color: var(--text); }
+    .check input { width: 22px; height: 22px; }
   </style>
 </head>
 <body>
@@ -140,6 +160,7 @@
         <label for="p-photos">Photos (optional, up to 6)</label>
         <input id="p-photos" type="file" accept="image/*" multiple>
         <div id="p-thumbs" class="thumbs"></div>
+        <label class="check"><input id="p-rule" type="checkbox"> Rule: also show it as a tip when clocking in</label>
         <button type="submit">Post and notify everyone</button>
       </form>
       <p id="post-msg"></p>
@@ -152,15 +173,34 @@
     <button id="b-admin-back" class="secondary">Back</button>
   </section>
 
-  <!-- 처리 중 / 결과 -->
-  <section id="v-result" class="card hidden">
-    <div class="big">
-      <div class="icon" id="r-icon">⏳</div>
-      <div class="action" id="r-action"></div>
-      <div class="stamp" id="r-stamp"></div>
-      <p id="r-msg"></p>
+  <!-- 처리 중 / 결과: 상태 + (확인 안 한 공지 | 랜덤 규칙) + 항상 같은 자리의 큰 버튼 -->
+  <section id="v-result" class="hidden">
+    <div class="card status">
+      <span id="r-icon" class="s-icon">⏳</span>
+      <div><div id="r-action" class="s-action"></div><div id="r-stamp" class="stamp"></div></div>
     </div>
-    <button id="b-modify" class="secondary hidden">Request time change</button>
+    <p id="r-msg"></p>
+    <div id="r-ann" class="hidden">
+      <div class="alert">I have an unread announcement !</div>
+      <div id="r-ann-card"></div>
+    </div>
+    <div id="r-tip" class="tip hidden">
+      <div class="tip-label">💡 Our rules</div>
+      <h2 id="tip-title"></h2>
+      <div id="tip-content" class="content"></div>
+    </div>
+    <button id="b-modify" class="link hidden">Request time change</button>
+    <div class="dock"><button id="b-main" disabled>Saving…</button></div>
+  </section>
+
+  <!-- 창을 스스로 닫을 수 없는 브라우저 (iPhone 등) -->
+  <section id="v-closed" class="card hidden">
+    <div class="big">
+      <div class="icon">✓</div>
+      <div class="action">Done</div>
+      <p class="hint">You can close this tab now.</p>
+    </div>
+    <button id="b-closed-home" class="secondary">Home</button>
   </section>
 
   <!-- 시간 변경 요청 -->
@@ -186,7 +226,7 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
     del(k) { try { localStorage.removeItem(k); } catch (e) {} },
   };
-  const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin'];
+  const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed'];
   let lastTap = null;
   let annReturn = 'home';
 
@@ -249,33 +289,123 @@
     $('badge').classList.toggle('hidden', !n);
   }
 
+  // ---------------------------------------------------------------- 랜덤 규칙 (팁)
+  let tips = [];
+  try { tips = JSON.parse(store.get('wt_tips') || '[]'); } catch (e) { tips = []; }
+
+  function saveTips(list) {
+    if (!Array.isArray(list)) return;
+    tips = list;
+    store.set('wt_tips', JSON.stringify(list));
+  }
+
+  function pickTip() {
+    if (!tips.length) return null;
+    const last = store.get('wt_last_tip');
+    const pool = tips.length > 1 ? tips.filter((t) => t.id !== last) : tips;
+    const t = pool[Math.floor(Math.random() * pool.length)];
+    store.set('wt_last_tip', t.id);
+    return t;
+  }
+
+  function showTip(t) {
+    $('r-tip').classList.toggle('hidden', !t);
+    if (!t) return;
+    $('tip-title').textContent = t.title;
+    $('tip-content').textContent = t.content;
+  }
+
+  // ---------------------------------------------------------------- 하단 고정 버튼
+  // 확인 안 한 공지가 있으면 "I have read and understood", 없으면 "Close" — 항상 같은 자리, 같은 모양
+  let mainMode = null, annQueue = [], currentTip = null;
+
+  function setMain(mode, label) {
+    mainMode = mode;
+    $('b-main').textContent = label;
+    $('b-main').disabled = !mode;
+  }
+
+  function showNextAnn() {
+    const a = annQueue[0];
+    $('r-ann').classList.toggle('hidden', !a);
+    if (!a) {
+      showTip(currentTip);
+      setMain('close', 'Close');
+      return;
+    }
+    showTip(null);
+    $('r-ann-card').replaceChildren(annCard(a, null, false));
+    setMain('confirm', 'I have read and understood');
+  }
+
+  $('b-main').addEventListener('click', async () => {
+    if (mainMode === 'close') return closeTab();
+    if (mainMode !== 'confirm') return;
+    const a = annQueue[0];
+    $('b-main').disabled = true;
+    try {
+      const r = await api({ action: 'confirm', token: token(), id: a.id });
+      if (!r.ok) throw new Error(r.error);
+      annQueue.shift();
+      setBadge(r.unread);
+      window.scrollTo(0, 0);
+      showNextAnn();
+    } catch (e) {
+      $('b-main').disabled = false;
+      alert('Could not save. Please try again. (' + e.message + ')');
+    }
+  });
+
+  function closeTab() {
+    if (standalone()) return goHome(false); // 설치된 앱에서는 홈 화면으로
+    window.close();
+    // 스크립트로 창을 닫을 수 없는 브라우저(iPhone 등)에서는 완료 화면 표시
+    setTimeout(() => show('closed'), 400);
+  }
+
+  $('b-closed-home').addEventListener('click', () => goHome(false));
+
   async function submitTap(tap) {
     $('b-modify').classList.add('hidden');
-    result('⏳', '', '', 'Saving…');
+    $('r-ann').classList.add('hidden');
+    annQueue = [];
+    currentTip = pickTip();
+    result('⏳', 'Saving…', '', '');
+    showTip(currentTip);
+    setMain(null, 'Saving…');
     let r;
     try {
       r = await api({ action: 'tap', token: token(), a: tap.a, p: tap.p, c: tap.c });
     } catch (e) {
       // 네트워크 오류: 같은 태그 값으로 재시도 가능하도록 pending 유지
-      result('⚠️', '', '', 'Network problem. Check your connection and tap the tag again.' + detail(e), 'err');
+      result('⚠️', 'Not saved', '', 'Network problem. Check your connection and tap the tag again.' + detail(e), 'err');
+      setMain('close', 'Close');
       return;
     }
     sessionStorage.removeItem('wt_pending');
-    if (r.ok) {
-      lastTap = r;
-      result('✅', r.info, r.date + '  ' + r.time, 'Saved. Thank you!', 'ok');
-      $('b-modify').classList.remove('hidden');
-      setBadge(r.unread);
-      if (r.unread > 0) {
-        // 저장 후 확인 안 한 공지가 있으면 공지 확인 화면으로 자동 이동
-        setTimeout(() => openAnns('result', '✅ ' + r.info + ' saved at ' + r.date + ' ' + r.time), 1500);
-      }
-    } else if (r.code === 'AUTH') {
+    if (r.code === 'AUTH') {
       sessionStorage.setItem('wt_pending', JSON.stringify(tap));
-      logout(r.error);
-    } else {
-      result('❌', '', '', r.error, 'err');
+      return logout(r.error);
     }
+    if (!r.ok) {
+      result('❌', 'Not saved', '', r.error, 'err');
+      setMain('close', 'Close');
+      return;
+    }
+    lastTap = r;
+    saveTips(r.tips);
+    if (!currentTip) { currentTip = pickTip(); showTip(currentTip); }
+    result('✅', r.info, r.date + '  ' + r.time, 'Saved. Thank you!', 'ok');
+    $('b-modify').classList.remove('hidden');
+    setBadge(r.unread);
+    if (r.unread > 0) {
+      setMain(null, 'Loading…');
+      try {
+        const list = await api({ action: 'anns', token: token() });
+        annQueue = (list.announcements || []).filter((a) => !a.confirmedAt).reverse(); // 오래된 것부터
+      } catch (e) { annQueue = []; }
+    }
+    showNextAnn();
   }
 
   function logout(msg) {
@@ -294,6 +424,7 @@
         store.set('wt_admin', r.admin ? '1' : '0');
         $('b-admin').classList.toggle('hidden', !r.admin);
         setBadge(r.unread);
+        saveTips(r.tips);
         if (r.unread > 0 && autoOpen) openAnns('home');
       }
     } catch (e) { /* 오프라인이어도 홈 화면은 유지 */ }
@@ -336,7 +467,7 @@
     for (const a of unread.concat(list.filter((x) => x.confirmedAt))) box.append(annCard(a, list));
   }
 
-  function annCard(a, list) {
+  function annCard(a, list, withButton = true) {
     const card = el('article', 'ann' + (a.confirmedAt ? '' : ' unread'));
     card.append(el('div', 'meta', a.posted + ' · ' + a.by), el('h2', null, a.title), el('div', 'content', a.content));
     if (a.photos) {
@@ -346,7 +477,7 @@
     }
     if (a.confirmedAt) {
       card.append(el('div', 'done', '✓ Confirmed ' + a.confirmedAt));
-    } else {
+    } else if (withButton) {
       const btn = el('button', null, 'I have read and understood');
       btn.addEventListener('click', async () => {
         btn.disabled = true;
@@ -481,7 +612,7 @@
     $('post-msg').textContent = 'Posting and sending notifications…';
     try {
       const r = await api({ action: 'post', token: token(), title: $('p-title').value,
-                            content: $('p-content').value, photos: pickedPhotos });
+                            content: $('p-content').value, photos: pickedPhotos, rule: $('p-rule').checked });
       if (!r.ok) { $('post-msg').className = 'err'; $('post-msg').textContent = r.error; return; }
       $('post-msg').className = 'ok';
       $('post-msg').textContent = 'Posted (' + r.id + '). Notified ' + r.notified + ' people.';
@@ -508,7 +639,7 @@
       for (const a of r.announcements) {
         const d = el('details');
         const total = a.confirmed.length + a.pending.length;
-        d.append(el('summary', null, a.title + ' — ' + a.confirmed.length + '/' + total));
+        d.append(el('summary', null, (a.rule ? '[Rule] ' : '') + a.title + ' — ' + a.confirmed.length + '/' + total));
         d.append(el('div', 'meta', a.id + ' · posted ' + a.posted));
         const ok = el('ul', 'names');
         a.confirmed.forEach((c) => ok.append(el('li', null, '✓ ' + c.name + ' — ' + c.at)));

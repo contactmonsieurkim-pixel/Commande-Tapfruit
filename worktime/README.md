@@ -107,9 +107,15 @@ URL 기록 → SDM(SUN) 켜기 → NDEF 쓰기 잠금 → Key1/Key2 교체 → �
 ```
 
 - 확인한 사람은 출퇴근 로그인 정보(각 폰에 저장된 이름)로 기록됩니다.
+- **출근 도장 화면**: 태그를 찍는 순간 `Rule`로 게시한 규칙 중 하나가 랜덤으로 뜨고(직전과 다른 것), 저장 후에도 그대로 남습니다.
+  화면 맨 아래의 큰 버튼은 항상 같은 자리·같은 모양입니다:
+  확인 안 한 공지가 있으면 **I have read and understood**, 다 확인하면 **Close**(브라우저 탭 닫기).
+  - 공지를 올릴 때 "Rule" 체크 → 팁으로도 표시. 회의 내용 같은 일반 공지는 체크하지 않으면 팁에 안 나옵니다.
+  - Close: Android Chrome은 태그로 열린 탭이 닫힙니다. iPhone은 브라우저가 탭 닫기를 허용하지 않아
+    "Done – you can close this tab" 화면이 뜹니다. (Safari 설정 → 탭 닫기 → "1일 후"로 두면 쌓이지 않습니다)
 - 게시 시점의 재직 직원이 대상입니다. 이후 입사자는 예전 공지를 받지 않습니다.
 - 기록: Drive `Announcement Records` 스프레드시트
-  - `Announcements`: ID, 게시 일시, 게시자, 제목, 내용, 사진(Drive 링크), 대상자
+  - `Announcements`: ID, 게시 일시, 게시자, 제목, 내용, 사진(Drive 링크), 대상자, 종류(Rule/Notice)
   - `Confirmations`: 공지 ID, 제목, 이름, 확인 일시(초 단위)
   - `Notifications`: 푸시/메일을 언제 누구에게 보냈고 결과가 어땠는지
   - 사진 원본은 `Announcement Photos` 폴더 (비공개, 앱에서 로그인한 직원에게만 전달)
