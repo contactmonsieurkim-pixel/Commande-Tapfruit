@@ -61,7 +61,8 @@ function ensureConfig_() {
   }
   if (!sh.getRange('D1').getValue()) sh.getRange('D1').setValue('Email');
   if (!sh.getRange('E1').getValue()) sh.getRange('E1').setValue('Admin');
-  sh.getRange('A1:E1').setFontWeight('bold');
+  if (!sh.getRange('F1').getValue()) sh.getRange('F1').setValue('Team');
+  sh.getRange('A1:F1').setFontWeight('bold');
   return ss;
 }
 
@@ -80,7 +81,7 @@ function doPost(e) {
     var handlers = {
       login: login_, tap: tap_, modify: modify_, me: me_,
       pushKey: pushKey_, subscribe: subscribe_, anns: annList_, photo: annPhoto_,
-      confirm: confirm_, post: post_, status: annStatus_,
+      confirm: confirm_, post: post_, status: annStatus_, staff: staff_,
     };
     var fn = handlers[req.action];
     if (!fn) return json_({ ok: false, error: 'Unknown action.' });
@@ -105,7 +106,7 @@ function login_(req) {
 
 function me_(req) {
   var name = whoAmI_(req.token);
-  return { ok: true, name: name, admin: isAdmin_(name), unread: unreadCount_(name), tips: tips_() };
+  return { ok: true, name: name, admin: isAdmin_(name), unread: unreadCount_(name), tips: tips_(name) };
 }
 
 function unreadCount_(name) {
@@ -147,7 +148,7 @@ function tap_(req) {
   CacheService.getScriptCache().put('edit_' + editToken,
     JSON.stringify({ ssId: ss.getId(), sheet: name, row: row, name: name }), EDIT_WINDOW_SEC);
   return { ok: true, name: name, date: date, time: time, info: a, editToken: editToken,
-           unread: unreadCount_(name), tips: tips_() };
+           unread: unreadCount_(name), tips: tips_(name) };
 }
 
 function modify_(req) {
@@ -181,11 +182,11 @@ function employees_() {
   var rows = SpreadsheetApp.openById(id).getSheetByName('Employees').getDataRange().getDisplayValues();
   var out = [];
   for (var i = 1; i < rows.length; i++) {
-    var r = rows[i].concat(['', '', '', '', '']);
+    var r = rows[i].concat(['', '', '', '', '', '']);
     var n = String(r[0]).trim();
     if (!n || String(r[2]).trim().toUpperCase() === 'FALSE') continue;
     out.push({ name: n, pin: String(r[1]).trim(), email: String(r[3]).trim(),
-               admin: String(r[4]).trim().toUpperCase() === 'TRUE' });
+               admin: String(r[4]).trim().toUpperCase() === 'TRUE', team: String(r[5]).trim() });
   }
   return out;
 }

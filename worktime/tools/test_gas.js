@@ -39,7 +39,7 @@ function makeEnv(propsInit) {
       getDataRange: () => ({
         getDisplayValues: () => {
           const out = [];
-          for (let r = 1; r <= sheet.getLastRow(); r++) out.push([1, 2, 3, 4, 5].map((c) => cells[r + ',' + c] || ''));
+          for (let r = 1; r <= sheet.getLastRow(); r++) out.push([1, 2, 3, 4, 5, 6].map((c) => cells[r + ',' + c] || ''));
           return out;
         },
       }),
@@ -179,11 +179,11 @@ function makeEnv(propsInit) {
   }
   ctx.setup();
   const config = files[props.CONFIG_SHEET_ID];
-  config.sheets[0].getRange(2, 1, 4, 5).setValues([
-    ['Nam KIM', '4321', 'TRUE', 'nam@example.com', 'TRUE'],
-    ['Old Staff', '1111', 'FALSE', 'old@example.com', ''],
-    ['Yuna', '2222', 'TRUE', 'yuna@example.com', ''],
-    ['No Mail', '3333', 'TRUE', '', ''],
+  config.sheets[0].getRange(2, 1, 4, 6).setValues([
+    ['Nam KIM', '4321', 'TRUE', 'nam@example.com', 'TRUE', 'Service'],
+    ['Old Staff', '1111', 'FALSE', 'old@example.com', '', 'Kitchen'],
+    ['Yuna', '2222', 'TRUE', 'yuna@example.com', '', 'Kitchen'],
+    ['No Mail', '3333', 'TRUE', '', '', 'Kitchen'],
   ]);
   const call = (body) => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).body);
   return { ctx, call, props, files, sent, clock, triggers };
@@ -298,6 +298,8 @@ test('setup: protected record sheets, daily trigger, VAPID keys', () => {
   assert.deepStrictEqual(ss.sheets.map((x) => x.name), ['Announcements', 'Confirmations', 'Notifications']);
   assert.ok(ss.sheets.every((x) => x.protected));
   assert.deepStrictEqual(env.triggers.map((t) => [t.getHandlerFunction(), t.hour]), [['dailyReminder', 10]]);
+  const head = env.files[env.props.CONFIG_SHEET_ID].sheets[0];
+  assert.deepStrictEqual([1, 2, 3, 4, 5, 6].map((c) => head.cells['1,' + c]), ['Name', 'PIN', 'Active', 'Email', 'Admin', 'Team']);
   env.ctx.setup(); // 다시 실행해도 중복 생성 없음
   assert.strictEqual(env.triggers.length, 1);
   assert.strictEqual(Buffer.from(env.call({ action: 'pushKey' }).publicKey, 'base64url').length, 65);
@@ -453,6 +455,71 @@ test('manual edit or deletion in the records is detected', () => {
   assert.strictEqual(rep.find((x) => x.sheet === 'Notifications').ok, false);
   saved.forEach((v, i) => { notes.cells[last + ',' + (i + 1)] = v; });
   assert.ok(env.ctx.verifyRecords().every((x) => x.ok));
+});
+
+// ------------------------------------------------------------------ audience (team / people)
+const lastAnn = () => recRows('Announcements').slice(-1)[0];
+
+test('staff list for the audience picker (managers only)', () => {
+  assert.strictEqual(env.call({ action: 'staff', token: yuna }).ok, false);
+  const r = env.call({ action: 'staff', token });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(r.staff)), [
+    { name: 'Nam KIM', team: 'Service' }, { name: 'Yuna', team: 'Kitchen' },
+    { name: 'No Mail', team: 'Kitchen' }, { name: 'Late Hire', team: '' }]);
+});
+
+test('post to a team -> only that team is notified and must confirm', () => {
+  const m0 = env.sent.mail.length;
+  const r = env.call({ action: 'post', token, title: 'Knife storage', content: 'Knives on the magnet only.',
+                      rule: true, audience: { teams: ['kitchen'] } });
+  assert.ok(r.ok, JSON.stringify(r));
+  const row = lastAnn();
+  assert.strictEqual(row[6], 'Yuna, No Mail');
+  assert.strictEqual(row[7], 'Rule · Teams: Kitchen');
+  assert.deepStrictEqual(env.sent.mail.slice(m0).map((m) => m.to), ['yuna@example.com']);
+  assert.ok(env.call({ action: 'anns', token: yuna }).announcements.some((a) => a.title === 'Knife storage'));
+  assert.ok(!env.call({ action: 'anns', token }).announcements.some((a) => a.title === 'Knife storage'));
+});
+
+test('post to a team + individual people', () => {
+  const r = env.call({ action: 'post', token, title: 'Terrace', content: 'Terrace opens at 18:00.',
+                      audience: { teams: ['Service'], people: ['yuna'] } });
+  assert.ok(r.ok, JSON.stringify(r));
+  assert.strictEqual(lastAnn()[6], 'Nam KIM, Yuna');
+  assert.strictEqual(lastAnn()[7], 'Notice · Teams: Service · People: Yuna');
+});
+
+test('post to individual people only', () => {
+  assert.ok(env.call({ action: 'post', token, title: 'Your locker', content: 'Locker 4 is yours.',
+                       audience: { people: ['No Mail'] } }).ok);
+  assert.strictEqual(lastAnn()[6], 'No Mail');
+  assert.strictEqual(lastAnn()[7], 'Notice · People: No Mail');
+});
+
+test('invalid audiences are rejected and nothing is recorded', () => {
+  const n = recRows('Announcements').length;
+  for (const audience of [{ teams: ['Bar'] }, { people: ['Old Staff'] }, { people: ['Nobody'] }, { teams: [], people: [] }]) {
+    assert.strictEqual(env.call({ action: 'post', token, title: 't', content: 'c', audience }).ok, false, JSON.stringify(audience));
+  }
+  assert.strictEqual(recRows('Announcements').length, n);
+});
+
+test('team rules show as tips only to that team (including new hires)', () => {
+  const titles = (t) => env.call({ action: 'me', token: t }).tips.map((x) => x.title).sort();
+  assert.deepStrictEqual(titles(yuna), ['Kitchen rules', 'Knife storage']);
+  assert.deepStrictEqual(titles(token), ['Kitchen rules']);
+  const config = env.files[env.props.CONFIG_SHEET_ID];
+  config.sheets[0].getRange(7, 1, 1, 6).setValues([['New Cook', '7777', 'TRUE', '', '', 'Kitchen']]);
+  const cook = env.call({ action: 'login', name: 'New Cook', pin: '7777' }).token;
+  assert.deepStrictEqual(titles(cook), ['Kitchen rules', 'Knife storage']);
+  assert.strictEqual(env.call({ action: 'me', token: cook }).unread, 0, 'not a recipient of old posts');
+});
+
+test('admin status shows the audience; records still verify', () => {
+  const st = env.call({ action: 'status', token });
+  assert.strictEqual(st.announcements.find((a) => a.title === 'Knife storage').audience, 'Teams: Kitchen');
+  assert.strictEqual(st.announcements.find((a) => a.title === 'Kitchen rules').audience, 'Everyone');
+  assert.strictEqual(st.integrity, true);
 });
 
 console.log(`\n${passed} passed`);

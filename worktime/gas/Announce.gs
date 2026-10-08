@@ -2,7 +2,8 @@
 //
 // "Announcement Records" 스프레드시트 (setup() 이 생성, 모든 시트 보호):
 //   Announcements : ID | Posted at | Posted by | Title | Content | Photos | Recipients | Type | Hash
-//                   (Type: Rule = 출근 도장 화면에 팁으로 랜덤 표시, Notice = 일반 공지)
+//                   (Type: Rule = 출근 도장 화면에 팁으로 랜덤 표시, Notice = 일반 공지.
+//                    대상을 좁힌 경우 'Rule · Teams: Kitchen · People: Yuna' 처럼 대상이 이어서 기록됨)
 //   Confirmations : Announcement ID | Title | Name | Confirmed at | Hash
 //   Notifications : Sent at | Announcement IDs | Name | Channel | Result | Hash
 // 각 행의 Hash 는 직전 행 Hash + 내용으로 만든 HMAC 체인 -> verifyRecords() 로 수정 여부 검사.
@@ -112,7 +113,8 @@ function announcements_() {
       id: r[0], posted: r[1], by: r[2], title: r[3], content: r[4],
       photos: (r[5].match(/\/d\/[\w-]+/g) || []).map(function (s) { return s.slice(3); }),
       recipients: r[6] ? r[6].split(', ') : [],
-      rule: r[7] === 'Rule',
+      rule: r[7].split(' · ')[0] === 'Rule',
+      audience: parseAudience_(r[7]),
     };
   });
 }
@@ -131,10 +133,70 @@ function unreadFor_(name, anns, confs) {
   });
 }
 
-/** 출근 도장 화면에 랜덤으로 보여줄 규칙 목록 (Type = Rule 인 공지 전체). */
-function tips_() {
+// ------------------------------------------------------------------ audience (전체 / 팀 / 개인)
+
+/** Type 셀의 대상 부분 해석. 대상 표기가 없으면 전체(null). */
+function parseAudience_(typeCell) {
+  var parts = String(typeCell).split(' · ').slice(1);
+  if (!parts.length) return null;
+  var aud = { teams: [], people: [] };
+  parts.forEach(function (p) {
+    var m = p.match(/^(Teams|People): (.*)$/);
+    if (m) aud[m[1] === 'Teams' ? 'teams' : 'people'] = m[2].split(', ');
+  });
+  return aud;
+}
+
+function audienceLabel_(aud) {
+  if (!aud) return '';
+  var out = [];
+  if (aud.teams.length) out.push('Teams: ' + aud.teams.join(', '));
+  if (aud.people.length) out.push('People: ' + aud.people.join(', '));
+  return out.join(' · ');
+}
+
+/** 요청의 대상 → 정규화된 대상(전체면 null) + 수신자 이름 목록. */
+function resolveAudience_(req) {
+  var staff = activeEmployees_();
+  var a = req.audience;
+  if (!a || a === 'all') return { audience: null, recipients: staff.map(function (e) { return e.name; }) };
+  var teams = [], people = [];
+  (a.teams || []).forEach(function (t) {
+    var ok = staff.some(function (e) { return e.team && e.team.toLowerCase() === String(t).toLowerCase(); });
+    if (!ok) fail_('Unknown team: ' + t);
+    var canon = staff.filter(function (e) { return e.team.toLowerCase() === String(t).toLowerCase(); })[0].team;
+    if (teams.indexOf(canon) < 0) teams.push(canon);
+  });
+  (a.people || []).forEach(function (n) {
+    var e = findEmployee_(n);
+    if (!e) fail_('Unknown or inactive employee: ' + n);
+    if (people.indexOf(e.name) < 0) people.push(e.name);
+  });
+  var recipients = staff.filter(function (e) {
+    return teams.indexOf(e.team) >= 0 || people.indexOf(e.name) >= 0;
+  }).map(function (e) { return e.name; });
+  if (!recipients.length) fail_('Please choose at least one recipient.');
+  return { audience: { teams: teams, people: people }, recipients: recipients };
+}
+
+function staff_(req) {
+  if (!isAdmin_(whoAmI_(req.token))) fail_('Only managers can see this.');
+  return { ok: true, staff: activeEmployees_().map(function (e) { return { name: e.name, team: e.team }; }) };
+}
+
+/**
+ * 출근 도장 화면에 랜덤으로 보여줄 규칙 목록 (Type = Rule).
+ * 전체 대상 규칙은 모두에게, 팀 대상 규칙은 지금 그 팀 사람(신규 입사자 포함)에게, 개인 대상은 그 사람에게.
+ */
+function tips_(name) {
   if (!props_.getProperty('ANN_SHEET_ID')) return [];
-  return announcements_().filter(function (a) { return a.rule; })
+  var me = name ? findEmployee_(name) : null;
+  return announcements_().filter(function (a) {
+    if (!a.rule) return false;
+    if (!a.audience || !me) return true;
+    return a.recipients.indexOf(me.name) >= 0 || a.audience.people.indexOf(me.name) >= 0 ||
+      (me.team && a.audience.teams.indexOf(me.team) >= 0);
+  })
     .map(function (a) { return { id: a.id, title: a.title, content: a.content }; });
 }
 
@@ -207,7 +269,8 @@ function post_(req) {
   });
   if (photos.length > MAX_PHOTOS) fail_('Up to ' + MAX_PHOTOS + ' photos.');
 
-  var recipients = activeEmployees_().map(function (e) { return e.name; });
+  var target = resolveAudience_(req), recipients = target.recipients;
+  var type = (req.rule ? 'Rule' : 'Notice') + (target.audience ? ' · ' + audienceLabel_(target.audience) : '');
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   var ann;
@@ -220,8 +283,7 @@ function post_(req) {
       return 'https://drive.google.com/file/d/' + file.getId() + '/view';
     });
     var posted = nowStamp_();
-    appendRecord_('Announcements', [id, posted, name, title, content, links.join('\n'), recipients.join(', '),
-                                    req.rule ? 'Rule' : 'Notice']);
+    appendRecord_('Announcements', [id, posted, name, title, content, links.join('\n'), recipients.join(', '), type]);
     props_.setProperty('ANN_SEQ', String(seq));
     ann = announcements_().filter(function (x) { return x.id === id; })[0];
   } finally {
@@ -243,7 +305,8 @@ function annStatus_(req) {
       var at = confs[a.id + '\n' + r];
       if (at) done.push({ name: r, at: at }); else pending.push(r);
     });
-    return { id: a.id, posted: a.posted, title: a.title, rule: a.rule, confirmed: done, pending: pending };
+    return { id: a.id, posted: a.posted, title: a.title, rule: a.rule, audience: audienceLabel_(a.audience) || 'Everyone',
+             confirmed: done, pending: pending };
   }).reverse();
   var integrity = verifyRecords().every(function (x) { return x.ok; });
   return { ok: true, announcements: list, integrity: integrity };
