@@ -49,14 +49,18 @@ python ntag424_setup.py genkeys
 ### 2. Apps Script 백엔드
 
 1. 기존 "Work Time Log with NFC" Apps Script 프로젝트를 열고 기존 코드를 지운 뒤
-   `gas/Code.gs`, `gas/Crypto.gs`를 붙여 넣습니다. (`Index.html`은 삭제)
+   `gas/` 의 `.gs` 파일 4개(`Code`, `Crypto`, `WebPush`, `Announce`)를 같은 이름으로 붙여 넣습니다.
+   (`Index.html`은 삭제. 파일 끝까지 복사됐는지는 `setup` 실행 시 자동으로 검사합니다)
 2. 프로젝트 설정 → "appsscript.json 표시" 체크 → `gas/appsscript.json` 내용으로 교체
 3. 프로젝트 설정 → 스크립트 속성에 추가:
    - `SDM_META_KEY` = genkeys 출력값
    - `SDM_FILE_KEY` = genkeys 출력값
-4. 편집기에서 `setup` 함수를 한 번 실행합니다. (권한 승인)
-   폴더 안에 `WorkTime Config` 시트가 생깁니다. `Employees` 탭에 직원 이름 / PIN 을 입력하세요.
-   퇴사자는 Active 를 `FALSE` 로 바꾸면 바로 로그인이 막힙니다.
+4. 편집기에서 `setup` 함수를 실행합니다. (권한 승인. 여러 번 실행해도 안전)
+   폴더 안에 `WorkTime Config`, `Announcement Records` 시트가 생깁니다.
+   `Employees` 탭: `Name | PIN | Active | Email | Admin`
+   - 퇴사자는 Active 를 `FALSE` 로 바꾸면 바로 로그인이 막히고 알림도 가지 않습니다.
+   - Email: 공지 메일을 받을 주소. Admin: 공지를 올릴 수 있는 관리자는 `TRUE`.
+   - 이름은 바꾸지 마세요. (기록이 이름으로 연결됩니다)
 5. 배포 → 새 배포 → 웹 앱, 실행: **나**, 액세스: **모든 사용자** → 배포 후 `/exec` URL 복사
    - 코드를 고친 뒤에는 "배포 관리 → 수정 → 새 버전"으로 재배포해야 반영됩니다. (URL 유지)
 
@@ -92,12 +96,51 @@ URL 기록 → SDM(SUN) 켜기 → NDEF 쓰기 잠금 → Key1/Key2 교체 → �
    iPhone: 태그는 항상 **Safari**로 열리므로 Safari에서 한 번 로그인해 두면 됩니다.
    (iPhone은 홈 화면 앱과 Safari가 로그인 정보를 공유하지 않습니다)
 
+## 공지사항 · 읽음 확인
+
+```
+관리자 (PWA "Manager: announcements") ── 제목/내용/사진 게시
+   │
+   ├─▶ 모든 재직 직원에게 동시에: 웹 푸시 "I have an unread announcement !" + 메일
+   ├─▶ 매일 10:00 (파리): 확인 안 한 사람에게만 푸시 + 메일 하루 1통 (확인할 때까지)
+   └─▶ 직원이 NFC 태그 저장 후, 확인 안 한 공지가 있으면 자동으로 공지 화면 → "I have read and understood" 1번 클릭
+```
+
+- 확인한 사람은 출퇴근 로그인 정보(각 폰에 저장된 이름)로 기록됩니다.
+- **출근 도장 화면**: 태그를 찍는 순간 `Rule`로 게시한 규칙 중 하나가 랜덤으로 뜨고(직전과 다른 것), 저장 후에도 그대로 남습니다.
+  화면 맨 아래의 큰 버튼은 항상 같은 자리·같은 모양입니다:
+  확인 안 한 공지가 있으면 **I have read and understood**, 다 확인하면 **Close**(브라우저 탭 닫기).
+  - 공지를 올릴 때 "Rule" 체크 → 팁으로도 표시. 회의 내용 같은 일반 공지는 체크하지 않으면 팁에 안 나옵니다.
+  - Close: Android Chrome은 태그로 열린 탭이 닫힙니다. iPhone은 브라우저가 탭 닫기를 허용하지 않아
+    "Done – you can close this tab" 화면이 뜹니다. (Safari 설정 → 탭 닫기 → "1일 후"로 두면 쌓이지 않습니다)
+- 게시 시점의 재직 직원이 대상입니다. 이후 입사자는 예전 공지를 받지 않습니다.
+- 기록: Drive `Announcement Records` 스프레드시트
+  - `Announcements`: ID, 게시 일시, 게시자, 제목, 내용, 사진(Drive 링크), 대상자, 종류(Rule/Notice)
+  - `Confirmations`: 공지 ID, 제목, 이름, 확인 일시(초 단위)
+  - `Notifications`: 푸시/메일을 언제 누구에게 보냈고 결과가 어땠는지
+  - 사진 원본은 `Announcement Photos` 폴더 (비공개, 앱에서 로그인한 직원에게만 전달)
+- **수정 방지**
+  - 모든 시트가 보호되어 있고, 시스템(스크립트)만 기록합니다. 이 스프레드시트는 아무에게도 편집 권한으로 공유하지 마세요. 보기 권한만 주세요.
+  - Google 은 파일 소유자의 편집을 막을 수 없습니다. 그래서 각 행에 직전 행과 이어지는 서명(Hash)을 남깁니다.
+    누군가 셀을 고치거나 행을 지우면 관리자 화면에 `⚠ Records were changed outside the system`이 뜹니다.
+    편집기에서 `verifyRecords`를 실행하면 몇 번째 행인지 알려줍니다.
+
+### 알림 켜기 (직원 폰, 1회)
+
+- **iPhone (iOS 16.4 이상)**: Safari/Chrome에서 PWA 주소 열기 → 공유 → **홈 화면에 추가** →
+  홈 화면의 Work Time 앱 실행 → 로그인 → **Turn on notifications** → 허용.
+  (iPhone은 홈 화면 앱에서만 웹 푸시를 받을 수 있습니다)
+- **Android**: Chrome에서 로그인 → **Turn on notifications** → 허용.
+- 알림을 켜지 않아도 메일은 갑니다.
+
 ## 테스트 (리더기 없이)
 
 ```bash
 cd worktime/tools
 python test_ntag424.py   # NXP AN12196 공식 벡터 + 가상 태그로 program/read/reset
-node test_gas.js         # 가상 Google 서비스로 로그인/태그/재사용 차단/시간 변경
+node test_gas.js         # 가상 Google 서비스로 로그인/태그/재사용 차단/시간 변경/공지/리마인더/위변조 감지
+node test_webpush.js     # 웹 푸시 암호화·서명을 Node crypto 와 교차 검증
+# (선택) npm install http_ece 후 실행하면 푸시 내용을 참조 구현으로 복호화까지 검증
 ```
 
 ## 참고
