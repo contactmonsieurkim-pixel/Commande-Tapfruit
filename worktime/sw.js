@@ -9,15 +9,15 @@ self.addEventListener('push', (e) => {
     body: d.body || '',
     icon: 'icon-192.png',
     badge: 'icon-192.png',
-    tag: 'announcement',
+    tag: d.tag || 'announcement', // 출퇴근 알림은 매번 다른 tag → 하나씩 쌓임
     renotify: true,
-    data: { url: d.url || './?view=ann' },
+    data: { url: d.url || './' },
   }));
 });
 
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
-  const url = new URL(e.notification.data && e.notification.data.url || './?view=ann', self.registration.scope).href;
+  const url = new URL(e.notification.data && e.notification.data.url || './', self.registration.scope).href;
   e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
     for (const c of list) {
       if (c.url.startsWith(self.registration.scope) && 'navigate' in c) {

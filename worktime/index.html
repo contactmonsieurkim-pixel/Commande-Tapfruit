@@ -114,6 +114,9 @@
     #r-ann { margin-top: 12px; }
     #v-result { padding-bottom: 120px; }
     #v-result #b-modify { display: block; margin: 14px auto 0; }
+    #v-ann.focus { padding-bottom: 120px; }
+    #b-ann-later { display: block; margin: 14px auto 0; }
+    .count { color: var(--muted); font-size: 14px; text-align: center; margin: -4px 0 10px; }
     .dock {
       position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center;
       padding: 24px 16px max(16px, env(safe-area-inset-bottom));
@@ -163,12 +166,6 @@
 
   <!-- 대기 화면 -->
   <section id="v-home" class="hidden">
-    <div class="card">
-      <div class="big">
-        <div class="icon">📲</div>
-        <p class="hint">Tap the <b>START</b> or <b>END</b> tag with your phone.</p>
-      </div>
-    </div>
     <button id="b-anns" class="secondary">Announcements<span id="badge" class="badge hidden"></span></button>
     <button id="b-admin" class="secondary hidden">Manager: announcements</button>
   </section>
@@ -177,8 +174,11 @@
   <section id="v-ann" class="hidden">
     <div id="ann-saved" class="saved hidden"></div>
     <div id="ann-alert" class="alert hidden">I have an unread announcement !</div>
+    <div id="ann-done" class="saved hidden">✓ All caught up. Here are the past announcements.</div>
     <div id="ann-list"><p class="hint">Loading…</p></div>
+    <button id="b-ann-later" class="link hidden">Later</button>
     <button id="b-ann-back" class="secondary">Back</button>
+    <div id="ann-dock" class="dock hidden"><button id="b-ann-confirm">I have read and understood</button></div>
   </section>
 
   <!-- 관리자: 공지 작성 + 확인 현황 -->
@@ -371,6 +371,7 @@
   function setBadge(n) {
     $('badge').textContent = n;
     $('badge').classList.toggle('hidden', !n);
+    $('b-anns').classList.toggle('secondary', !n);
   }
 
   // ---------------------------------------------------------------- 랜덤 규칙 (팁)
@@ -540,16 +541,47 @@
     renderAnns(r.announcements);
   }
 
-  function renderAnns(list) {
-    const unread = list.filter((a) => !a.confirmedAt);
-    $('ann-alert').classList.toggle('hidden', !unread.length);
+  // 확인 안 한 공지가 있으면 그것만 하나씩 (오래된 것부터) 보여주고, 다 확인한 뒤에만 지난 공지 목록을 보여줌
+  let annList = [];
+
+  function renderAnns(list, justFinished) {
+    annList = list;
+    const unread = list.filter((a) => !a.confirmedAt).reverse();
+    const focus = unread.length > 0;
     setBadge(unread.length);
+    $('v-ann').classList.toggle('focus', focus);
+    $('ann-alert').classList.toggle('hidden', !focus);
+    $('ann-dock').classList.toggle('hidden', !focus);
+    $('b-ann-later').classList.toggle('hidden', !focus);
+    $('b-ann-back').classList.toggle('hidden', focus);
+    $('ann-done').classList.toggle('hidden', focus || !justFinished);
     const box = $('ann-list');
     box.replaceChildren();
+    if (focus) {
+      if (unread.length > 1) box.append(el('div', 'count', '1 of ' + unread.length));
+      box.append(annCard(unread[0], list, false));
+      $('b-ann-confirm').disabled = false;
+      return;
+    }
     if (!list.length) box.append(el('p', 'hint', 'No announcements yet.'));
-    // 확인 안 한 공지를 먼저
-    for (const a of unread.concat(list.filter((x) => x.confirmedAt))) box.append(annCard(a, list));
+    for (const a of list) box.append(annCard(a, list, false));
   }
+
+  $('b-ann-confirm').addEventListener('click', async () => {
+    const a = annList.filter((x) => !x.confirmedAt).reverse()[0];
+    if (!a) return;
+    $('b-ann-confirm').disabled = true;
+    try {
+      const r = await api({ action: 'confirm', token: token(), id: a.id });
+      if (!r.ok) throw new Error(r.error);
+      a.confirmedAt = r.confirmedAt;
+      window.scrollTo(0, 0);
+      renderAnns(annList, true);
+    } catch (e) {
+      $('b-ann-confirm').disabled = false;
+      alert('Could not save. Please try again. (' + e.message + ')');
+    }
+  });
 
   function annCard(a, list, withButton = true) {
     const card = el('article', 'ann' + (a.confirmedAt ? '' : ' unread'));
@@ -600,7 +632,9 @@
   }
 
   $('b-anns').addEventListener('click', () => openAnns('home'));
-  $('b-ann-back').addEventListener('click', () => (annReturn === 'result' ? show('result') : goHome()));
+  const leaveAnns = () => (annReturn === 'result' ? show('result') : goHome());
+  $('b-ann-back').addEventListener('click', leaveAnns);
+  $('b-ann-later').addEventListener('click', leaveAnns);
 
   // ---------------------------------------------------------------- 알림 (웹 푸시)
   const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
@@ -839,7 +873,8 @@
     const btn = ev.submitter; btn.disabled = true;
     $('login-msg').textContent = '';
     try {
-      const r = await api({ action: 'login', name: $('name').value, pin: $('pin').value });
+      const r = await api({ action: 'login', name: $('name').value, pin: $('pin').value,
+                            device: { ua: navigator.userAgent, standalone: standalone() } });
       if (!r.ok) { $('login-msg').textContent = r.error; return; }
       store.set('wt_token', r.token); store.set('wt_name', r.name); store.set('wt_admin', r.admin ? '1' : '0');
       $('pin').value = '';

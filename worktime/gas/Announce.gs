@@ -17,29 +17,38 @@ var REC_SHEETS = {
   Announcements: ['ID', 'Posted at', 'Posted by', 'Title', 'Content', 'Photos', 'Recipients', 'Type', 'Hash'],
   Confirmations: ['Announcement ID', 'Title', 'Name', 'Confirmed at', 'Hash'],
   Notifications: ['Sent at', 'Announcement IDs', 'Name', 'Channel', 'Result', 'Hash'],
+  Logins: ['Logged in at', 'Name', 'Device', 'Devices so far', 'Hash'],
 };
 
 // ------------------------------------------------------------------ setup helpers
 
 function ensureRecords_() {
   if (!props_.getProperty('LOG_KEY')) props_.setProperty('LOG_KEY', b64u_(randomBytes_(32)));
-  var id = props_.getProperty('ANN_SHEET_ID');
-  if (id) return SpreadsheetApp.openById(id);
-  var ss = SpreadsheetApp.create('Announcement Records');
-  DriveApp.getFileById(ss.getId()).moveTo(folder_());
-  var first = ss.getSheets()[0];
-  Object.keys(REC_SHEETS).forEach(function (name, i) {
-    var sh = i === 0 ? first.setName(name) : ss.insertSheet(name);
-    var head = REC_SHEETS[name];
-    sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold');
-    sh.getRange(1, 1, sh.getMaxRows(), head.length).setNumberFormat('@').setVerticalAlignment('top');
-    sh.setFrozenRows(1);
-    var p = sh.protect().setDescription('System records: written only by the Work Time system');
-    p.removeEditors(p.getEditors());
-    if (p.canDomainEdit()) p.setDomainEdit(false);
+  var id = props_.getProperty('ANN_SHEET_ID'), ss;
+  if (id) {
+    ss = SpreadsheetApp.openById(id);
+  } else {
+    ss = SpreadsheetApp.create('Announcement Records');
+    DriveApp.getFileById(ss.getId()).moveTo(folder_());
+    initRecSheet_(ss.getSheets()[0].setName('Announcements'), 'Announcements');
+    props_.setProperty('ANN_SHEET_ID', ss.getId());
+  }
+  // 나중에 추가된 기록 시트(예: Logins)도 기존 파일에 만들어 줌
+  Object.keys(REC_SHEETS).forEach(function (name) {
+    if (!ss.getSheetByName(name)) initRecSheet_(ss.insertSheet(name), name);
   });
-  props_.setProperty('ANN_SHEET_ID', ss.getId());
   return ss;
+}
+
+function initRecSheet_(sh, name) {
+  var head = REC_SHEETS[name];
+  sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold');
+  sh.getRange(1, 1, sh.getMaxRows(), head.length).setNumberFormat('@').setVerticalAlignment('top');
+  sh.setFrozenRows(1);
+  var p = sh.protect().setDescription('System records: written only by the Work Time system');
+  p.removeEditors(p.getEditors());
+  if (p.canDomainEdit()) p.setDomainEdit(false);
+  return sh;
 }
 
 function photoFolder_() {
@@ -61,7 +70,8 @@ function installTriggers_() {
 // ------------------------------------------------------------------ records (hash chain)
 
 function recSheet_(name) {
-  return SpreadsheetApp.openById(requiredProp_('ANN_SHEET_ID')).getSheetByName(name);
+  var ss = SpreadsheetApp.openById(requiredProp_('ANN_SHEET_ID'));
+  return ss.getSheetByName(name) || initRecSheet_(ss.insertSheet(name), name);
 }
 
 function rowHash_(prev, values) {
@@ -390,14 +400,14 @@ function buildMail_(anns, appUrl, withPhotos) {
       '<div style="white-space:pre-wrap">' + esc_(a.content) + '</div>' + imgs + '</div>';
   });
   // 같은 제목의 메일이 쌓이면 Gmail 이 반복되는 뒷부분을 "…" 로 접어버림.
-  // -> 버튼을 맨 위에 두고, 메일마다 다른 발송 시각·참조 번호를 끝에 넣어 접히지 않게 함.
+  // -> 버튼은 맨 위에 하나만 두고, 메일마다 다른 발송 시각·참조 번호를 끝에 넣어 접히지 않게 함.
   var button = '<p style="margin:16px 0"><a href="' + esc_(appUrl) + '" style="display:inline-block;' +
     'background:#1f6f54;color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;' +
     'font-weight:700;font-size:16px">Go to Confirm</a></p>';
   var ref = anns.map(function (a) { return a.id; }).join(', ') + ' · sent ' + nowStamp_() + ' · ' +
     Utilities.getUuid().slice(0, 8);
   var html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px">' +
-    '<h1 style="font-size:20px;margin:0 0 4px">' + PUSH_TITLE + '</h1>' + button + parts.join('') + button +
+    '<h1 style="font-size:20px;margin:0 0 4px">' + PUSH_TITLE + '</h1>' + button + parts.join('') +
     '<p style="color:#66706b;font-size:13px">Please confirm in the app. ' +
     'You will get a reminder every day until you confirm.</p>' +
     '<p style="color:#9aa49f;font-size:11px">Ref ' + esc_(ref) + '</p></div>';

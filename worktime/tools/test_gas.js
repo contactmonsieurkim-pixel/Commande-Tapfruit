@@ -39,7 +39,7 @@ function makeEnv(propsInit) {
       getDataRange: () => ({
         getDisplayValues: () => {
           const out = [];
-          for (let r = 1; r <= sheet.getLastRow(); r++) out.push([1, 2, 3, 4, 5, 6].map((c) => cells[r + ',' + c] || ''));
+          for (let r = 1; r <= sheet.getLastRow(); r++) out.push([1, 2, 3, 4, 5, 6, 7].map((c) => cells[r + ',' + c] || ''));
           return out;
         },
       }),
@@ -174,16 +174,16 @@ function makeEnv(propsInit) {
     },
   };
   vm.createContext(ctx);
-  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs']) {
+  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs']) {
     vm.runInContext(fs.readFileSync(path.join(GAS, f), 'utf8'), ctx, { filename: f });
   }
   ctx.setup();
   const config = files[props.CONFIG_SHEET_ID];
-  config.sheets[0].getRange(2, 1, 4, 6).setValues([
-    ['Nam KIM', '4321', 'TRUE', 'nam@example.com', 'TRUE', 'Service'],
-    ['Old Staff', '1111', 'FALSE', 'old@example.com', '', 'Kitchen'],
-    ['Yuna', '2222', 'TRUE', 'yuna@example.com', '', 'Kitchen'],
-    ['No Mail', '3333', 'TRUE', '', '', 'Kitchen'],
+  config.sheets[0].getRange(2, 1, 4, 7).setValues([
+    ['Nam KIM', '4321', 'TRUE', 'nam@example.com', 'TRUE', 'Service', 'TRUE'],
+    ['Old Staff', '1111', 'FALSE', 'old@example.com', '', 'Kitchen', ''],
+    ['Yuna', '2222', 'TRUE', 'yuna@example.com', '', 'Kitchen', ''],
+    ['No Mail', '3333', 'TRUE', '', '', 'Kitchen', ''],
   ]);
   const call = (body) => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).body);
   return { ctx, call, props, files, sent, clock, triggers };
@@ -295,11 +295,12 @@ const recRows = (name) => {
 
 test('setup: protected record sheets, daily trigger, VAPID keys', () => {
   const ss = env.files[env.props.ANN_SHEET_ID];
-  assert.deepStrictEqual(ss.sheets.map((x) => x.name), ['Announcements', 'Confirmations', 'Notifications']);
+  assert.deepStrictEqual(ss.sheets.map((x) => x.name), ['Announcements', 'Confirmations', 'Notifications', 'Logins']);
   assert.ok(ss.sheets.every((x) => x.protected));
   assert.deepStrictEqual(env.triggers.map((t) => [t.getHandlerFunction(), t.hour]), [['dailyReminder', 10]]);
   const head = env.files[env.props.CONFIG_SHEET_ID].sheets[0];
-  assert.deepStrictEqual([1, 2, 3, 4, 5, 6].map((c) => head.cells['1,' + c]), ['Name', 'PIN', 'Active', 'Email', 'Admin', 'Team']);
+  assert.deepStrictEqual([1, 2, 3, 4, 5, 6, 7].map((c) => head.cells['1,' + c]),
+    ['Name', 'PIN', 'Active', 'Email', 'Admin', 'Team', 'Supervisor']);
   env.ctx.setup(); // 다시 실행해도 중복 생성 없음
   assert.strictEqual(env.triggers.length, 1);
   assert.strictEqual(Buffer.from(env.call({ action: 'pushKey' }).publicKey, 'base64url').length, 65);
@@ -345,6 +346,7 @@ test('admin posts announcement -> push + email to every active employee', () => 
   assert.strictEqual(mails[0].name, 'monsieur Kim');
   const h = mails[0].htmlBody;
   assert.ok(h.indexOf('Go to Confirm') < h.indexOf('Kitchen rules'), 'button above the content');
+  assert.strictEqual(h.split('Go to Confirm').length - 1, 1, 'only one button');
   assert.ok(!/Open Work Time/.test(h));
   const refs = mails.map((m) => m.htmlBody.match(/Ref ([^<]+)</)[1]);
   assert.strictEqual(new Set(refs).size, refs.length, 'every email ends differently (no Gmail trimming)');
@@ -526,6 +528,78 @@ test('admin status shows the audience; records still verify', () => {
   assert.strictEqual(st.announcements.find((a) => a.title === 'Knife storage').audience, 'Teams: Kitchen');
   assert.strictEqual(st.announcements.find((a) => a.title === 'Kitchen rules').audience, 'Everyone');
   assert.strictEqual(st.integrity, true);
+});
+
+// ------------------------------------------------------------------ supervisor
+const supKey = nodeCrypto.createECDH('prime256v1'); supKey.generateKeys();
+const supAuth = nodeCrypto.randomBytes(16);
+const SUP_ENDPOINT = 'https://web.push.apple.com/supervisor-iphone';
+const pushesTo = (endpoint, from) => env.sent.push.slice(from).filter((x) => x.url === endpoint);
+const decrypt = (req) => JSON.parse(ece.decrypt(Buffer.from(req.o.payload.map((x) => x & 0xff)),
+  { version: 'aes128gcm', privateKey: supKey, authSecret: supAuth.toString('base64url') }));
+const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1';
+
+test('existing records file gets the new Logins sheet on setup', () => {
+  const ss = env.files[env.props.ANN_SHEET_ID];
+  ss.sheets = ss.sheets.filter((x) => x.name !== 'Logins');
+  delete env.props.chain_Logins;
+  env.ctx.setup();
+  assert.ok(ss.getSheetByName('Logins').protected);
+  assert.ok(env.ctx.verifyRecords().every((x) => x.ok));
+});
+
+test('supervisor registers a device (bell)', () => {
+  assert.ok(env.call({ action: 'subscribe', token, sub: { endpoint: SUP_ENDPOINT, keys: {
+    p256dh: supKey.getPublicKey().toString('base64url'), auth: supAuth.toString('base64url') } } }).ok);
+});
+
+test('login on a new device -> record + push to the supervisor only', () => {
+  const n0 = env.sent.push.length;
+  const first = env.call({ action: 'login', name: 'No Mail', pin: '3333', device: { ua: IPHONE, standalone: true } });
+  assert.ok(first.ok);
+  env.call({ action: 'login', name: 'No Mail', pin: '3333', device: { ua: IPHONE, standalone: false } });
+  const sup = pushesTo(SUP_ENDPOINT, n0);
+  assert.strictEqual(sup.length, 2);
+  assert.strictEqual(env.sent.push.length - n0, 2, 'nobody else is notified');
+  const rows = recRows('Logins').filter((r) => r[1] === 'No Mail');
+  assert.deepStrictEqual(rows.map((r) => [r[2], r[3]]), [['iPhone · home screen app', '1'], ['iPhone · Safari', '2']]);
+  if (!ece) return console.log('   (payload check skipped: http_ece not installed)');
+  const msg = decrypt(sup[1]);
+  assert.strictEqual(msg.title, 'New login: No Mail');
+  assert.match(msg.body, /^iPhone · Safari \(device #2\)  ·  \d\d-\d\d \d\d:\d\d$/);
+});
+
+test('every clock-in/out -> push to the supervisor: who, when, START/END', () => {
+  const n0 = env.sent.push.length;
+  const [t] = tagUrls(keys, 'END', 1);
+  const r = env.call(Object.assign({ action: 'tap', token: yuna }, t));
+  assert.ok(r.ok);
+  const sup = pushesTo(SUP_ENDPOINT, n0);
+  assert.strictEqual(sup.length, 1);
+  if (!ece) return;
+  const msg = decrypt(sup[0]);
+  assert.strictEqual(msg.title, 'Yuna — END');
+  assert.strictEqual(msg.body, r.time + '  ·  ' + r.date);
+  assert.match(msg.tag, /^clock-/);
+});
+
+test('a failing push never blocks clock-in or login', () => {
+  const orig = env.ctx.UrlFetchApp.fetch;
+  env.ctx.UrlFetchApp.fetch = () => { throw new Error('push service down'); };
+  const [t] = tagUrls(keys, 'START', 1);
+  assert.ok(env.call(Object.assign({ action: 'tap', token: yuna }, t)).ok);
+  assert.ok(env.call({ action: 'login', name: 'Yuna', pin: '2222' }).ok);
+  env.ctx.UrlFetchApp.fetch = orig;
+});
+
+test('supervisor can be changed/added in the sheet; supervisor has manager rights', () => {
+  const config = env.files[env.props.CONFIG_SHEET_ID];
+  config.sheets[0].getRange(8, 1, 1, 7).setValues([['Second Boss', '8888', 'TRUE', '', '', '', 'TRUE']]);
+  const boss = env.call({ action: 'login', name: 'Second Boss', pin: '8888' });
+  assert.strictEqual(boss.admin, true);
+  assert.ok(env.call({ action: 'status', token: boss.token }).ok);
+  assert.deepStrictEqual(Array.from(env.ctx.supervisors_(), (e) => e.name), ['Nam KIM', 'Second Boss']);
+  assert.strictEqual(env.call({ action: 'status', token: yuna }).ok, false);
 });
 
 console.log(`\n${passed} passed`);
