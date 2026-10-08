@@ -35,7 +35,7 @@ function setup() {
 /** 붙여넣기 중 파일 끝이 잘리지 않았는지 확인 (각 파일의 마지막 함수가 있는지). */
 function checkFiles_() {
   var last = { 'Code.gs': 'json_', 'Crypto.gs': 'verifySun_', 'WebPush.gs': 'sendWebPush_',
-               'Announce.gs': 'dailyReminder' };
+               'Announce.gs': 'dailyReminder', 'Supervisor.gs': 'recordLogin_' };
   var missing = Object.keys(last).filter(function (f) { return typeof this[last[f]] !== 'function'; }, this);
   if (typeof props_ === 'undefined' || typeof TZ === 'undefined' || typeof DEFAULT_FOLDER_ID === 'undefined') {
     missing.push('Code.gs (맨 윗부분: var DEFAULT_FOLDER_ID ... var props_)');
@@ -62,7 +62,8 @@ function ensureConfig_() {
   if (!sh.getRange('D1').getValue()) sh.getRange('D1').setValue('Email');
   if (!sh.getRange('E1').getValue()) sh.getRange('E1').setValue('Admin');
   if (!sh.getRange('F1').getValue()) sh.getRange('F1').setValue('Team');
-  sh.getRange('A1:F1').setFontWeight('bold');
+  if (!sh.getRange('G1').getValue()) sh.getRange('G1').setValue('Supervisor');
+  sh.getRange('A1:G1').setFontWeight('bold');
   return ss;
 }
 
@@ -100,8 +101,14 @@ function login_(req) {
   var emp = findEmployee_(name);
   if (!emp || emp.pin !== pin) fail_('Wrong name or PIN.');
   var token = Utilities.getUuid();
+  var before = deviceCount_(emp.name);
   props_.setProperty('tok_' + token, emp.name);
-  return { ok: true, token: token, name: emp.name, admin: emp.admin };
+  try {
+    recordLogin_(emp.name, deviceLabel_(req.device), before + 1);
+  } catch (err) {
+    console.error(err); // 기록·알림 실패가 로그인을 막지 않도록
+  }
+  return { ok: true, token: token, name: emp.name, admin: emp.admin || emp.supervisor };
 }
 
 function me_(req) {
@@ -144,6 +151,12 @@ function tap_(req) {
     lock.releaseLock();
   }
 
+  try {
+    notifySupervisors_({ title: name + ' — ' + a, body: time + '  ·  ' + date, tag: 'clock-' + Utilities.getUuid() });
+  } catch (err) {
+    console.error(err); // 알림 실패가 출퇴근 기록을 막지 않도록
+  }
+
   var editToken = Utilities.getUuid();
   CacheService.getScriptCache().put('edit_' + editToken,
     JSON.stringify({ ssId: ss.getId(), sheet: name, row: row, name: name }), EDIT_WINDOW_SEC);
@@ -182,11 +195,12 @@ function employees_() {
   var rows = SpreadsheetApp.openById(id).getSheetByName('Employees').getDataRange().getDisplayValues();
   var out = [];
   for (var i = 1; i < rows.length; i++) {
-    var r = rows[i].concat(['', '', '', '', '', '']);
+    var r = rows[i].concat(['', '', '', '', '', '', '']);
     var n = String(r[0]).trim();
     if (!n || String(r[2]).trim().toUpperCase() === 'FALSE') continue;
     out.push({ name: n, pin: String(r[1]).trim(), email: String(r[3]).trim(),
-               admin: String(r[4]).trim().toUpperCase() === 'TRUE', team: String(r[5]).trim() });
+               admin: String(r[4]).trim().toUpperCase() === 'TRUE', team: String(r[5]).trim(),
+               supervisor: String(r[6]).trim().toUpperCase() === 'TRUE' });
   }
   return out;
 }
@@ -200,7 +214,7 @@ function findEmployee_(name) {
 
 function isAdmin_(name) {
   var e = findEmployee_(name);
-  return !!(e && e.admin);
+  return !!(e && (e.admin || e.supervisor));
 }
 
 function folder_() {
