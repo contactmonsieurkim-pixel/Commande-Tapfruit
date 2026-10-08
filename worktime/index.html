@@ -54,6 +54,36 @@
     .ok { color: var(--ok); } .err { color: var(--err); }
     .notice { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 12px; font-size: 15px; }
     .hint { color: var(--muted); text-align: center; }
+    textarea {
+      width: 100%; min-height: 160px; font: inherit; padding: 12px; border-radius: 10px;
+      border: 1px solid var(--line); background: var(--bg); color: var(--text); resize: vertical;
+    }
+    .row { display: flex; gap: 8px; }
+    .row button { margin-top: 12px; }
+    .badge {
+      display: inline-block; min-width: 22px; padding: 0 7px; margin-left: 6px; border-radius: 11px;
+      background: var(--err); color: #fff; font-size: 13px; line-height: 22px; vertical-align: 2px;
+    }
+    .alert {
+      background: var(--err); color: #fff; font-weight: 700; text-align: center;
+      border-radius: 12px; padding: 12px; margin-bottom: 12px;
+    }
+    .saved { background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+             padding: 10px 14px; margin-bottom: 12px; color: var(--ok); font-weight: 600; }
+    .ann { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px; margin-bottom: 12px; }
+    .ann.unread { border: 2px solid var(--err); }
+    .ann h2 { font-size: 19px; margin: 2px 0 8px; }
+    .meta { color: var(--muted); font-size: 13px; }
+    .content { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .photos img { width: 100%; border-radius: 10px; margin-top: 10px; display: block; }
+    .done { color: var(--ok); font-weight: 600; margin-top: 12px; }
+    .thumbs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .thumbs img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; }
+    details { border-top: 1px solid var(--line); padding: 10px 0; }
+    summary { cursor: pointer; font-weight: 600; }
+    .names { font-size: 14px; margin: 6px 0 0; padding-left: 18px; }
+    .pending { color: var(--err); }
+    h3 { font-size: 16px; margin: 0 0 4px; }
   </style>
 </head>
 <body>
@@ -77,11 +107,49 @@
   </section>
 
   <!-- 대기 화면 -->
-  <section id="v-home" class="card hidden">
-    <div class="big">
-      <div class="icon">📲</div>
-      <p class="hint">Tap the <b>START</b> or <b>END</b> tag with your phone.</p>
+  <section id="v-home" class="hidden">
+    <div class="card">
+      <div class="big">
+        <div class="icon">📲</div>
+        <p class="hint">Tap the <b>START</b> or <b>END</b> tag with your phone.</p>
+      </div>
     </div>
+    <button id="b-anns" class="secondary">Announcements<span id="badge" class="badge hidden"></span></button>
+    <button id="b-push" class="secondary hidden">Turn on notifications</button>
+    <p id="push-msg" class="hint"></p>
+    <button id="b-admin" class="secondary hidden">Manager: announcements</button>
+  </section>
+
+  <!-- 공지 확인 -->
+  <section id="v-ann" class="hidden">
+    <div id="ann-saved" class="saved hidden"></div>
+    <div id="ann-alert" class="alert hidden">I have an unread announcement !</div>
+    <div id="ann-list"><p class="hint">Loading…</p></div>
+    <button id="b-ann-back" class="secondary">Back</button>
+  </section>
+
+  <!-- 관리자: 공지 작성 + 확인 현황 -->
+  <section id="v-admin" class="hidden">
+    <div class="card">
+      <h3>New announcement</h3>
+      <form id="f-post">
+        <label for="p-title">Title</label>
+        <input id="p-title" required maxlength="120">
+        <label for="p-content">Content</label>
+        <textarea id="p-content" required></textarea>
+        <label for="p-photos">Photos (optional, up to 6)</label>
+        <input id="p-photos" type="file" accept="image/*" multiple>
+        <div id="p-thumbs" class="thumbs"></div>
+        <button type="submit">Post and notify everyone</button>
+      </form>
+      <p id="post-msg"></p>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h3>Who has confirmed</h3>
+      <p id="integrity" class="meta"></p>
+      <div id="status-list"><p class="hint">Loading…</p></div>
+    </div>
+    <button id="b-admin-back" class="secondary">Back</button>
   </section>
 
   <!-- 처리 중 / 결과 -->
@@ -118,13 +186,17 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
     del(k) { try { localStorage.removeItem(k); } catch (e) {} },
   };
+  const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin'];
   let lastTap = null;
+  let annReturn = 'home';
 
   function show(view) {
-    for (const v of ['login', 'home', 'result', 'modify']) $('v-' + v).classList.toggle('hidden', v !== view);
+    for (const v of VIEWS) $('v-' + v).classList.toggle('hidden', v !== view);
     const name = store.get('wt_name');
     $('who').textContent = name || '';
     $('logout').classList.toggle('hidden', !name);
+    $('b-admin').classList.toggle('hidden', store.get('wt_admin') !== '1');
+    window.scrollTo(0, 0);
   }
 
   async function api(body) {
@@ -149,14 +221,16 @@
   }
 
   const detail = (e) => ' (' + e.message + ')';
+  const token = () => store.get('wt_token');
 
   // 1) 태그로 열렸으면 URL 파라미터를 꺼내고 주소창에서 즉시 지움 (새로고침/복사 방지)
   function takeTagParams() {
     const q = new URLSearchParams(location.search);
     if (q.has('p') && q.has('a') && q.has('c')) {
       sessionStorage.setItem('wt_pending', JSON.stringify({ a: q.get('a'), p: q.get('p'), c: q.get('c') }));
-      history.replaceState(null, '', location.pathname);
     }
+    if (q.get('view') === 'ann') sessionStorage.setItem('wt_view', 'ann');
+    if (location.search) history.replaceState(null, '', location.pathname);
     const raw = sessionStorage.getItem('wt_pending');
     return raw ? JSON.parse(raw) : null;
   }
@@ -170,12 +244,17 @@
     show('result');
   }
 
+  function setBadge(n) {
+    $('badge').textContent = n;
+    $('badge').classList.toggle('hidden', !n);
+  }
+
   async function submitTap(tap) {
     $('b-modify').classList.add('hidden');
     result('⏳', '', '', 'Saving…');
     let r;
     try {
-      r = await api({ action: 'tap', token: store.get('wt_token'), a: tap.a, p: tap.p, c: tap.c });
+      r = await api({ action: 'tap', token: token(), a: tap.a, p: tap.p, c: tap.c });
     } catch (e) {
       // 네트워크 오류: 같은 태그 값으로 재시도 가능하도록 pending 유지
       result('⚠️', '', '', 'Network problem. Check your connection and tap the tag again.' + detail(e), 'err');
@@ -186,6 +265,11 @@
       lastTap = r;
       result('✅', r.info, r.date + '  ' + r.time, 'Saved. Thank you!', 'ok');
       $('b-modify').classList.remove('hidden');
+      setBadge(r.unread);
+      if (r.unread > 0) {
+        // 저장 후 확인 안 한 공지가 있으면 공지 확인 화면으로 자동 이동
+        setTimeout(() => openAnns('result', '✅ ' + r.info + ' saved at ' + r.date + ' ' + r.time), 1500);
+      }
     } else if (r.code === 'AUTH') {
       sessionStorage.setItem('wt_pending', JSON.stringify(tap));
       logout(r.error);
@@ -195,9 +279,260 @@
   }
 
   function logout(msg) {
-    store.del('wt_token'); store.del('wt_name');
+    store.del('wt_token'); store.del('wt_name'); store.del('wt_admin');
     $('login-msg').textContent = msg || '';
     show('login');
+  }
+
+  async function goHome(autoOpen = true) {
+    show('home');
+    updatePushButton();
+    try {
+      const r = await api({ action: 'me', token: token() });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (r.ok) {
+        store.set('wt_admin', r.admin ? '1' : '0');
+        $('b-admin').classList.toggle('hidden', !r.admin);
+        setBadge(r.unread);
+        if (r.unread > 0 && autoOpen) openAnns('home');
+      }
+    } catch (e) { /* 오프라인이어도 홈 화면은 유지 */ }
+  }
+
+  // ---------------------------------------------------------------- 공지 확인
+  const el = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  };
+
+  async function openAnns(returnTo, savedMsg) {
+    annReturn = returnTo || 'home';
+    $('ann-saved').textContent = savedMsg || '';
+    $('ann-saved').classList.toggle('hidden', !savedMsg);
+    $('ann-alert').classList.add('hidden');
+    $('ann-list').replaceChildren(el('p', 'hint', 'Loading…'));
+    show('ann');
+    let r;
+    try {
+      r = await api({ action: 'anns', token: token() });
+    } catch (e) {
+      $('ann-list').replaceChildren(el('p', 'err', 'Network problem. Please try again.' + detail(e)));
+      return;
+    }
+    if (!r.ok) return r.code === 'AUTH' ? logout(r.error) : $('ann-list').replaceChildren(el('p', 'err', r.error));
+    renderAnns(r.announcements);
+  }
+
+  function renderAnns(list) {
+    const unread = list.filter((a) => !a.confirmedAt);
+    $('ann-alert').classList.toggle('hidden', !unread.length);
+    setBadge(unread.length);
+    const box = $('ann-list');
+    box.replaceChildren();
+    if (!list.length) box.append(el('p', 'hint', 'No announcements yet.'));
+    // 확인 안 한 공지를 먼저
+    for (const a of unread.concat(list.filter((x) => x.confirmedAt))) box.append(annCard(a, list));
+  }
+
+  function annCard(a, list) {
+    const card = el('article', 'ann' + (a.confirmedAt ? '' : ' unread'));
+    card.append(el('div', 'meta', a.posted + ' · ' + a.by), el('h2', null, a.title), el('div', 'content', a.content));
+    if (a.photos) {
+      const ph = el('div', 'photos');
+      card.append(ph);
+      loadPhotos(a, ph);
+    }
+    if (a.confirmedAt) {
+      card.append(el('div', 'done', '✓ Confirmed ' + a.confirmedAt));
+    } else {
+      const btn = el('button', null, 'I have read and understood');
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        try {
+          const r = await api({ action: 'confirm', token: token(), id: a.id });
+          if (!r.ok) { btn.disabled = false; return alert(r.error); }
+          a.confirmedAt = r.confirmedAt;
+          renderAnns(list);
+          if (!r.unread) $('ann-saved').classList.add('hidden');
+        } catch (e) {
+          btn.disabled = false;
+          alert('Network problem. Please try again.' + detail(e));
+        }
+      });
+      card.append(btn);
+    }
+    return card;
+  }
+
+  const photoCache = {};
+  async function loadPhotos(a, box) {
+    for (let i = 0; i < a.photos; i++) {
+      const key = a.id + '/' + i;
+      try {
+        if (!photoCache[key]) {
+          const r = await api({ action: 'photo', token: token(), id: a.id, index: i });
+          if (!r.ok) continue;
+          photoCache[key] = r.dataUrl;
+        }
+        const img = el('img');
+        img.src = photoCache[key];
+        img.alt = a.title + ' photo ' + (i + 1);
+        box.append(img);
+      } catch (e) { /* 사진 하나 실패해도 계속 */ }
+    }
+  }
+
+  $('b-anns').addEventListener('click', () => openAnns('home'));
+  $('b-ann-back').addEventListener('click', () => (annReturn === 'result' ? show('result') : goHome(false)));
+
+  // ---------------------------------------------------------------- 알림 (웹 푸시)
+  const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const standalone = () => navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+
+  function updatePushButton() {
+    const msg = $('push-msg');
+    msg.textContent = '';
+    if (!pushSupported()) {
+      $('b-push').classList.add('hidden');
+      if (isIOS && !standalone()) {
+        msg.textContent = 'To get notifications on iPhone: tap Share → Add to Home Screen, ' +
+          'open Work Time from the Home Screen, log in, then turn on notifications.';
+      }
+      return;
+    }
+    $('b-push').classList.toggle('hidden', Notification.permission === 'granted' && store.get('wt_push') === token());
+  }
+
+  function b64ToBytes(b64) {
+    const s = atob(b64.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((b64.length + 3) % 4));
+    return Uint8Array.from(s, (c) => c.charCodeAt(0));
+  }
+
+  async function syncPush(ask) {
+    if (!pushSupported() || !token()) return;
+    if (!ask && Notification.permission !== 'granted') return;
+    const reg = await navigator.serviceWorker.register('sw.js');
+    await navigator.serviceWorker.ready;
+    if (ask && (await Notification.requestPermission()) !== 'granted') {
+      throw new Error('Notifications are blocked. Allow them in your phone settings.');
+    }
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const k = await api({ action: 'pushKey' });
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(k.publicKey) });
+    }
+    const r = await api({ action: 'subscribe', token: token(), sub: sub.toJSON() });
+    if (!r.ok) throw new Error(r.error);
+    store.set('wt_push', token());
+  }
+
+  $('b-push').addEventListener('click', async () => {
+    $('b-push').disabled = true;
+    try {
+      await syncPush(true);
+      $('push-msg').textContent = 'Notifications are on.';
+    } catch (e) {
+      $('push-msg').textContent = e.message;
+    } finally {
+      $('b-push').disabled = false;
+      updatePushButton();
+    }
+  });
+
+  // ---------------------------------------------------------------- 관리자
+  let pickedPhotos = [];
+
+  function resizeImage(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(img.src);
+        resolve(c.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = () => reject(new Error('Cannot read ' + file.name));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  $('p-photos').addEventListener('change', async (ev) => {
+    const files = Array.from(ev.target.files).slice(0, 6);
+    pickedPhotos = [];
+    $('p-thumbs').replaceChildren();
+    for (const f of files) {
+      try {
+        const url = await resizeImage(f);
+        pickedPhotos.push(url);
+        const t = el('img'); t.src = url; $('p-thumbs').append(t);
+      } catch (e) { $('post-msg').textContent = e.message; }
+    }
+  });
+
+  $('f-post').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const btn = ev.submitter; btn.disabled = true;
+    $('post-msg').className = '';
+    $('post-msg').textContent = 'Posting and sending notifications…';
+    try {
+      const r = await api({ action: 'post', token: token(), title: $('p-title').value,
+                            content: $('p-content').value, photos: pickedPhotos });
+      if (!r.ok) { $('post-msg').className = 'err'; $('post-msg').textContent = r.error; return; }
+      $('post-msg').className = 'ok';
+      $('post-msg').textContent = 'Posted (' + r.id + '). Notified ' + r.notified + ' people.';
+      $('f-post').reset(); pickedPhotos = []; $('p-thumbs').replaceChildren();
+      loadStatus();
+    } catch (e) {
+      $('post-msg').className = 'err';
+      $('post-msg').textContent = 'Network problem.' + detail(e);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  async function loadStatus() {
+    const box = $('status-list');
+    try {
+      const r = await api({ action: 'status', token: token() });
+      if (!r.ok) return box.replaceChildren(el('p', 'err', r.error));
+      $('integrity').textContent = r.integrity ? 'Records integrity: OK'
+        : '⚠ Records were changed outside the system. Run verifyRecords in Apps Script.';
+      $('integrity').className = r.integrity ? 'meta' : 'err';
+      box.replaceChildren();
+      if (!r.announcements.length) box.append(el('p', 'hint', 'No announcements yet.'));
+      for (const a of r.announcements) {
+        const d = el('details');
+        const total = a.confirmed.length + a.pending.length;
+        d.append(el('summary', null, a.title + ' — ' + a.confirmed.length + '/' + total));
+        d.append(el('div', 'meta', a.id + ' · posted ' + a.posted));
+        const ok = el('ul', 'names');
+        a.confirmed.forEach((c) => ok.append(el('li', null, '✓ ' + c.name + ' — ' + c.at)));
+        a.pending.forEach((n) => ok.append(el('li', 'pending', '✗ ' + n + ' — not yet')));
+        d.append(ok);
+        box.append(d);
+      }
+    } catch (e) {
+      box.replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
+    }
+  }
+
+  $('b-admin').addEventListener('click', () => { show('admin'); loadStatus(); });
+  $('b-admin-back').addEventListener('click', () => goHome(false));
+
+  // ---------------------------------------------------------------- 로그인 / 시간 변경
+  function afterLogin() {
+    const pending = takeTagParams();
+    if (pending) return submitTap(pending);
+    if (sessionStorage.getItem('wt_view') === 'ann') {
+      sessionStorage.removeItem('wt_view');
+      return openAnns('home');
+    }
+    goHome();
   }
 
   $('f-login').addEventListener('submit', async (ev) => {
@@ -207,10 +542,9 @@
     try {
       const r = await api({ action: 'login', name: $('name').value, pin: $('pin').value });
       if (!r.ok) { $('login-msg').textContent = r.error; return; }
-      store.set('wt_token', r.token); store.set('wt_name', r.name);
+      store.set('wt_token', r.token); store.set('wt_name', r.name); store.set('wt_admin', r.admin ? '1' : '0');
       $('pin').value = '';
-      const pending = takeTagParams();
-      pending ? submitTap(pending) : show('home');
+      afterLogin();
     } catch (e) {
       $('login-msg').textContent = 'Network problem. Please try again.' + detail(e);
     } finally {
@@ -231,7 +565,7 @@
     ev.preventDefault();
     const btn = ev.submitter; btn.disabled = true;
     try {
-      const r = await api({ action: 'modify', token: store.get('wt_token'), editToken: lastTap.editToken, time: $('m-time').value });
+      const r = await api({ action: 'modify', token: token(), editToken: lastTap.editToken, time: $('m-time').value });
       if (!r.ok) { $('m-msg').textContent = r.error; return; }
       $('b-modify').classList.add('hidden');
       result('📝', lastTap.info, lastTap.date + '  ' + lastTap.time,
@@ -244,10 +578,13 @@
   });
 
   // 시작
-  const pending = takeTagParams();
-  if (!store.get('wt_token')) show('login');
-  else if (pending) submitTap(pending);
-  else show('home');
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  takeTagParams();
+  if (!token()) show('login');
+  else {
+    afterLogin();
+    syncPush(false).catch(() => {}); // 이미 허용된 기기는 구독 정보를 조용히 갱신
+  }
 </script>
 </body>
 </html>

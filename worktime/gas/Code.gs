@@ -15,20 +15,51 @@ var EDIT_WINDOW_SEC = 60 * 60; // 태그 후 1시간 동안 시간 변경 요청
 
 var props_ = PropertiesService.getScriptProperties();
 
-/** 최초 1회 편집기에서 실행: 직원 명단(Employees) 시트를 폴더에 생성. */
+/**
+ * 편집기에서 실행 (처음 1회 + 기능 추가 후 다시 1회). 여러 번 실행해도 안전.
+ * 직원 명단 시트, 공지 기록 시트, 비밀키, 웹 푸시 키, 매일 리마인더 트리거를 준비.
+ */
 function setup() {
-  if (props_.getProperty('CONFIG_SHEET_ID')) {
-    Logger.log('이미 설정됨: ' + SpreadsheetApp.openById(props_.getProperty('CONFIG_SHEET_ID')).getUrl());
-    return;
+  checkFiles_();
+  var config = ensureConfig_();
+  var records = ensureRecords_();
+  vapidKeys_();
+  if (!props_.getProperty('VAPID_SUBJECT')) {
+    props_.setProperty('VAPID_SUBJECT', 'mailto:' + Session.getEffectiveUser().getEmail());
   }
-  var ss = SpreadsheetApp.create('WorkTime Config');
-  DriveApp.getFileById(ss.getId()).moveTo(folder_());
-  var sh = ss.getSheets()[0].setName('Employees');
-  sh.getRange(1, 1, 2, 3).setNumberFormat('@')
-    .setValues([['Name', 'PIN', 'Active'], ['Example Name', '1234', 'TRUE']]);
-  sh.setFrozenRows(1);
-  props_.setProperty('CONFIG_SHEET_ID', ss.getId());
-  Logger.log('직원 명단 시트: ' + ss.getUrl());
+  installTriggers_();
+  Logger.log('직원 명단 시트: ' + config.getUrl());
+  Logger.log('공지 기록 시트: ' + records.getUrl());
+}
+
+/** 붙여넣기 중 파일 끝이 잘리지 않았는지 확인 (각 파일의 마지막 함수가 있는지). */
+function checkFiles_() {
+  var last = { 'Code.gs': 'json_', 'Crypto.gs': 'verifySun_', 'WebPush.gs': 'sendWebPush_',
+               'Announce.gs': 'dailyReminder' };
+  var missing = Object.keys(last).filter(function (f) { return typeof this[last[f]] !== 'function'; }, this);
+  if (missing.length) {
+    throw new Error('다음 파일이 없거나 끝부분이 잘렸습니다. GitHub 에서 전체를 다시 복사하세요: ' + missing.join(', '));
+  }
+}
+
+function ensureConfig_() {
+  var id = props_.getProperty('CONFIG_SHEET_ID'), ss, sh;
+  if (id) {
+    ss = SpreadsheetApp.openById(id);
+    sh = ss.getSheetByName('Employees');
+  } else {
+    ss = SpreadsheetApp.create('WorkTime Config');
+    DriveApp.getFileById(ss.getId()).moveTo(folder_());
+    sh = ss.getSheets()[0].setName('Employees');
+    sh.getRange(1, 1, 2, 3).setNumberFormat('@')
+      .setValues([['Name', 'PIN', 'Active'], ['Example Name', '1234', 'TRUE']]);
+    sh.setFrozenRows(1);
+    props_.setProperty('CONFIG_SHEET_ID', ss.getId());
+  }
+  if (!sh.getRange('D1').getValue()) sh.getRange('D1').setValue('Email');
+  if (!sh.getRange('E1').getValue()) sh.getRange('E1').setValue('Admin');
+  sh.getRange('A1:E1').setFontWeight('bold');
+  return ss;
 }
 
 function doGet() {
@@ -43,7 +74,11 @@ function doPost(e) {
     return json_({ ok: false, error: 'Bad request.' });
   }
   try {
-    var handlers = { login: login_, tap: tap_, modify: modify_, me: me_ };
+    var handlers = {
+      login: login_, tap: tap_, modify: modify_, me: me_,
+      pushKey: pushKey_, subscribe: subscribe_, anns: annList_, photo: annPhoto_,
+      confirm: confirm_, post: post_, status: annStatus_,
+    };
     var fn = handlers[req.action];
     if (!fn) return json_({ ok: false, error: 'Unknown action.' });
     return json_(fn(req));
@@ -62,11 +97,16 @@ function login_(req) {
   if (!emp || emp.pin !== pin) fail_('Wrong name or PIN.');
   var token = Utilities.getUuid();
   props_.setProperty('tok_' + token, emp.name);
-  return { ok: true, token: token, name: emp.name };
+  return { ok: true, token: token, name: emp.name, admin: emp.admin };
 }
 
 function me_(req) {
-  return { ok: true, name: whoAmI_(req.token) };
+  var name = whoAmI_(req.token);
+  return { ok: true, name: name, admin: isAdmin_(name), unread: unreadCount_(name) };
+}
+
+function unreadCount_(name) {
+  return props_.getProperty('ANN_SHEET_ID') ? unreadFor_(name).length : 0;
 }
 
 function tap_(req) {
@@ -103,7 +143,8 @@ function tap_(req) {
   var editToken = Utilities.getUuid();
   CacheService.getScriptCache().put('edit_' + editToken,
     JSON.stringify({ ssId: ss.getId(), sheet: name, row: row, name: name }), EDIT_WINDOW_SEC);
-  return { ok: true, name: name, date: date, time: time, info: a, editToken: editToken };
+  return { ok: true, name: name, date: date, time: time, info: a, editToken: editToken,
+           unread: unreadCount_(name) };
 }
 
 function modify_(req) {
@@ -132,16 +173,30 @@ function whoAmI_(token) {
   return emp.name;
 }
 
-function findEmployee_(name) {
+function employees_() {
   var id = requiredProp_('CONFIG_SHEET_ID');
   var rows = SpreadsheetApp.openById(id).getSheetByName('Employees').getDataRange().getDisplayValues();
-  var wanted = String(name).trim().toLowerCase();
+  var out = [];
   for (var i = 1; i < rows.length; i++) {
-    var n = String(rows[i][0]).trim();
-    var active = String(rows[i][2]).trim().toUpperCase() !== 'FALSE';
-    if (n && active && n.toLowerCase() === wanted) return { name: n, pin: String(rows[i][1]).trim() };
+    var r = rows[i].concat(['', '', '', '', '']);
+    var n = String(r[0]).trim();
+    if (!n || String(r[2]).trim().toUpperCase() === 'FALSE') continue;
+    out.push({ name: n, pin: String(r[1]).trim(), email: String(r[3]).trim(),
+               admin: String(r[4]).trim().toUpperCase() === 'TRUE' });
   }
-  return null;
+  return out;
+}
+
+function activeEmployees_() { return employees_(); }
+
+function findEmployee_(name) {
+  var wanted = String(name).trim().toLowerCase();
+  return employees_().filter(function (e) { return e.name.toLowerCase() === wanted; })[0] || null;
+}
+
+function isAdmin_(name) {
+  var e = findEmployee_(name);
+  return !!(e && e.admin);
 }
 
 function folder_() {
