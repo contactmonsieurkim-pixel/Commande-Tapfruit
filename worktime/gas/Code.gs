@@ -37,6 +37,9 @@ function checkFiles_() {
   var last = { 'Code.gs': 'json_', 'Crypto.gs': 'verifySun_', 'WebPush.gs': 'sendWebPush_',
                'Announce.gs': 'dailyReminder' };
   var missing = Object.keys(last).filter(function (f) { return typeof this[last[f]] !== 'function'; }, this);
+  if (typeof props_ === 'undefined' || typeof TZ === 'undefined' || typeof DEFAULT_FOLDER_ID === 'undefined') {
+    missing.push('Code.gs (맨 윗부분: var DEFAULT_FOLDER_ID ... var props_)');
+  }
   if (missing.length) {
     throw new Error('다음 파일이 없거나 끝부분이 잘렸습니다. GitHub 에서 전체를 다시 복사하세요: ' + missing.join(', '));
   }
