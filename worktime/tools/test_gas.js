@@ -585,8 +585,8 @@ test('every clock-in/out -> push to the supervisor: who, when, START/END', () =>
   assert.strictEqual(sup.length, 1);
   if (!ece) return;
   const msg = decrypt(sup[0]);
-  assert.strictEqual(msg.title, 'Yuna — END');
-  assert.strictEqual(msg.body, r.time + '  ·  ' + r.date);
+  assert.strictEqual(msg.title, '🔴 END · Yuna');
+  assert.strictEqual(msg.body, 'Yuna clocked out (END) at ' + r.time + ' · ' + r.date);
   assert.match(msg.tag, /^clock-/);
 });
 
@@ -633,15 +633,19 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.strictEqual(q.call({ action: 'me', token: yu }).unread, 1, 'visible in the app right away');
   });
 
-  test('quiet: clock-in/out and login alerts to the supervisor are held', () => {
+  test('quiet: clock-in/out alerts still go out at once, login alerts are held', () => {
     at('2026-10-09T23:40:00+02:00');
     const p0 = q.sent.push.length;
     const [t] = tagUrls(keys, 'END', 1);
     assert.ok(q.call(Object.assign({ action: 'tap', token: yu }, t)).ok, 'clock-out still recorded');
     at('2026-10-10T02:10:00+02:00');
+    const clock = pushesTo(SUP_ENDPOINT, p0);
+    assert.strictEqual(clock.length, 1, 'clock-out pushed at 23:40');
+    if (ece) assert.strictEqual(decrypt(clock[0]).title, '🔴 END · Yuna');
+    const p1 = q.sent.push.length;
     assert.ok(q.call({ action: 'login', name: 'No Mail', pin: '3333' }).ok);
-    assert.strictEqual(q.sent.push.length, p0);
-    assert.strictEqual(JSON.parse(q.props.SUP_QUEUE).length, 2);
+    assert.strictEqual(q.sent.push.length, p1, 'login alert held');
+    assert.strictEqual(JSON.parse(q.props.SUP_QUEUE).length, 1);
   });
 
   test('07:xx schedules the 09:00 sharp run (summer and winter time)', () => {
@@ -677,9 +681,9 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.strictEqual(sup.length, 2, 'announcement push + overnight summary');
     if (ece) {
       const msgs = sup.map(decrypt);
-      const night = msgs.find((m) => m.title === 'Overnight (2)');
+      const night = msgs.find((m) => m.title === 'Overnight (1)');
       assert.ok(night, JSON.stringify(msgs));
-      assert.match(night.body, /^Yuna — END  23:40  ·  10-09\nNew login: No Mail  Other · browser \(first device\)  ·  10-10 02:10$/);
+      assert.match(night.body, /^New login: No Mail  Other · browser \(first device\)  ·  10-10 02:10$/);
       assert.ok(msgs.some((m) => m.title === 'I have an unread announcement !' && /2 announcements/.test(m.body)));
     }
     assert.ok(!q.props.NOTIFY_QUEUE && !q.props.SUP_QUEUE, 'queues cleared');

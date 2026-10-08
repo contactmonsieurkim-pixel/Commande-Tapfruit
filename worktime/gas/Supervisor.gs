@@ -1,13 +1,26 @@
 // Supervisor (Employees 탭 G열 = TRUE) 에게만 가는 웹 푸시 알림
 //   - 직원이 새 기기(브라우저)에서 로그인할 때
-//   - 출퇴근 태그가 기록될 때마다 (누가, 몇 시, START/END)
+//   - 출퇴근 태그가 기록될 때마다 (누가, 몇 시, START/END) — 밤에도 바로 보냄
 // Supervisor 는 관리자(Admin) 권한도 가짐. 시트에서 TRUE 로 바꾸기만 하면 바로 적용(재배포 불필요).
 
 function supervisors_() {
   return activeEmployees_().filter(function (e) { return e.supervisor; });
 }
 
-/** Supervisor 알림. 조용한 시간(23~9시)에는 모아 두었다가 09:00 에 한 번에 보냄. */
+/**
+ * 출퇴근 알림 -> Supervisor (조용한 시간에도 바로).
+ * iPhone 잠금화면은 긴 제목의 뒷부분을 자르므로 START/END 를 제목 맨 앞에 두고 본문에도 한 번 더 씀.
+ */
+function notifyClock_(name, action, date, time) {
+  var start = action === 'START';
+  return pushSupervisors_({
+    title: (start ? '🟢 START' : '🔴 END') + ' · ' + name,
+    body: name + (start ? ' clocked in (START)' : ' clocked out (END)') + ' at ' + time + ' · ' + date,
+    tag: 'clock-' + Utilities.getUuid(),
+  });
+}
+
+/** Supervisor 알림(로그인 등). 조용한 시간(23~9시)에는 모아 두었다가 09:00 에 한 번에 보냄. */
 function notifySupervisors_(message) {
   if (isQuiet_()) return queueSupervisor_(message);
   return pushSupervisors_(message);

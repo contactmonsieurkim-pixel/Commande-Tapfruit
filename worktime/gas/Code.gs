@@ -152,7 +152,7 @@ function tap_(req) {
   }
 
   try {
-    notifySupervisors_({ title: name + ' — ' + a, body: time + '  ·  ' + date, tag: 'clock-' + Utilities.getUuid() });
+    notifyClock_(name, a, date, time); // 출퇴근 알림은 조용한 시간에도 바로 보냄
   } catch (err) {
     console.error(err); // 알림 실패가 출퇴근 기록을 막지 않도록
   }
