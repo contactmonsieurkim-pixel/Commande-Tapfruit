@@ -342,6 +342,12 @@ test('admin posts announcement -> push + email to every active employee', () => 
   assert.strictEqual(mails[0].subject, 'I have an unread announcement !');
   assert.strictEqual(Object.keys(mails[0].inlineImages).length, 1);
   assert.match(mails[0].htmlBody, /Kitchen rules/);
+  assert.strictEqual(mails[0].name, 'monsieur Kim');
+  const h = mails[0].htmlBody;
+  assert.ok(h.indexOf('Go to Confirm') < h.indexOf('Kitchen rules'), 'button above the content');
+  assert.ok(!/Open Work Time/.test(h));
+  const refs = mails.map((m) => m.htmlBody.match(/Ref ([^<]+)</)[1]);
+  assert.strictEqual(new Set(refs).size, refs.length, 'every email ends differently (no Gmail trimming)');
   assert.strictEqual(env.sent.push.length - before.push, 2);
   assert.ok(!Object.values(env.props).some((v) => String(v).includes('/gone')), 'expired subscription removed');
 });
