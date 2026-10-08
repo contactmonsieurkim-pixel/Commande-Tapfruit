@@ -35,7 +35,7 @@ function setup() {
 /** 붙여넣기 중 파일 끝이 잘리지 않았는지 확인 (각 파일의 마지막 함수가 있는지). */
 function checkFiles_() {
   var last = { 'Code.gs': 'json_', 'Crypto.gs': 'verifySun_', 'WebPush.gs': 'sendWebPush_',
-               'Announce.gs': 'dailyReminder', 'Supervisor.gs': 'recordLogin_' };
+               'Announce.gs': 'morningRun', 'Supervisor.gs': 'recordLogin_' };
   var missing = Object.keys(last).filter(function (f) { return typeof this[last[f]] !== 'function'; }, this);
   if (typeof props_ === 'undefined' || typeof TZ === 'undefined' || typeof DEFAULT_FOLDER_ID === 'undefined') {
     missing.push('Code.gs (맨 윗부분: var DEFAULT_FOLDER_ID ... var props_)');
@@ -152,7 +152,7 @@ function tap_(req) {
   }
 
   try {
-    notifySupervisors_({ title: name + ' — ' + a, body: time + '  ·  ' + date, tag: 'clock-' + Utilities.getUuid() });
+    notifyClock_(name, a, date, time); // 출퇴근 알림은 조용한 시간에도 바로 보냄
   } catch (err) {
     console.error(err); // 알림 실패가 출퇴근 기록을 막지 않도록
   }

@@ -14,7 +14,8 @@ function makeEnv(propsInit) {
   const cache = {};
   const files = {}; // id -> spreadsheet mock / drive file mock
   const sent = { mail: [], push: [] };
-  const clock = { days: 0 };
+  // 테스트 시계: 기본은 파리 시간 낮 12시 (실제 실행 시각과 무관하게 결과가 같도록)
+  const clock = { days: 0, fixed: '2026-10-09T12:00:00+02:00' };
   const triggers = [];
   let idSeq = 0;
   const signed = (b) => Array.from(b, (x) => (x > 127 ? x - 256 : x));
@@ -119,14 +120,15 @@ function makeEnv(propsInit) {
       put: (k, v) => { cache[k] = v; },
       get: (k) => (k in cache ? cache[k] : null),
     }) },
-    LockService: { getScriptLock: () => ({ waitLock: () => {}, releaseLock: () => {} }) },
+    LockService: { getScriptLock: () => ({ waitLock: () => {}, tryLock: () => true, releaseLock: () => {} }) },
     Session: { getEffectiveUser: () => ({ getEmail: () => 'owner@example.com' }) },
     ScriptApp: {
       getProjectTriggers: () => triggers.slice(),
       deleteTrigger: (t) => triggers.splice(triggers.indexOf(t), 1),
       newTrigger: (fn) => {
         const b = { timeBased: () => b, everyDays: () => b, atHour: (h) => { b.hour = h; return b; },
-                    inTimezone: () => b, create: () => triggers.push({ getHandlerFunction: () => fn, hour: b.hour }) };
+                    at: (d) => { b.at = d; return b; }, inTimezone: () => b,
+                    create: () => triggers.push({ getHandlerFunction: () => fn, hour: b.hour, at: b.at }) };
         return b;
       },
     },
@@ -149,7 +151,12 @@ function makeEnv(propsInit) {
       newBlob: (bytes, type, name) => blob(bytes, type, name),
       getUuid: () => crypto.randomUUID(),
       formatDate: (d, tz, fmt) => {
-        d = new Date(d.getTime() + clock.days * 86400000);
+        d = new Date((clock.fixed ? new Date(clock.fixed).getTime() : d.getTime()) + clock.days * 86400000);
+        if (fmt === 'Z') {
+          const off = new Intl.DateTimeFormat('en-GB', { timeZone: tz, timeZoneName: 'longOffset' })
+            .formatToParts(d).find((x) => x.type === 'timeZoneName').value; // GMT+02:00
+          return off === 'GMT' ? '+0000' : off.slice(3).replace(':', '');
+        }
         const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: tz, year: 'numeric',
           month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
           .formatToParts(d).map((x) => [x.type, x.value]));
@@ -297,7 +304,7 @@ test('setup: protected record sheets, daily trigger, VAPID keys', () => {
   const ss = env.files[env.props.ANN_SHEET_ID];
   assert.deepStrictEqual(ss.sheets.map((x) => x.name), ['Announcements', 'Confirmations', 'Notifications', 'Logins']);
   assert.ok(ss.sheets.every((x) => x.protected));
-  assert.deepStrictEqual(env.triggers.map((t) => [t.getHandlerFunction(), t.hour]), [['dailyReminder', 10]]);
+  assert.deepStrictEqual(env.triggers.map((t) => [t.getHandlerFunction(), t.hour]), [['scheduleMorning', 7]]);
   const head = env.files[env.props.CONFIG_SHEET_ID].sheets[0];
   assert.deepStrictEqual([1, 2, 3, 4, 5, 6, 7].map((c) => head.cells['1,' + c]),
     ['Name', 'PIN', 'Active', 'Email', 'Admin', 'Team', 'Supervisor']);
@@ -413,10 +420,10 @@ test('employee hired after posting does not get the old announcement', () => {
 
 test('daily reminder: skip same day, then daily to those who have not confirmed', () => {
   const n0 = env.sent.mail.length;
-  env.ctx.dailyReminder();
+  env.ctx.morningRun();
   assert.strictEqual(env.sent.mail.length, n0, 'no reminder on the posting day');
   env.clock.days = 1;
-  env.ctx.dailyReminder();
+  env.ctx.morningRun();
   assert.deepStrictEqual(env.sent.mail.slice(n0).map((m) => m.to), ['nam@example.com']);
   const notes = recRows('Notifications').filter((r) => r[3].startsWith('reminder'));
   assert.deepStrictEqual(notes.map((r) => [r[2], r[3], r[4]]), [
@@ -578,8 +585,8 @@ test('every clock-in/out -> push to the supervisor: who, when, START/END', () =>
   assert.strictEqual(sup.length, 1);
   if (!ece) return;
   const msg = decrypt(sup[0]);
-  assert.strictEqual(msg.title, 'Yuna — END');
-  assert.strictEqual(msg.body, r.time + '  ·  ' + r.date);
+  assert.strictEqual(msg.title, '🔴 END · Yuna');
+  assert.strictEqual(msg.body, 'Yuna clocked out (END) at ' + r.time + ' · ' + r.date);
   assert.match(msg.tag, /^clock-/);
 });
 
@@ -601,5 +608,112 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
   assert.deepStrictEqual(Array.from(env.ctx.supervisors_(), (e) => e.name), ['Nam KIM', 'Second Boss']);
   assert.strictEqual(env.call({ action: 'status', token: yuna }).ok, false);
 });
+
+// ------------------------------------------------------------------ quiet hours (23:00 - 09:00 Paris)
+{
+  const q = makeEnv({ SDM_META_KEY: keys.K1_SDM_META, SDM_FILE_KEY: keys.K2_SDM_FILE });
+  const at = (iso) => { q.clock.fixed = iso; q.clock.days = 0; };
+  const pushesTo = (endpoint, from) => q.sent.push.slice(from).filter((x) => x.url === endpoint);
+  const boss = q.call({ action: 'login', name: 'Nam KIM', pin: '4321' }).token;
+  const yu = q.call({ action: 'login', name: 'Yuna', pin: '2222' }).token;
+  q.call({ action: 'subscribe', token: boss, sub: { endpoint: SUP_ENDPOINT, keys: {
+    p256dh: supKey.getPublicKey().toString('base64url'), auth: supAuth.toString('base64url') } } });
+  const rows = (name) => {
+    const sh = q.files[q.props.ANN_SHEET_ID].getSheetByName(name);
+    return Array.from({ length: sh.getLastRow() - 1 }, (_, i) => sh.getRange(i + 2, 1, 1, 9).getValues()[0]);
+  };
+
+  test('quiet: announcement posted at 23:30 is saved but not sent', () => {
+    at('2026-10-09T23:30:00+02:00');
+    const m0 = q.sent.mail.length, p0 = q.sent.push.length;
+    const r = q.call({ action: 'post', token: boss, title: 'Night notice', content: 'Posted late.' });
+    assert.ok(r.ok); assert.strictEqual(r.queued, true); assert.strictEqual(r.sendAt, '09:00');
+    assert.strictEqual(q.sent.mail.length, m0); assert.strictEqual(q.sent.push.length, p0);
+    assert.strictEqual(rows('Announcements').length, 1, 'recorded immediately');
+    assert.strictEqual(q.call({ action: 'me', token: yu }).unread, 1, 'visible in the app right away');
+  });
+
+  test('quiet: clock-in/out alerts still go out at once, login alerts are held', () => {
+    at('2026-10-09T23:40:00+02:00');
+    const p0 = q.sent.push.length;
+    const [t] = tagUrls(keys, 'END', 1);
+    assert.ok(q.call(Object.assign({ action: 'tap', token: yu }, t)).ok, 'clock-out still recorded');
+    at('2026-10-10T02:10:00+02:00');
+    const clock = pushesTo(SUP_ENDPOINT, p0);
+    assert.strictEqual(clock.length, 1, 'clock-out pushed at 23:40');
+    if (ece) assert.strictEqual(decrypt(clock[0]).title, '🔴 END · Yuna');
+    const p1 = q.sent.push.length;
+    assert.ok(q.call({ action: 'login', name: 'No Mail', pin: '3333' }).ok);
+    assert.strictEqual(q.sent.push.length, p1, 'login alert held');
+    assert.strictEqual(JSON.parse(q.props.SUP_QUEUE).length, 1);
+  });
+
+  test('07:xx schedules the 09:00 sharp run (summer and winter time)', () => {
+    at('2026-10-10T07:10:00+02:00');
+    q.ctx.scheduleMorning();
+    const runs = q.triggers.filter((x) => x.getHandlerFunction() === 'morningRun');
+    assert.strictEqual(runs.length, 1);
+    assert.strictEqual(runs[0].at.toISOString(), '2026-10-10T07:00:00.000Z'); // 09:00 CEST
+    at('2026-11-15T07:05:00+01:00');
+    q.ctx.scheduleMorning();
+    assert.strictEqual(q.triggers.filter((x) => x.getHandlerFunction() === 'morningRun')[0].at.toISOString(),
+      '2026-11-15T08:00:00.000Z'); // 09:00 CET
+    at('2026-10-10T07:10:00+02:00');
+    q.ctx.scheduleMorning();
+  });
+
+  test('a post at 08:30 is also held for 09:00', () => {
+    at('2026-10-10T08:30:00+02:00');
+    assert.strictEqual(q.call({ action: 'post', token: boss, title: 'Morning notice', content: 'Early.' }).queued, true);
+  });
+
+  test('09:00: one email + one push per person with everything, one overnight summary', () => {
+    at('2026-10-10T09:00:00+02:00');
+    const m0 = q.sent.mail.length, p0 = q.sent.push.length;
+    q.ctx.morningRun();
+    const mails = q.sent.mail.slice(m0);
+    assert.deepStrictEqual(mails.map((m) => m.to).sort(), ['nam@example.com', 'yuna@example.com']);
+    for (const m of mails) {
+      assert.strictEqual(m.htmlBody.split('Night notice').length - 1, 1);
+      assert.strictEqual(m.htmlBody.split('Morning notice').length - 1, 1);
+    }
+    const sup = pushesTo(SUP_ENDPOINT, p0);
+    assert.strictEqual(sup.length, 2, 'announcement push + overnight summary');
+    if (ece) {
+      const msgs = sup.map(decrypt);
+      const night = msgs.find((m) => m.title === 'Overnight (1)');
+      assert.ok(night, JSON.stringify(msgs));
+      assert.match(night.body, /^New login: No Mail  Other · browser \(first device\)  ·  10-10 02:10$/);
+      assert.ok(msgs.some((m) => m.title === 'I have an unread announcement !' && /2 announcements/.test(m.body)));
+    }
+    assert.ok(!q.props.NOTIFY_QUEUE && !q.props.SUP_QUEUE, 'queues cleared');
+    assert.strictEqual(q.triggers.filter((x) => x.getHandlerFunction() === 'morningRun').length, 0);
+    assert.ok(rows('Notifications').some((r) => r[2] === 'Yuna' && r[3] === 'new email' && r[1] === 'A0001, A0002'));
+  });
+
+  test('next morning: reminder only for what is still unconfirmed', () => {
+    q.call({ action: 'confirm', token: yu, id: 'A0001' });
+    at('2026-10-11T09:00:00+02:00');
+    const m0 = q.sent.mail.length;
+    q.ctx.morningRun();
+    const toYuna = q.sent.mail.slice(m0).filter((m) => m.to === 'yuna@example.com');
+    assert.strictEqual(toYuna.length, 1);
+    assert.ok(/Morning notice/.test(toYuna[0].htmlBody) && !/Night notice/.test(toYuna[0].htmlBody));
+  });
+
+  test('daytime: sent immediately, supervisor alerted immediately', () => {
+    at('2026-10-11T10:00:00+02:00');
+    const m0 = q.sent.mail.length, p0 = q.sent.push.length;
+    const r = q.call({ action: 'post', token: boss, title: 'Day notice', content: 'Now.' });
+    assert.ok(!r.queued); assert.ok(q.sent.mail.length > m0);
+    const [t] = tagUrls(keys, 'START', 1);
+    q.call(Object.assign({ action: 'tap', token: yu }, t));
+    assert.ok(pushesTo(SUP_ENDPOINT, p0).length >= 2);
+  });
+
+  test('records still verify after the night', () => {
+    assert.ok(q.ctx.verifyRecords().every((x) => x.ok));
+  });
+}
 
 console.log(`\n${passed} passed`);
