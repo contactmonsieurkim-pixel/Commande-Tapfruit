@@ -817,7 +817,9 @@
                             audience: aud });
       if (!r.ok) { $('post-msg').className = 'err'; $('post-msg').textContent = r.error; return; }
       $('post-msg').className = 'ok';
-      $('post-msg').textContent = 'Posted (' + r.id + '). Notified ' + r.notified + ' people.';
+      $('post-msg').textContent = r.queued
+        ? 'Posted (' + r.id + '). Quiet hours: notifications and emails will be sent at ' + r.sendAt + '.'
+        : 'Posted (' + r.id + '). Notified ' + r.notified + ' people.';
       $('f-post').reset(); pickedPhotos = []; $('p-thumbs').replaceChildren(); resetAudience();
       loadStatus();
     } catch (e) {

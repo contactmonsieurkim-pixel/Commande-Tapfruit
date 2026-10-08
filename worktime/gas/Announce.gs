@@ -9,7 +9,10 @@
 // 각 행의 Hash 는 직전 행 Hash + 내용으로 만든 HMAC 체인 -> verifyRecords() 로 수정 여부 검사.
 
 var APP_URL_DEFAULT = 'https://contactmonsieurkim-pixel.github.io/Commande-Tapfruit/worktime/';
-var REMINDER_HOUR = 10;          // 매일 리마인더 시각 (파리 시간)
+// 조용한 시간 (파리 시간): QUIET_START 시부터 다음날 QUIET_END 시까지는 알림·메일을 보내지 않고
+// QUIET_END 시 정각에 모아서 보냄. 확인 안 한 공지 리마인더도 매일 QUIET_END 시 정각.
+var QUIET_START = 23;
+var QUIET_END = 9;
 var PUSH_TITLE = 'I have an unread announcement !';
 var MAX_PHOTOS = 6;
 
@@ -59,12 +62,50 @@ function photoFolder_() {
   return f;
 }
 
+// ------------------------------------------------------------------ 조용한 시간 / 아침 9시 발송
+
+function parisHour_() { return Number(Utilities.formatDate(new Date(), TZ, 'HH')); }
+
+function isQuiet_() {
+  var h = parisHour_();
+  return h >= QUIET_START || h < QUIET_END;
+}
+
+/** 오늘(파리) h:00 의 Date. */
+function parisTodayAt_(h) {
+  var now = new Date();
+  var day = Utilities.formatDate(now, TZ, 'yyyy-MM-dd');
+  var off = Utilities.formatDate(now, TZ, 'Z'); // +0200
+  return new Date(day + 'T' + ('0' + h).slice(-2) + ':00:00' + off.slice(0, 3) + ':' + off.slice(3));
+}
+
+/**
+ * 시간 기반 트리거는 "그 시각부터 1시간 안 아무 때나" 실행되므로,
+ * 매일 07시대에 scheduleMorning 이 그날 09:00 정각용 1회 트리거(morningRun)를 예약함.
+ */
 function installTriggers_() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction() === 'dailyReminder') ScriptApp.deleteTrigger(t);
+    if (['dailyReminder', 'scheduleMorning', 'morningRun'].indexOf(t.getHandlerFunction()) >= 0) {
+      ScriptApp.deleteTrigger(t);
+    }
   });
-  ScriptApp.newTrigger('dailyReminder').timeBased().everyDays(1).atHour(REMINDER_HOUR)
-    .inTimezone(TZ).create();
+  ScriptApp.newTrigger('scheduleMorning').timeBased().everyDays(1).atHour(7).inTimezone(TZ).create();
+  scheduleMorning();
+}
+
+function scheduleMorning() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'morningRun') ScriptApp.deleteTrigger(t);
+  });
+  if (parisHour_() < QUIET_END) {
+    ScriptApp.newTrigger('morningRun').timeBased().at(parisTodayAt_(QUIET_END)).create();
+  }
+}
+
+function queueAnnouncement_(id) {
+  var q = JSON.parse(props_.getProperty('NOTIFY_QUEUE') || '[]');
+  q.push(id);
+  props_.setProperty('NOTIFY_QUEUE', JSON.stringify(q));
 }
 
 // ------------------------------------------------------------------ records (hash chain)
@@ -300,6 +341,10 @@ function post_(req) {
     lock.releaseLock();
   }
 
+  if (isQuiet_()) {
+    queueAnnouncement_(ann.id); // 밤 23시~아침 9시 게시 -> 아침 9시에 푸시 + 메일
+    return { ok: true, id: ann.id, notified: 0, queued: true, sendAt: ('0' + QUIET_END).slice(-2) + ':00' };
+  }
   var sent = activeEmployees_().filter(function (e) { return recipients.indexOf(e.name) >= 0; })
     .map(function (e) { return notify_(e, [ann], true); });
   return { ok: true, id: ann.id, notified: sent.length };
@@ -414,13 +459,31 @@ function buildMail_(anns, appUrl, withPhotos) {
   return { html: html, images: images };
 }
 
-/** 매일 트리거: 어제까지 게시된 공지 중 확인 안 한 직원에게 하루 한 번 알림. */
+/** 예전 10시 트리거가 남아 있으면 새 방식(매일 09:00 정각)으로 바꿔 줌. */
 function dailyReminder() {
-  var today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
-  var anns = announcements_().filter(function (a) { return a.posted.slice(0, 10) < today; });
-  var confs = confirmations_();
-  activeEmployees_().forEach(function (e) {
-    var unread = unreadFor_(e.name, anns, confs);
-    if (unread.length) notify_(e, unread, false);
+  installTriggers_();
+}
+
+/**
+ * 매일 09:00 정각 (파리):
+ *  1) 밤사이(23~9시) 게시되어 아직 알리지 않은 공지 -> 대상자에게 푸시 + 메일 (첫 알림)
+ *  2) 어제까지 게시된 공지 중 확인 안 한 사람 -> 리마인더
+ *  한 사람에게는 1)+2)를 합쳐 메일 1통·푸시 1번만 보냄.
+ *  3) 밤사이 Supervisor 알림(출퇴근·로그인)을 한 번에 요약해서 보냄.
+ */
+function morningRun() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'morningRun') ScriptApp.deleteTrigger(t);
   });
+  var queued = JSON.parse(props_.getProperty('NOTIFY_QUEUE') || '[]');
+  props_.deleteProperty('NOTIFY_QUEUE');
+  var today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  var all = announcements_(), confs = confirmations_();
+  var fresh = all.filter(function (a) { return queued.indexOf(a.id) >= 0; });
+  var old = all.filter(function (a) { return queued.indexOf(a.id) < 0 && a.posted.slice(0, 10) < today; });
+  activeEmployees_().forEach(function (e) {
+    var n = unreadFor_(e.name, fresh, confs), r = unreadFor_(e.name, old, confs);
+    if (n.length || r.length) notify_(e, n.concat(r), n.length > 0);
+  });
+  flushSupervisorQueue_();
 }

@@ -7,8 +7,37 @@ function supervisors_() {
   return activeEmployees_().filter(function (e) { return e.supervisor; });
 }
 
-/** 모든 Supervisor 의 등록된 기기로 웹 푸시. 보낸 기기 수 반환. */
+/** Supervisor 알림. 조용한 시간(23~9시)에는 모아 두었다가 09:00 에 한 번에 보냄. */
 function notifySupervisors_(message) {
+  if (isQuiet_()) return queueSupervisor_(message);
+  return pushSupervisors_(message);
+}
+
+function queueSupervisor_(message) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return 0;
+  try {
+    var q = JSON.parse(props_.getProperty('SUP_QUEUE') || '[]');
+    q.push(message.title + '  ' + message.body);
+    props_.setProperty('SUP_QUEUE', JSON.stringify(q.slice(-80)));
+  } finally {
+    lock.releaseLock();
+  }
+  return 0;
+}
+
+/** 밤사이 쌓인 Supervisor 알림을 한 통으로. */
+function flushSupervisorQueue_() {
+  var q = JSON.parse(props_.getProperty('SUP_QUEUE') || '[]');
+  props_.deleteProperty('SUP_QUEUE');
+  if (!q.length) return 0;
+  var body = q.join('\n');
+  if (body.length > 1500) body = body.slice(0, 1500) + '\n…';
+  return pushSupervisors_({ title: 'Overnight (' + q.length + ')', body: body, tag: 'overnight-' + Utilities.getUuid() });
+}
+
+/** 모든 Supervisor 의 등록된 기기로 웹 푸시. 보낸 기기 수 반환. */
+function pushSupervisors_(message) {
   var sent = 0;
   supervisors_().forEach(function (sup) {
     pushSubscriptions_(sup.name).forEach(function (s) {
