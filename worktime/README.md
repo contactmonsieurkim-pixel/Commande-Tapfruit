@@ -60,6 +60,7 @@ python ntag424_setup.py genkeys
    `Employees` 탭: `Name | PIN | Active | Email | Admin`
    - 퇴사자는 Active 를 `FALSE` 로 바꾸면 바로 로그인이 막히고 알림도 가지 않습니다.
    - Email: 공지 메일을 받을 주소. Admin: 공지를 올릴 수 있는 관리자는 `TRUE`.
+   - Team: `Kitchen`, `Service` 등 팀 이름. 공지를 팀 단위로 보낼 때 사용합니다. (비워 두면 '전체'나 '개인 선택'으로만 받음)
    - 이름은 바꾸지 마세요. (기록이 이름으로 연결됩니다)
 5. 배포 → 새 배포 → 웹 앱, 실행: **나**, 액세스: **모든 사용자** → 배포 후 `/exec` URL 복사
    - 코드를 고친 뒤에는 "배포 관리 → 수정 → 새 버전"으로 재배포해야 반영됩니다. (URL 유지)
@@ -113,7 +114,11 @@ URL 기록 → SDM(SUN) 켜기 → NDEF 쓰기 잠금 → Key1/Key2 교체 → �
   - 공지를 올릴 때 "Rule" 체크 → 팁으로도 표시. 회의 내용 같은 일반 공지는 체크하지 않으면 팁에 안 나옵니다.
   - Close: Android Chrome은 태그로 열린 탭이 닫힙니다. iPhone은 브라우저가 탭 닫기를 허용하지 않아
     "Done – you can close this tab" 화면이 뜹니다. (Safari 설정 → 탭 닫기 → "1일 후"로 두면 쌓이지 않습니다)
-- 게시 시점의 재직 직원이 대상입니다. 이후 입사자는 예전 공지를 받지 않습니다.
+- **수신 대상**: 게시할 때 *Everyone* 또는 *Choose teams / people*. 팀(예: Kitchen)과 개인을 섞어서 고를 수 있고,
+  화면에 "Will be sent to N people: …"로 실제 받는 사람이 미리 표시됩니다.
+  기록 시트 Type 칸에 `Rule · Teams: Kitchen · People: Leo` 처럼 대상이 남습니다.
+- 게시 시점의 대상 직원에게만 확인 요청이 갑니다. 이후 입사자는 예전 공지를 받지 않습니다.
+- 팀 대상 규칙(Rule)은 출근 도장 팁으로 그 팀 사람에게만 나옵니다. (나중에 그 팀에 들어온 사람 포함)
 - 기록: Drive `Announcement Records` 스프레드시트
   - `Announcements`: ID, 게시 일시, 게시자, 제목, 내용, 사진(Drive 링크), 대상자, 종류(Rule/Notice)
   - `Confirmations`: 공지 ID, 제목, 이름, 확인 일시(초 단위)

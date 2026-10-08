@@ -104,6 +104,14 @@
     .dock button { max-width: 420px; margin: 0; padding: 18px; font-size: 19px; border-radius: 14px; }
     .check { display: flex; align-items: center; gap: 10px; margin-top: 14px; font-size: 15px; color: var(--text); }
     .check input { width: 22px; height: 22px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 4px; }
+    .chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 20px;
+            border: 1px solid var(--line); background: var(--bg); font-size: 15px; cursor: pointer; user-select: none; }
+    .chip input { display: none; }
+    .chip.on { background: var(--brand); border-color: var(--brand); color: var(--brand-ink); }
+    .chip.covered { border-color: var(--brand); color: var(--brand); }
+    .chip small { opacity: .75; }
+    #aud-summary { margin-top: 8px; }
   </style>
 </head>
 <body>
@@ -161,7 +169,17 @@
         <input id="p-photos" type="file" accept="image/*" multiple>
         <div id="p-thumbs" class="thumbs"></div>
         <label class="check"><input id="p-rule" type="checkbox"> Rule: also show it as a tip when clocking in</label>
-        <button type="submit">Post and notify everyone</button>
+        <label>Send to</label>
+        <label class="check"><input type="radio" name="aud" value="all" checked> Everyone</label>
+        <label class="check"><input type="radio" name="aud" value="pick"> Choose teams / people</label>
+        <div id="aud-pick" class="hidden">
+          <div class="meta">Teams</div>
+          <div id="aud-teams" class="chips"></div>
+          <div class="meta">People</div>
+          <div id="aud-people" class="chips"></div>
+        </div>
+        <p id="aud-summary" class="meta"></p>
+        <button type="submit" id="b-post">Post and notify everyone</button>
       </form>
       <p id="post-msg"></p>
     </div>
@@ -605,18 +623,95 @@
     }
   });
 
+  // ---------------------------------------------------------------- 수신 대상 (전체 / 팀 / 개인)
+  let staff = [];
+
+  function chip(label, sub, onChange) {
+    const c = el('label', 'chip');
+    const box = el('input'); box.type = 'checkbox';
+    c.append(box, document.createTextNode(label));
+    if (sub) c.append(el('small', null, sub));
+    box.addEventListener('change', onChange);
+    return c;
+  }
+
+  async function loadStaff() {
+    try {
+      const r = await api({ action: 'staff', token: token() });
+      if (!r.ok) return;
+      staff = r.staff;
+    } catch (e) { return; }
+    const teams = [...new Set(staff.map((x) => x.team).filter(Boolean))].sort();
+    $('aud-teams').replaceChildren(...teams.map((t) => {
+      const c = chip(t, staff.filter((x) => x.team === t).length + '', updateAudience);
+      c.dataset.team = t;
+      return c;
+    }));
+    if (!teams.length) $('aud-teams').append(el('span', 'meta', 'No teams yet (add a Team column value in Employees).'));
+    $('aud-people').replaceChildren(...staff.map((x) => {
+      const c = chip(x.name, x.team, updateAudience);
+      c.dataset.name = x.name; c.dataset.team = x.team;
+      return c;
+    }));
+    updateAudience();
+  }
+
+  function audience() {
+    if (document.querySelector('input[name=aud]:checked').value === 'all') return 'all';
+    const on = (sel) => [...document.querySelectorAll(sel)].filter((c) => c.querySelector('input').checked);
+    const teams = on('#aud-teams .chip').map((c) => c.dataset.team);
+    const people = on('#aud-people .chip').map((c) => c.dataset.name)
+      .filter((n) => !teams.includes((staff.find((x) => x.name === n) || {}).team));
+    return { teams, people };
+  }
+
+  function recipientsOf(a) {
+    if (a === 'all') return staff.map((x) => x.name);
+    return staff.filter((x) => a.teams.includes(x.team) || a.people.includes(x.name)).map((x) => x.name);
+  }
+
+  function updateAudience() {
+    const pick = document.querySelector('input[name=aud]:checked').value === 'pick';
+    $('aud-pick').classList.toggle('hidden', !pick);
+    const a = audience();
+    document.querySelectorAll('#aud-teams .chip').forEach((c) => c.classList.toggle('on', c.querySelector('input').checked));
+    document.querySelectorAll('#aud-people .chip').forEach((c) => {
+      const covered = a !== 'all' && a.teams.includes(c.dataset.team);
+      c.classList.toggle('covered', covered);
+      c.classList.toggle('on', !covered && c.querySelector('input').checked);
+    });
+    const names = recipientsOf(a);
+    $('aud-summary').textContent = names.length
+      ? 'Will be sent to ' + names.length + (names.length === 1 ? ' person: ' : ' people: ') + names.join(', ')
+      : 'Choose at least one team or person.';
+    $('aud-summary').className = names.length ? 'meta' : 'err';
+    $('b-post').textContent = a === 'all' ? 'Post and notify everyone'
+      : 'Post and notify ' + names.length + (names.length === 1 ? ' person' : ' people');
+  }
+
+  document.querySelectorAll('input[name=aud]').forEach((r) => r.addEventListener('change', updateAudience));
+
+  function resetAudience() {
+    document.querySelector('input[name=aud][value=all]').checked = true;
+    document.querySelectorAll('#aud-pick input').forEach((b) => { b.checked = false; });
+    updateAudience();
+  }
+
   $('f-post').addEventListener('submit', async (ev) => {
     ev.preventDefault();
+    const aud = audience();
+    if (!recipientsOf(aud).length) { $('post-msg').className = 'err'; $('post-msg').textContent = 'Choose at least one team or person.'; return; }
     const btn = ev.submitter; btn.disabled = true;
     $('post-msg').className = '';
     $('post-msg').textContent = 'Posting and sending notifications…';
     try {
       const r = await api({ action: 'post', token: token(), title: $('p-title').value,
-                            content: $('p-content').value, photos: pickedPhotos, rule: $('p-rule').checked });
+                            content: $('p-content').value, photos: pickedPhotos, rule: $('p-rule').checked,
+                            audience: aud });
       if (!r.ok) { $('post-msg').className = 'err'; $('post-msg').textContent = r.error; return; }
       $('post-msg').className = 'ok';
       $('post-msg').textContent = 'Posted (' + r.id + '). Notified ' + r.notified + ' people.';
-      $('f-post').reset(); pickedPhotos = []; $('p-thumbs').replaceChildren();
+      $('f-post').reset(); pickedPhotos = []; $('p-thumbs').replaceChildren(); resetAudience();
       loadStatus();
     } catch (e) {
       $('post-msg').className = 'err';
@@ -640,7 +735,7 @@
         const d = el('details');
         const total = a.confirmed.length + a.pending.length;
         d.append(el('summary', null, (a.rule ? '[Rule] ' : '') + a.title + ' — ' + a.confirmed.length + '/' + total));
-        d.append(el('div', 'meta', a.id + ' · posted ' + a.posted));
+        d.append(el('div', 'meta', a.id + ' · posted ' + a.posted + ' · to ' + a.audience));
         const ok = el('ul', 'names');
         a.confirmed.forEach((c) => ok.append(el('li', null, '✓ ' + c.name + ' — ' + c.at)));
         a.pending.forEach((n) => ok.append(el('li', 'pending', '✗ ' + n + ' — not yet')));
@@ -652,7 +747,7 @@
     }
   }
 
-  $('b-admin').addEventListener('click', () => { show('admin'); loadStatus(); });
+  $('b-admin').addEventListener('click', () => { show('admin'); loadStatus(); loadStaff(); });
   $('b-admin-back').addEventListener('click', () => goHome(false));
 
   // ---------------------------------------------------------------- 로그인 / 시간 변경
