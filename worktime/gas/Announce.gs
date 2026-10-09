@@ -308,12 +308,12 @@ function confirm_(req) {
   try {
     var a = notices_().filter(function (x) { return x.id === req.id; })[0];
     if (!a || a.recipients.indexOf(name) < 0) fail_('Announcement not found.');
-    var confs = confirmations_(), at = confs[a.id + '\n' + name];
+    var confs = confirmations_(), at = confs[a.id + '\n' + name], already = !!at;
     if (!at) {
       at = nowStamp_();
       appendRecord_('Confirmations', [a.id, a.title, name, at]);
     }
-    return { ok: true, confirmedAt: at, unread: unreadFor_(name, null, null).length,
+    return { ok: true, confirmedAt: at, already: already, unread: unreadFor_(name, null, null).length,
              unreadRules: unreadRulesFor_(name).length };
   } finally {
     lock.releaseLock();

@@ -101,7 +101,7 @@ function ruleConfirm_(req) {
   try {
     var c = ruleItem_(findRule_(req.id));
     if (c.recipients.indexOf(name) < 0) fail_('Rule not found.');
-    var confs = confirmations_(), at = confirmedAt_(c, name, confs);
+    var confs = confirmations_(), at = confirmedAt_(c, name, confs), already = !!at;
     if (!at) {
       at = nowStamp_();
       appendRecord_('Confirmations', [c.key, '[' + c.id + '] ' + c.title, name, at]);
@@ -109,7 +109,7 @@ function ruleConfirm_(req) {
   } finally {
     lock.releaseLock();
   }
-  return { ok: true, confirmedAt: at, unreadRules: unreadRulesFor_(name).length };
+  return { ok: true, confirmedAt: at, already: already, unreadRules: unreadRulesFor_(name).length };
 }
 
 function rulePhoto_(req) {
