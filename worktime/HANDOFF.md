@@ -87,7 +87,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 76개)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 77개)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```
@@ -107,7 +107,11 @@ node test_webpush.js                    # 푸시 암호를 Node crypto 와 교�
   시간대 시간 = 역할(P/F/W)이 없는 줄의 시간. 라벨에 meal/break/pause/repas 가 있는 줄 = 식사 시간(🍽 로 표시). 화면엔 시간대 이름 대신 시간 + 굵은 P/F/W.
 - 역할(P/F/W) = 그 줄의 라벨 열(예: 'Service Role' 열) 또는 월요일 열에 있는 대문자 1~3 글자. 보기(My shifts/By day/Table)는 모든 주에 같이 적용.
 - 속도: 받은 스케줄을 폰(localStorage `wt_sch_cache_v1`)에 저장 → 열면 바로 표시 + 뒤에서 갱신, 다른 팀·달은 뒤에서 미리 받음. 1분 안 것은 서버에 안 물음. 앱으로 돌아올 땐 항상 새로, 알림·메일 링크(?view=schedule)로 들어오면 저장 화면 없이 새로. 서버 쪽 C(미리 계산)·D(설정 캐시)는 아직.
-- 주마다 작은 팀 버튼(Kitchen/Service) — 모든 주에 같이 적용, 같은 달·같은 주 자리 유지. My shifts 의 근무를 누르면 By day 그날("Who else ›").
+- 주마다 작은 팀 버튼(Kitchen/Service) — 모든 주에 같이 적용, 같은 달·같은 주 자리 유지. My shifts 의 그날 줄(Off 포함)을 누르면 By day 그날.
+- 역할이 하나도 없는 스케줄(Service)은 P/F/W 자리를 아예 안 그림. 16:30 부터 시작하는 근무는 짙은 바탕, 그 전은 흰 바탕.
+- 화면 튐 방지: 다시 그릴 때 보고 있던 주의 위쪽 끝을 같은 자리로(holdView/keepPlace), 이미 Schedule 화면이면 맨 위로 안 올림,
+  Loading/Updating 표시는 떠 있는 배지(내용을 밀지 않음), 표 확대/축소는 즉시 적용.
+- 칸 글자 속 이름: 전체 이름 또는 첫 단어(하이픈 포함 한 덩어리)만. 하이픈을 쪼개면 'LIN hsin-yu' 의 'yu' 가 'Yu-hsuan CHEN' 으로 잡혔음.
 - 화면: 탭 전환 즉시 Loading…(한 번 본 화면은 메모리에서 바로), My shifts 의 오늘 줄 강조 + 떠 있는 Today 버튼.
 - 한계: "Yuna off" 처럼 이름이 들어간 메모 칸도 그 사람 근무로 표시됨.
 - 알림: 2주 전 화요일 09:00 부터 매일 리마인더(공지와 같은 방식). 변경은 30분 검사 + "한 번 더 같게 보일 때" 발송(편집 중 연속 알림 방지), 같은 변경은 1번.
