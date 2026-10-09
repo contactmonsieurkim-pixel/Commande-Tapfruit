@@ -81,6 +81,7 @@ function doPost(e) {
     return json_({ ok: false, error: 'Bad request.' });
   }
   try {
+    schedResetMemo_();
     var handlers = {
       login: login_, tap: tap_, modify: modify_, me: me_,
       pushKey: pushKey_, subscribe: subscribe_, anns: annList_, photo: annPhoto_,

@@ -1118,11 +1118,11 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.deepStrictEqual(r.people, [{ name: 'Yuna', color: '#f09a37' }, { name: 'No Mail', color: '#8b7cf0' },
                                       { name: 'Chris', color: '' }]);
     const w = r.weeks[1]; // 5 Oct
-    const show = (x) => [x.date, x.zone, x.role, x.text, x.names.join('+')];
+    const show = (x) => [x.date, x.role, x.start, x.special, x.names.join('+')];
     assert.deepStrictEqual(w.slots.map(show), [
-      ['2026-10-05', 'Morning', 'P', '09:00', 'Yuna'],
-      ['2026-10-05', 'Morning', 'W', 'Chris 23:00', 'Chris'],
-      ['2026-10-06', 'Morning', 'F', '', 'No Mail'],
+      ['2026-10-05', 'P', '09:00', true, 'Yuna'],
+      ['2026-10-05', 'W', '23:00', true, 'Chris'],
+      ['2026-10-06', 'F', '', false, 'No Mail'],
     ]);
   });
 
@@ -1217,6 +1217,33 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.ok(r.ok, JSON.stringify(r));
     assert.deepStrictEqual(r.weeks.map((w) => [w.monday, w.slots.length]), [['2026-10-26', 1], ['2026-11-02', 1]]);
     assert.ok(S.call({ action: 'me', token: yu }).ok);
+  });
+
+  test('schedule: special times in a cell, roles, meal break (the restaurant rules)', () => {
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const Y = { bg: '#f09a37' }; // Yuna
+    const rows = [
+      ['', ''].concat(DAYS).map((t) => ({ t })),
+      ['Date', ''].concat(['12/10', '13/10', '14/10', '15/10', '16/10', '17/10', '18/10']).map((t) => ({ t })),
+      [{ t: 'Dinner\nTime zone 1', rs: 6, bg: '#434343' }, { bg: '#434343' }].concat(Array(7).fill({ t: '17:00', bg: '#434343' })),
+      [null, { bg: '#434343' }].concat(Array(7).fill({ t: '22:30', bg: '#434343' })),
+      [null, { t: 'Meal break', bg: '#434343' }, { t: '18:30-19:00' }, { t: '18:30-19:00' }, { t: '18:30-19:00' }],
+      [null, { t: 'P', b: 1, bg: '#434343' }, Object.assign({ t: '23:00' }, Y), Object.assign({ t: '14:30' }, Y),
+       Object.assign({ t: 'Yuna' }, Y), Object.assign({ t: 'note' }, Y), { t: '15:00 23:30', bg: '#f09a37' }],
+      [null, { t: 'F', b: 1, bg: '#434343' }, { t: '' }, { t: 'Yuna' }],
+      [null, { t: 'W', b: 1, bg: '#434343' }],
+    ];
+    const people = { byColor: { '#f09a37': 'Yuna' }, colors: { Yuna: '#f09a37' }, names: ['Yuna'] };
+    const out = JSON.parse(JSON.stringify(S.ctx.weekSlots_(rows, people, '2026-10-12')))
+      .map((x) => [x.date.slice(8), x.role, x.start + '-' + x.end, x.special, x.breaks.join(';'), x.names.join()]);
+    assert.deepStrictEqual(out, [
+      ['12', 'P', '17:00-23:00', true, 'Meal break 18:30-19:00', 'Yuna'],   // 23:00 은 끝(22:30)에 가까움
+      ['13', 'P', '14:30-22:30', true, 'Meal break 18:30-19:00', 'Yuna'],   // 14:30 은 시작(17:00)에 가까움
+      ['14', 'P', '17:00-22:30', false, 'Meal break 18:30-19:00', 'Yuna'],  // 이름만: 원래 시간, 글자 무시
+      ['15', 'P', '17:00-22:30', false, '', 'Yuna'],                        // 다른 글자: 무시
+      ['16', 'P', '15:00-23:30', true, '', 'Yuna'],                         // 시간 2개: 시작·끝
+      ['13', 'F', '17:00-22:30', false, 'Meal break 18:30-19:00', 'Yuna'],  // 색 없이 이름만 적힌 칸
+    ]);
   });
 
   test('schedule: records still verify', () => {
