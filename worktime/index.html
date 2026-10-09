@@ -170,6 +170,35 @@
     .agree .check { margin-top: 0; }
     .agree button { margin-top: 10px; }
     .due-note { font-size: 14px; margin-top: 8px; }
+    .seg { display: flex; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 3px; margin: 0 0 10px; }
+    .seg button { flex: 1; margin: 0; padding: 7px 4px; font-size: 14px; border-radius: 8px; background: transparent; color: var(--muted); }
+    .seg button.on { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, .15); }
+    .days { display: flex; flex-direction: column; }
+    .day { display: flex; gap: 12px; padding: 9px 2px; border-top: 1px solid var(--line); }
+    .day:first-child { border-top: 0; }
+    .day.today .dname { color: var(--brand); }
+    .dname { width: 46px; flex: none; text-align: center; color: var(--muted); font-size: 12px; line-height: 1.2; }
+    .dname b { display: block; font-size: 20px; color: inherit; }
+    .day.today .dname b { color: var(--brand); }
+    .shifts { flex: 1; display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+    .shift { display: flex; align-items: center; gap: 10px; background: var(--bg); border-radius: 10px; padding: 8px 10px;
+             border-left: 6px solid var(--c, var(--line)); }
+    .shift b { font-size: 15px; }
+    .shift .time { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .off { color: var(--muted); font-size: 15px; }
+    .dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--c, #ccc);
+           border: 1px solid rgba(0, 0, 0, .25); flex: none; vertical-align: -2px; }
+    .daychips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; }
+    .daychips .tab { padding: 6px 10px; font-size: 13px; line-height: 1.2; text-align: center; }
+    .zone { margin-top: 10px; }
+    .zone-h { display: flex; justify-content: space-between; font-weight: 700; font-size: 15px; padding: 6px 0;
+              border-bottom: 1px solid var(--line); }
+    .zone-h span { font-variant-numeric: tabular-nums; }
+    .slot { display: flex; align-items: center; gap: 8px; padding: 7px 0; font-size: 16px; }
+    .slot.me { font-weight: 700; }
+    .role { min-width: 28px; text-align: center; font-size: 12px; font-weight: 700; color: var(--muted);
+            border: 1px solid var(--line); border-radius: 6px; padding: 1px 4px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px; font-size: 13px; color: var(--muted); }
     .pending-box button { width: auto; margin: 6px 6px 0 0; padding: 8px 12px; font-size: 14px; background: #fff; color: var(--err); }
   </style>
 </head>
@@ -940,12 +969,13 @@
     }
     $('sch-meta').textContent = r.readAt ? 'From the spreadsheet · ' + r.readAt : '';
     $('b-sch-zoom').textContent = ZOOMS[schedZoom];
-    $('b-sch-zoom').classList.toggle('hidden', !(r.weeks || []).length);
+    updateZoomButton();
     if (!r.schedules.length) return body.append(el('p', 'hint', 'No schedule yet.'));
     if (r.error) return body.append(el('p', 'err', r.error));
     if (r.intro) body.append(weekCard(r, { rows: r.intro.rows }, true));
     for (const w of r.weeks) body.append(weekCard(r, w));
     if (!r.weeks.length && !r.intro) body.append(el('p', 'hint', 'This month is empty.'));
+    updateZoomButton();
     applyZoom();
     if (focus) {
       const first = r.weeks.find((w) => w.mustConfirm && (w.changed || w.state !== 'early')) || r.weeks.find((w) => w.mustConfirm);
@@ -985,9 +1015,13 @@
     return t;
   }
 
+  // 'Whole week / Zoom in' 버튼은 표가 보일 때만
+  const updateZoomButton = () => $('b-sch-zoom').classList.toggle('hidden', !document.querySelector('#sch-body .sheet-wrap'));
+
   function applyZoom() {
     document.querySelectorAll('#sch-body .sheet-wrap').forEach((wrap) => {
       const t = wrap.querySelector('table');
+      if (!wrap.clientWidth) return;
       const fit = Math.min(1, (wrap.clientWidth - 2) / parseFloat(t.style.width));
       t.style.zoom = schedZoom === 'fit' ? fit : Math.max(fit, 0.8);
     });
@@ -999,6 +1033,141 @@
     $('b-sch-zoom').textContent = ZOOMS[schedZoom];
     applyZoom();
   });
+
+  // 주 보기: My shifts (내 7일) / By day (그날 누가) / Table (시트 그대로). 사람 색 표가 있어야 앞의 둘이 보임.
+  const DAYN = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const todayIso = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+  const isoAdd = (iso, n) => { const [y, m, d] = iso.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
+  const span = (x) => (x.start ? x.start + (x.end ? ' – ' + x.end : '') : '');
+  let schedMode = store.get('wt_sch_mode');
+  const dayPick = {};
+
+  function weekViews(r, w, intro) {
+    const box = el('div');
+    const me = store.get('wt_name');
+    const hasPeople = !intro && w.slots && (r.people || []).length > 0;
+    const mineKnown = hasPeople && r.people.some((p) => p.name === me && p.color);
+    const modes = hasPeople ? (mineKnown ? ['my', 'day', 'table'] : ['day', 'table']) : ['table'];
+    let mode = modes.includes(schedMode) ? schedMode : modes[0];
+    const body = el('div');
+    const draw = () => {
+      body.replaceChildren(mode === 'my' ? myShifts(w, me) : mode === 'day' ? byDay(r, w, me) : tableView(r, w));
+      if (mode === 'table') requestAnimationFrame(applyZoom);
+      updateZoomButton();
+    };
+    if (modes.length > 1) {
+      const seg = el('div', 'seg');
+      const labels = { my: 'My shifts', day: 'By day', table: 'Table' };
+      for (const m of modes) {
+        const b = el('button', m === mode ? 'on' : null, labels[m]);
+        b.type = 'button';
+        b.addEventListener('click', () => {
+          mode = schedMode = m; store.set('wt_sch_mode', m);
+          seg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+          draw();
+        });
+        seg.append(b);
+      }
+      box.append(seg);
+    }
+    box.append(body);
+    draw();
+    return box;
+  }
+
+  function dname(iso, d) {
+    const n = el('div', 'dname');
+    n.append(document.createTextNode(DAYN[d]), el('b', null, String(+iso.slice(8))), document.createTextNode(MON[+iso.slice(5, 7) - 1]));
+    return n;
+  }
+
+  function myShifts(w, me) {
+    const list = el('div', 'days'), today = todayIso();
+    for (let d = 0; d < 7; d++) {
+      const iso = isoAdd(w.monday, d);
+      const row = el('div', 'day' + (iso === today ? ' today' : ''));
+      const sh = el('div', 'shifts');
+      const mine = w.slots.filter((x) => x.d === d && x.names.includes(me));
+      if (!mine.length) sh.append(el('div', 'off', 'Off'));
+      for (const x of mine) {
+        const s = el('div', 'shift');
+        s.style.setProperty('--c', x.color || 'var(--brand)');
+        const t = el('div');
+        if (span(x)) t.append(el('div', 'time', span(x)));
+        t.append(el('b', null, [x.zone, x.role].filter(Boolean).join(' · ') || 'Shift'));
+        if (x.text && !/^\s*$/.test(x.text)) t.append(el('div', 'meta', x.text));
+        s.append(t);
+        sh.append(s);
+      }
+      row.append(dname(iso, d), sh);
+      list.append(row);
+    }
+    return list;
+  }
+
+  function byDay(r, w, me) {
+    const box = el('div'), chips = el('div', 'daychips'), out = el('div');
+    const today = todayIso();
+    let sel = dayPick[w.monday];
+    if (sel == null) { const t = Math.round((Date.parse(today) - Date.parse(w.monday)) / 864e5); sel = t >= 0 && t < 7 ? t : 0; }
+    const draw = () => {
+      dayPick[w.monday] = sel;
+      chips.querySelectorAll('.tab').forEach((c, i) => c.classList.toggle('on', i === sel));
+      out.replaceChildren();
+      const slots = w.slots.filter((x) => x.d === sel);
+      if (!slots.length) return out.append(el('p', 'hint', 'Nobody is on the schedule this day.'));
+      const groups = [];
+      for (const x of slots) {
+        const k = x.zone + '|' + span(x);
+        let g = groups.find((y) => y.k === k);
+        if (!g) groups.push(g = { k, zone: x.zone, time: span(x), slots: [] });
+        g.slots.push(x);
+      }
+      for (const g of groups) {
+        const z = el('div', 'zone'), h = el('div', 'zone-h');
+        h.append(document.createTextNode(g.zone || 'Shift'), el('span', null, g.time));
+        z.append(h);
+        for (const x of g.slots) {
+          const line = el('div', 'slot' + (x.names.includes(me) ? ' me' : ''));
+          if (x.role) line.append(el('span', 'role', x.role));
+          const dot = el('span', 'dot');
+          dot.style.setProperty('--c', x.color || 'transparent');
+          line.append(dot, document.createTextNode(x.names.length ? x.names.join(', ') : 'Unknown colour'));
+          if (x.text && !x.names.some((n) => x.text.trim().toLowerCase() === n.toLowerCase())) line.append(el('span', 'meta', x.text));
+          z.append(line);
+        }
+        out.append(z);
+      }
+    };
+    for (let d = 0; d < 7; d++) {
+      const iso = isoAdd(w.monday, d);
+      const b = tabButton(DAYN[d] + ' ' + +iso.slice(8), false, () => { sel = d; draw(); });
+      if (iso === today) b.style.fontWeight = '800';
+      chips.append(b);
+    }
+    box.append(chips, out);
+    draw();
+    return box;
+  }
+
+  function tableView(r, w) {
+    const box = el('div'), wrap = el('div', 'sheet-wrap');
+    wrap.append(sheetTable(r.cols, w.rows));
+    box.append(wrap);
+    const people = (r.people || []).filter((p) => p.color);
+    if (people.length) {
+      const lg = el('div', 'legend');
+      for (const p of people) {
+        const it = el('span'), dot = el('span', 'dot');
+        dot.style.setProperty('--c', p.color);
+        it.append(dot, document.createTextNode(' ' + p.name));
+        lg.append(it);
+      }
+      box.append(lg);
+    }
+    return box;
+  }
 
   function weekCard(r, w, intro) {
     const card = el('article', 'week' + (w.mustConfirm && (w.changed || w.state !== 'early') ? ' todo' : ''));
@@ -1014,9 +1183,7 @@
       }
       card.append(head);
     }
-    const wrap = el('div', 'sheet-wrap');
-    wrap.append(sheetTable(r.cols, w.rows));
-    card.append(wrap);
+    card.append(weekViews(r, w, intro));
     if (w.mustConfirm) card.append(agreeBox(r, w, card));
     else if (w.confirmedAt) card.append(el('div', 'done', '✓ Read and agreed · ' + w.confirmedAt.slice(0, 16)));
     if (w.monday && w.state !== 'ended') {

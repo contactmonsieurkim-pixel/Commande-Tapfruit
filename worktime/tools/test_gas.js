@@ -63,6 +63,8 @@ function makeEnv(propsInit) {
           setValue: (x) => rng.setValues([[x]]),
           getValue: () => cells[r + ',' + c] || '',
           getDisplayValues: () => rng.getValues(),
+          getBackgrounds: () => Array.from({ length: nr }, (_, i) =>
+            Array.from({ length: nc }, (_, j) => sheet.bg[(r + i) + ',' + (c + j)] || '#ffffff')),
           getValues: () => Array.from({ length: nr }, (_, i) =>
             Array.from({ length: nc }, (_, j) => cells[(r + i) + ',' + (c + j)] || '')),
         };
@@ -1104,6 +1106,65 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.deepStrictEqual(S.sent.mail.slice(m0).map((m) => m.subject), ['Schedule change request from Yuna']);
     const inbox = S.call({ action: 'requests', token: boss }).requests;
     assert.strictEqual(inbox[0].message, '[Schedule change · Kitchen · 2 Nov – 8 Nov 2026]\nCould I swap Saturday with Leo?');
+  });
+
+  test('schedule: colour table -> my shifts, who works each day', () => {
+    at('2026-10-28T12:00:00+01:00');
+    const cs = cfg.getSheetByName('Schedule Colors');
+    assert.deepStrictEqual([1, 2].map((c) => cs.cells['1,' + c]), ['Name', 'Color']);
+    cs.getRange(2, 1, 3, 1).setValues([['yuna'], ['No Mail'], ['Chris']]);
+    cs.getRange(2, 2).setBackground('#f09a37');      // 칠한 칸
+    cs.getRange(3, 2).setValue('#8B7CF0');           // 글자로 쓴 색
+    const r = S.call({ action: 'schedule', token: yu, sched: 'Kitchen', file: FILE, tab: '10' });
+    assert.deepStrictEqual(r.people, [{ name: 'Yuna', color: '#f09a37' }, { name: 'No Mail', color: '#8b7cf0' },
+                                      { name: 'Chris', color: '' }]);
+    const w = r.weeks[1]; // 5 Oct
+    const show = (x) => [x.date, x.zone, x.role, x.text, x.names.join('+')];
+    assert.deepStrictEqual(w.slots.map(show), [
+      ['2026-10-05', 'Morning', 'P', '09:00', 'Yuna'],
+      ['2026-10-05', 'Morning', 'W', 'Chris 23:00', 'Chris'],
+      ['2026-10-06', 'Morning', 'F', '', 'No Mail'],
+    ]);
+  });
+
+  test('schedule: a change to someone else\'s shift does not ask me again', () => {
+    at('2026-11-03T10:00:00+01:00'); // 화요일: 16 Nov 주 확인 시작 -> 시트에 11월 탭 추가
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const nov = [
+      ['', ''].concat(DAYS),
+      ['Date', ''].concat(['16/11', '17/11', '18/11', '19/11', '20/11', '21/11', '22/11']),
+      ['Morning', '', '09:00', '09:00', '09:00'],
+      ['', '', '15:00', '15:00', '15:00'],
+      ['', 'P', { t: '', bg: '#f09a37' }, { t: '', bg: '#8b7cf0' }],
+      ['', 'F', { t: '', bg: '#8b7cf0' }, '', { t: 'Yuna', bg: '' }],
+    ];
+    S.files[FILE].sheets.push(makeScheduleFile('x', 'x', { 11: { grid: nov, merges: [[3, 1, 4, 1]] } }).sheets[0]);
+    const nm = S.call({ action: 'login', name: 'No Mail', pin: '3333' }).token;
+    const view = (t) => S.call({ action: 'schedule', token: t, sched: 'Kitchen', file: FILE, tab: '11' }).weeks[0];
+    const yw = view(yu), nw = view(nm);
+    assert.deepStrictEqual(yw.slots.filter((x) => x.names.includes('Yuna')).map((x) => [x.date, x.role, x.start, x.end]),
+      [['2026-11-16', 'P', '09:00', '15:00'], ['2026-11-18', 'F', '09:00', '15:00']]);
+    assert.notStrictEqual(yw.fp, nw.fp, 'each person has their own fingerprint');
+    for (const [t, w] of [[yu, yw], [nm, nw]]) {
+      assert.ok(S.call({ action: 'scheduleConfirm', token: t, sched: 'Kitchen', file: FILE, tab: '11',
+                         monday: w.monday, fp: w.fp, agree: true }).ok);
+    }
+    // Supervisor 가 No Mail 의 화요일 칸만 지움 -> No Mail 만 다시 확인
+    nov[4][3] = '';
+    at('2026-11-03T10:30:00+01:00');
+    assert.strictEqual(view(yu).changed, false, 'Yuna: her shifts are the same');
+    assert.strictEqual(view(nm).changed, true);
+    // 시간대 시간이 바뀌면 그 칸에서 일하는 사람만 (월요일 09:00 -> 10:00: Yuna P, No Mail F)
+    nov[2][2] = '10:00';
+    at('2026-11-03T11:00:00+01:00');
+    assert.strictEqual(view(yu).changed, true);
+    const m0 = S.sent.mail.length;
+    S.ctx.checkScheduleChanges();
+    at('2026-11-03T11:30:00+01:00');
+    S.ctx.checkScheduleChanges();
+    const sent = S.sent.mail.slice(m0).filter((m) => m.subject.includes('changed'));
+    assert.deepStrictEqual(sent.map((m) => m.to), ['yuna@example.com'], 'No Mail has no email; push only');
+    assert.match(sent[0].htmlBody, /16 Nov – 22 Nov 2026/);
   });
 
   test('schedule: an unreadable spreadsheet never breaks the home screen', () => {

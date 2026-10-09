@@ -83,7 +83,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 66개)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 68개)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```
@@ -93,7 +93,11 @@ node test_webpush.js                    # 푸시 암호를 Node crypto 와 교�
 **Schedule**
 - 스케줄은 시트에서만 수정(앱은 읽기 전용, 웹 게시 불필요 — Apps Script 가 `openById` 로 읽음, 2분 캐시). WorkTime Config `Schedules` 탭에 URL 등록.
 - 주 = `Monday…Sunday` 줄 + 다음 줄 날짜로 월요일 계산. 확인 ID 에 **주 내용 지문**(글자+배경색+글자색, 두 달에 걸친 주는 두 탭 합산)을 넣음 → 확인 후 시트가 바뀌면 "다시 확인".
-- 지문은 **주 전체** 기준: 한 칸만 바뀌어도 그 주를 확인했던 모두가 다시 확인(사장님 요청: 변경 시 알림 + 재확인). 개인별로 좁히려면 색↔사람 매핑이 필요(아직 없음).
+- 지문은 **사람별**: WorkTime Config `Schedule Colors`(Name | 칠한 Color 칸)로 칸 색 → 사람. 칸 글자 속 이름도 인정.
+  내 지문 = 내 근무 칸들의 (날짜, 시간대=첫 열 라벨, 역할=요일 앞 열, 그 시간대 같은 열의 HH:MM 시작·끝, 칸 글자). 색이 없는 사람은 주 전체 지문.
+  라벨 열에 쓰인 색은 디자인(배경)으로 보고 무시. 색 표 자체를 바꾸면 해당 사람들 지문도 바뀜(재확인 요청됨).
+- 폰 UI: 주마다 My shifts / By day / Table. 서버가 주마다 `slots`(근무 칸 목록) 를 줌 (`weekSlots_`). 두 달에 걸친 주는 두 탭 합산.
+- 한계: "Yuna off" 처럼 이름이 들어간 메모 칸도 그 사람 근무로 표시됨(글자는 그대로 보여 줌).
 - 알림: 2주 전 화요일 09:00 부터 매일 리마인더(공지와 같은 방식). 변경은 30분 검사 + "한 번 더 같게 보일 때" 발송(편집 중 연속 알림 방지), 같은 변경은 1번.
 - 직원의 변경 요청 = Request(`topic: 'schedule'`), 별도 기록 시트 없음.
 
