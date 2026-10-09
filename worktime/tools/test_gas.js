@@ -1343,6 +1343,15 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     ]);
   });
 
+  test('schedule: names in a cell match whole names only (LIN hsin-yu is not Yu-hsuan CHEN)', () => {
+    const has = (t, n) => S.ctx.textHasName_(t, n);
+    assert.strictEqual(has('LIN hsin-yu', 'Yu-hsuan CHEN'), false);
+    assert.strictEqual(has('LIN hsin-yu', 'LIN hsin-yu'), true);
+    assert.strictEqual(has('Yu-hsuan', 'Yu-hsuan CHEN'), true);
+    assert.strictEqual(has('Chris 23:00', 'Chris'), true);
+    assert.strictEqual(has('Sujeong 14:30', 'Sujeong SEO'), true);
+  });
+
   test('schedule: records still verify', () => {
     assert.ok(S.ctx.verifyRecords().every((x) => x.ok));
   });

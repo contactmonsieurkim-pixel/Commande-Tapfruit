@@ -79,7 +79,11 @@ function textHasName_(text, name) {
   var norm = function (x) { return ' ' + String(x).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim() + ' '; };
   var t = norm(text), n = norm(name);
   if (t.trim() === '' || n.trim() === '') return false;
-  return t.indexOf(n) >= 0 || t.indexOf(' ' + n.trim().split(' ')[0] + ' ') >= 0;
+  if (t.indexOf(n) >= 0) return true;
+  // 이름의 첫 단어(띄어쓰기 기준, 'Yu-hsuan' 은 한 덩어리)로도: 'Chris 23:00' -> Chris.
+  // 하이픈을 쪼개서 비교하면 'LIN hsin-yu' 의 'yu' 가 'Yu-hsuan CHEN' 으로 잘못 잡힘
+  var first = norm(String(name).trim().split(/\s+/)[0]);
+  return first.trim().length >= 2 && t.indexOf(first) >= 0;
 }
 
 /**
