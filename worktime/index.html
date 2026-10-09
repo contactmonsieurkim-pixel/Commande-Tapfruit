@@ -218,6 +218,12 @@
     .role { min-width: 28px; text-align: center; font-size: 15px; font-weight: 800; color: var(--text);
             border: 1px solid var(--line); border-radius: 6px; padding: 1px 4px; }
     .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px; font-size: 13px; color: var(--muted); }
+    .teamseg { display: flex; gap: 6px; margin: -2px 0 10px; }
+    .teamseg button { width: auto; margin: 0; padding: 4px 12px; font-size: 13px; border-radius: 14px;
+                      background: transparent; color: var(--muted); border: 1px solid var(--line); }
+    .teamseg button.on { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+    .shift { cursor: pointer; }
+    .shift .go { margin-left: auto; color: var(--muted); font-size: 13px; white-space: nowrap; }
     .pending-box button { width: auto; margin: 6px 6px 0 0; padding: 8px 12px; font-size: 14px; background: #fff; color: var(--err); }
   </style>
 </head>
@@ -1200,6 +1206,51 @@
   let schedMode = store.get('wt_sch_mode');
   const dayPick = {};
 
+  // 다시 그린 뒤에도 누른 주가 화면에서 같은 자리에 있도록
+  function keepPlace(node, redraw) {
+    const card = node.closest('.week'), key = card && card.dataset.monday;
+    const top = card ? card.getBoundingClientRect().top : 0;
+    const restore = () => {
+      const again = key && document.querySelector('.week[data-monday="' + key + '"]');
+      if (again) window.scrollBy(0, again.getBoundingClientRect().top - top);
+    };
+    const p = redraw(restore);
+    if (!p) restore();
+  }
+
+  // 팀 바꾸기 (주마다 있는 작은 버튼): 모든 주에 같이 적용, 같은 달·같은 주 자리 유지
+  function switchTeam(name, node) {
+    const r = schedData, label = ((r.tabs || []).find((t) => t.file === r.file && t.tab === r.tab) || {}).label;
+    const pickTab = (x) => (x && x.tabs || []).find((t) => t.label === label);
+    // 미리 받아 둔 그 팀 화면에서 같은 달 탭을 찾음
+    let known = null;
+    for (const k of Object.keys(schedStore.views)) {
+      const v = schedStore.views[k].r;
+      if (v.sched === name && pickTab(v)) { known = pickTab(v); break; }
+    }
+    keepPlace(node, (restore) => {
+      openSchedule(known ? { sched: name, file: known.file, tab: known.tab } : { sched: name }, false, () => {
+        const x = schedData, t = pickTab(x);
+        if (!known && t && (t.file !== x.file || t.tab !== x.tab)) {
+          return openSchedule({ sched: name, file: t.file, tab: t.tab }, false, restore);
+        }
+        restore();
+      });
+      return true;
+    });
+  }
+
+  function teamButtons(r) {
+    const box = el('div', 'teamseg');
+    for (const s of r.schedules) {
+      const b = el('button', s.name === r.sched ? 'on' : null, s.name);
+      b.type = 'button';
+      b.addEventListener('click', () => { if (s.name !== r.sched) switchTeam(s.name, box); });
+      box.append(b);
+    }
+    return box;
+  }
+
   function weekViews(r, w, intro) {
     const box = el('div');
     const me = store.get('wt_name');
@@ -1223,11 +1274,7 @@
         b.addEventListener('click', () => {
           if (m === mode) return;
           schedMode = m; store.set('wt_sch_mode', m);
-          const card = box.closest('.week'), key = card && card.dataset.monday;
-          const top = card ? card.getBoundingClientRect().top : 0;
-          renderSchedule(schedData, false);
-          const again = key && document.querySelector('.week[data-monday="' + key + '"]');
-          if (again) window.scrollBy(0, again.getBoundingClientRect().top - top);
+          keepPlace(box, () => renderSchedule(schedData, false));
         });
         seg.append(b);
       }
@@ -1256,14 +1303,21 @@
       if (!mine.length) sh.append(el('div', 'off', 'Off'));
       for (const x of mine) {
         const s = el('div', 'shift');
+        // 누르면 By day 로 그날 (같이 일하는 사람 보기) — 보기는 모든 주에 같이 적용
+        s.addEventListener('click', () => {
+          dayPick[w.monday] = d;
+          schedMode = 'day'; store.set('wt_sch_mode', 'day');
+          keepPlace(list, () => renderSchedule(schedData, false));
+        });
         s.style.setProperty('--c', x.color || 'var(--brand)');
         const t = el('div');
         const line = el('div');
         line.append(roleBadge(x.role), el('span', 'time', span(x) || '—'));
         if (x.special) line.append(el('span', 'special', 'Special'));
         t.append(line);
+        t.style.flex = '1';
         for (const b of x.breaks || []) t.append(el('div', 'brk', '🍽 ' + b));
-        s.append(t);
+        s.append(t, el('span', 'go', 'Who else ›'));
         sh.append(s);
       }
       const dn = dname(iso, d);
@@ -1356,6 +1410,7 @@
           : w.state === 'due' ? 'Confirm today' : 'Not confirmed yet'));
       }
       card.append(head);
+      if ((r.schedules || []).length > 1) card.append(teamButtons(r));
     }
     card.append(weekViews(r, w, intro));
     if (w.mustConfirm) card.append(agreeBox(r, w, card));
