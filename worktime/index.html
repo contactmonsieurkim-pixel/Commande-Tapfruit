@@ -277,7 +277,7 @@
     <h2 class="feed-title">Schedule</h2>
     <div id="sch-scheds" class="tabs hidden"></div>
     <div id="sch-tabs" class="tabs"></div>
-    <div id="sch-loading" class="loading-bar hidden"><span class="spinner"></span>Loading…</div>
+    <div id="sch-loading" class="loading-bar hidden"><span class="spinner"></span><span>Loading…</span></div>
     <div id="sch-pending" class="alert pending-box hidden"></div>
     <div class="sch-bar"><span id="sch-meta" class="meta"></span><button id="b-sch-zoom" class="link" type="button"></button></div>
     <div id="sch-body"><p class="hint">Loading…</p></div>
@@ -949,41 +949,84 @@
   const ZOOMS = { fit: 'Zoom in', read: 'Whole week' }; // 버튼 글자 = 누르면 바뀔 모양
   let schedZoom = store.get('wt_sch_zoom') === 'fit' ? 'fit' : 'read';
 
-  // 한 번 본 화면은 바로 보여 주고(메모리), 서버에서 새로 받아 바뀐 게 있으면 다시 그림.
-  // 처음 여는 화면은 "Loading…" + 흐리게. 빨리 여러 번 누르면 마지막 것만 반영.
-  const schedCache = {};
-  let schedSeq = 0;
+  // 빠르게 보이게:
+  //  A) 받아 온 스케줄을 폰(localStorage)에 저장 -> 다음에 열면 바로 보이고, 뒤에서 새로 받아 바뀐 것만 다시 그림
+  //  B) 지금 화면을 보여 준 뒤 다른 팀·다른 달도 뒤에서 미리 받아 둠 -> 탭을 눌렀을 때 바로 바뀜
+  // 1분 안에 받은 화면은 서버에 다시 묻지 않음. 빨리 여러 번 누르면 마지막 것만 반영.
+  const SCHED_STORE = 'wt_sch_cache_v1', SCHED_FRESH_MS = 60000;
   const schedKey = (x) => [x.sched || '', x.file || '', x.tab || ''].join('|');
+  let schedStore = { user: '', views: {}, alias: {} };
+  try {
+    const saved = JSON.parse(localStorage.getItem(SCHED_STORE) || 'null');
+    if (saved && saved.views && saved.alias) schedStore = saved;
+  } catch (e) { /* 저장된 것이 없거나 깨짐 */ }
+  let schedSeq = 0, saveTimer = null;
 
-  async function openSchedule(sel, focus = true, after) {
+  function saveSchedStore() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try { localStorage.setItem(SCHED_STORE, JSON.stringify(schedStore)); } catch (e) {
+        try { localStorage.removeItem(SCHED_STORE); } catch (e2) { /* 저장 공간 없음: 메모리로만 */ }
+      }
+    }, 300);
+  }
+
+  function cacheGet(sel) {
+    if (schedStore.user !== store.get('wt_name')) return null;
+    const k = schedStore.alias[schedKey(sel)] || schedKey(sel);
+    return schedStore.views[k] || null; // { r, at }
+  }
+
+  function cachePut(sel, r) {
+    const me = store.get('wt_name');
+    if (schedStore.user !== me) schedStore = { user: me, views: {}, alias: {} };
+    const k = schedKey(r);
+    schedStore.views[k] = { r, at: Date.now() };
+    schedStore.alias[schedKey(sel)] = k;
+    saveSchedStore();
+  }
+
+  async function fetchSchedule(sel) {
+    const r = await api(Object.assign({ action: 'schedule', token: token() }, sel));
+    if (r.ok) cachePut(sel, r);
+    return r;
+  }
+
+  // force: true = 저장된 화면이 1분 안 것이어도 서버에서 새로 받음 (앱으로 돌아왔을 때)
+  //        'fresh' = 저장된 화면을 아예 보여 주지 않고 Loading… 후 새로 받은 것만 (알림·메일 링크로 들어왔을 때)
+  async function openSchedule(sel, focus = true, after, force = false) {
     schedSel = sel || {};
     show('schedule');
-    const seq = ++schedSeq, cached = schedCache[schedKey(schedSel)];
+    const seq = ++schedSeq, hit = force === 'fresh' ? null : cacheGet(schedSel), cached = hit && hit.r;
     if (cached) {
       schedData = cached;
       renderSchedule(cached, focus);
       if (after) after();
+      if (!force && Date.now() - hit.at < SCHED_FRESH_MS) {
+        $('sch-loading').classList.add('hidden');
+        $('sch-body').classList.remove('stale');
+        return setTimeout(() => prefetchOthers(cached), 300);
+      }
     } else if (!schedData) {
       $('sch-body').replaceChildren(el('p', 'hint', 'Loading…'));
     } else {
       $('sch-body').classList.add('stale');
     }
+    $('sch-loading').lastChild.textContent = cached ? 'Updating…' : 'Loading…';
     $('sch-loading').classList.remove('hidden');
     try {
-      const r = await api(Object.assign({ action: 'schedule', token: token() }, schedSel));
+      const r = await fetchSchedule(schedSel);
       if (seq !== schedSeq) return;
       if (r.code === 'AUTH') return logout(r.error);
       if (!r.ok) return $('sch-body').replaceChildren(el('p', 'err', serverMsg(r)));
-      const fresh = !cached || JSON.stringify(cached) !== JSON.stringify(r);
-      schedCache[schedKey(schedSel)] = r;
-      schedCache[schedKey(r)] = r;
       schedData = r;
-      if (fresh) {
+      if (!cached || JSON.stringify(cached) !== JSON.stringify(r)) {
         const y = window.scrollY;
         renderSchedule(r, focus && !cached);
         if (cached) window.scrollTo(0, y);
         if (after && !cached) after();
       }
+      setTimeout(() => prefetchOthers(r), 300);
     } catch (e) {
       if (seq !== schedSeq) return;
       if (!cached) $('sch-body').replaceChildren(el('p', 'err', 'Network problem. Please try again. (' + e.message + ')'));
@@ -993,6 +1036,31 @@
         $('sch-loading').classList.add('hidden');
         $('sch-body').classList.remove('stale');
       }
+    }
+  }
+
+  // 다른 팀(먼저) -> 다른 달 순서로 하나씩 미리 받아 둠. 최근(5분 안)에 받은 것은 건너뜀.
+  let prefetching = false;
+  async function prefetchOthers(r) {
+    if (prefetching || !r || !r.ok || !r.schedules) return;
+    prefetching = true;
+    const recent = (sel) => { const h = cacheGet(sel); return h && Date.now() - h.at < SCHED_FRESH_MS * 5 ? h.r : null; };
+    const queue = [];
+    for (const s of r.schedules) if (s.name !== r.sched) queue.push({ sched: s.name });
+    for (const t of r.tabs || []) if (t.file !== r.file || t.tab !== r.tab) queue.push({ sched: r.sched, file: t.file, tab: t.tab });
+    try {
+      for (let i = 0; i < queue.length; i++) {
+        let x = recent(queue[i]);
+        if (!x) {
+          x = await fetchSchedule(queue[i]);
+          if (!x.ok) continue;
+        }
+        if (!queue[i].tab) { // 다른 팀: 그 팀의 다른 달도
+          for (const t of x.tabs || []) if (t.file !== x.file || t.tab !== x.tab) queue.push({ sched: x.sched, file: t.file, tab: t.tab });
+        }
+      }
+    } catch (e) { /* 오프라인 등: 다음에 다시 */ } finally {
+      prefetching = false;
     }
   }
 
@@ -1344,6 +1412,7 @@
           w.status.changed = (w.status.changed || []).filter((n) => n !== me);
           w.status.confirmed.push({ name: me, at: x.confirmedAt });
         }
+        saveSchedStore(); // 확인한 것도 폰에 저장된 화면에 반영
         const y = window.scrollY;
         renderSchedule(r, false);
         window.scrollTo(0, y);
@@ -1565,7 +1634,7 @@
       if (view === 'ann') return openFeed('ann', 'home');
       if (view === 'rules') return openFeed('rules', 'home');
       if (view === 'requests') return openInbox();
-      if (view === 'schedule') return openSchedule();
+      if (view === 'schedule') return openSchedule({}, true, null, 'fresh');
     }
     goHome();
   }
@@ -1630,7 +1699,7 @@
       if (currentView === 'inbox') return openInbox();
       if (currentView === 'schedule') {
         const y = window.scrollY;
-        await openSchedule(schedData ? { sched: schedData.sched, file: schedData.file, tab: schedData.tab } : {}, false);
+        await openSchedule(schedData ? { sched: schedData.sched, file: schedData.file, tab: schedData.tab } : {}, false, null, true);
         return window.scrollTo(0, y);
       }
       if (currentView === 'result' && annQueue.length) {
