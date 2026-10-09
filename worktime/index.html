@@ -356,7 +356,9 @@
   let lastTap = null;
   let annReturn = 'home';
 
+  let currentView = null;
   function show(view) {
+    currentView = view;
     for (const v of VIEWS) $('v-' + v).classList.toggle('hidden', v !== view);
     const name = store.get('wt_name');
     $('who').textContent = name || '';
@@ -482,6 +484,7 @@
       const r = await api({ action: FEEDS[a.kind].confirm, token: token(), id: a.id });
       if (!r.ok) throw new Error(r.error);
       annQueue.shift();
+      if (r.already) toast('Already confirmed on ' + r.confirmedAt.slice(0, 16) + '.');
       if (r.unread != null) setBadge(r.unread);
       if (r.unreadRules != null) setRuleBadge(r.unreadRules);
       window.scrollTo(0, 0);
@@ -659,6 +662,7 @@
       const r = await api({ action: FEEDS[feed].confirm, token: token(), id: x.id });
       if (!r.ok) throw new Error(r.error);
       x.confirmedAt = r.confirmedAt;
+      if (r.already) toast('Already confirmed on ' + r.confirmedAt.slice(0, 16) + '.');
       window.scrollTo(0, 0);
       renderFeed(feedItems, true);
     } catch (e) {
@@ -1076,6 +1080,29 @@
       btn.disabled = false;
     }
   });
+
+  // 앱을 다시 열면(백그라운드에서 돌아오면) 서버에서 최신 상태를 다시 받아옴.
+  // 메일 링크(브라우저)에서 이미 확인한 공지·룰을 웹앱이 또 묻지 않도록.
+  let lastRefresh = 0;
+  async function refreshOnResume() {
+    if (!token() || Date.now() - lastRefresh < 3000) return;
+    lastRefresh = Date.now();
+    try {
+      if (currentView === 'home') return goHome();
+      if (currentView === 'ann') return openFeed(feed, annReturn);
+      if (currentView === 'inbox') return openInbox();
+      if (currentView === 'result' && annQueue.length) {
+        const kinds = [...new Set(annQueue.map((a) => a.kind))];
+        const lists = await Promise.all(kinds.map((k) => loadFeed(k)));
+        const still = new Set(lists.flat().filter(needsConfirm).map((x) => x.kind + '/' + x.id + '/' + (x.version || '')));
+        annQueue = annQueue.filter((a) => still.has(a.kind + '/' + a.id + '/' + (a.version || '')));
+        showNextAnn();
+      }
+    } catch (e) { /* 오프라인이면 지금 화면 유지 */ }
+  }
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') refreshOnResume(); });
+  window.addEventListener('pageshow', (e) => { if (e.persisted) refreshOnResume(); });
+  window.addEventListener('focus', refreshOnResume);
 
   // 시작
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -405,7 +405,10 @@ test('confirm records name + time once', () => {
   assert.ok(r.ok); assert.strictEqual(r.unread, 0);
   confirmedAt = r.confirmedAt;
   assert.match(confirmedAt, /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/);
-  assert.strictEqual(env.call({ action: 'confirm', token: yuna, id: annId }).confirmedAt, confirmedAt);
+  const again = env.call({ action: 'confirm', token: yuna, id: annId });
+  assert.strictEqual(again.confirmedAt, confirmedAt);
+  assert.strictEqual(again.already, true);
+  assert.strictEqual(r.already, false);
   const rows = recRows('Confirmations');
   assert.strictEqual(rows.length, 1);
   assert.deepStrictEqual(rows[0].slice(0, 4), [annId, 'Kitchen rules', 'Yuna', confirmedAt]);
@@ -797,7 +800,9 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
       [{ version: 1, at: '2026-10-09 10:00:00', title: 'Fridge labels', content: 'Label every container.' }]);
     if (ece) assert.strictEqual(decryptFor(R.sent.push.slice(p0).find((x) => x.url === YU_EP), ua, uaAuth).body,
       '[Rule-003] Fridge labels (updated)');
-    R.call({ action: 'ruleConfirm', token: yu, id: 'Rule-003' });
+    assert.strictEqual(R.call({ action: 'ruleConfirm', token: yu, id: 'Rule-003' }).already, false);
+    assert.strictEqual(R.call({ action: 'ruleConfirm', token: yu, id: 'Rule-003' }).already, true, 'second path: no new record');
+    assert.strictEqual(sheetRows('Confirmations', 5).filter((x) => x[0] === 'Rule-003 v2').length, 1);
     const st = R.call({ action: 'status', token: boss }).announcements.find((x) => x.id === 'Rule-003 v2');
     assert.strictEqual(st.title, '[Rule-003] Fridge labels (v2)');
     assert.deepStrictEqual(st.confirmed.map((c) => c.name), ['Yuna']);
