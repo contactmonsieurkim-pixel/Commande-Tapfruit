@@ -117,6 +117,16 @@
     #v-ann.focus { padding-bottom: 120px; }
     #b-ann-later { display: block; margin: 14px auto 0; }
     .count { color: var(--muted); font-size: 14px; text-align: center; margin: -4px 0 10px; }
+    .feed-title { font-size: 20px; margin: 0 0 12px; }
+    .rule-no { color: var(--brand); font-weight: 700; }
+    .updated { display: inline-block; background: var(--warn-bg); color: var(--warn-ink); border-radius: 8px;
+               padding: 2px 8px; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    .prev { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); color: var(--muted); font-size: 13px; }
+    .prev b { font-weight: 600; }
+    .prev .content { font-size: 13px; }
+    .edit-link { display: block; margin: 10px 0 0 auto; }
+    .req { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+    .editing { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 10px 12px; font-weight: 600; }
     .dock {
       position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-content: center;
       padding: 24px 16px max(16px, env(safe-area-inset-bottom));
@@ -167,33 +177,63 @@
   <!-- 대기 화면 -->
   <section id="v-home" class="hidden">
     <button id="b-anns" class="secondary">Announcements<span id="badge" class="badge hidden"></span></button>
-    <button id="b-admin" class="secondary hidden">Manager: announcements</button>
+    <button id="b-rules" class="secondary">Our Rules<span id="badge-rules" class="badge hidden"></span></button>
+    <button id="b-request" class="secondary">Request</button>
+    <button id="b-inbox" class="secondary hidden">Requests inbox</button>
+    <button id="b-admin" class="secondary hidden">Manager</button>
   </section>
 
   <!-- 공지 확인 -->
   <section id="v-ann" class="hidden">
+    <h2 id="feed-title" class="feed-title">Announcements</h2>
     <div id="ann-saved" class="saved hidden"></div>
     <div id="ann-alert" class="alert hidden">I have an unread announcement !</div>
-    <div id="ann-done" class="saved hidden">✓ All caught up. Here are the past announcements.</div>
+    <div id="ann-done" class="saved hidden">✓ All caught up.</div>
     <div id="ann-list"><p class="hint">Loading…</p></div>
     <button id="b-ann-later" class="link hidden">Later</button>
     <button id="b-ann-back" class="secondary">Back</button>
     <div id="ann-dock" class="dock hidden"><button id="b-ann-confirm">I have read and understood</button></div>
   </section>
 
+  <!-- 직원 -> Supervisor 요청 (공개되지 않음) -->
+  <section id="v-request" class="hidden">
+    <div class="card">
+      <h3>Request to the supervisor</h3>
+      <p class="meta">Only the supervisor can read this. Ask for anything you need at work, or share a concern.</p>
+      <form id="f-request">
+        <textarea id="q-message" required maxlength="3000" placeholder="Write your request…"></textarea>
+        <button type="submit">Send</button>
+      </form>
+      <p id="q-msg"></p>
+    </div>
+    <button id="b-request-back" class="secondary">Back</button>
+  </section>
+
+  <!-- Supervisor 전용: 받은 요청 -->
+  <section id="v-inbox" class="hidden">
+    <h2 class="feed-title">Requests</h2>
+    <div id="inbox-list"><p class="hint">Loading…</p></div>
+    <button id="b-inbox-back" class="secondary">Back</button>
+  </section>
+
   <!-- 관리자: 공지 작성 + 확인 현황 -->
   <section id="v-admin" class="hidden">
     <div class="card">
-      <h3>New announcement</h3>
+      <h3 id="post-heading">New announcement or rule</h3>
+      <p id="editing" class="editing hidden"></p>
       <form id="f-post">
+        <div id="kind-pick">
+          <label class="check"><input type="radio" name="kind" value="ann" checked> Announcement</label>
+          <label class="check"><input type="radio" name="kind" value="rule"> Rule (gets a number, shown at clock-in)</label>
+        </div>
         <label for="p-title">Title</label>
         <input id="p-title" required maxlength="120">
         <label for="p-content">Content</label>
         <textarea id="p-content" required></textarea>
-        <label for="p-photos">Photos (optional, up to 6)</label>
+        <label for="p-photos" id="p-photos-label">Photos (optional, up to 6)</label>
         <input id="p-photos" type="file" accept="image/*" multiple>
         <div id="p-thumbs" class="thumbs"></div>
-        <label class="check"><input id="p-rule" type="checkbox"> Rule: also show it as a tip when clocking in</label>
+        <div id="aud-box">
         <label>Send to</label>
         <label class="check"><input type="radio" name="aud" value="all" checked> Everyone</label>
         <label class="check"><input type="radio" name="aud" value="pick"> Choose teams / people</label>
@@ -204,7 +244,9 @@
           <div id="aud-people" class="chips"></div>
         </div>
         <p id="aud-summary" class="meta"></p>
+        </div>
         <button type="submit" id="b-post">Post and notify everyone</button>
+        <button type="button" id="b-edit-cancel" class="secondary hidden">Cancel editing</button>
       </form>
       <p id="post-msg"></p>
     </div>
@@ -310,7 +352,7 @@
       if (v != null) { try { localStorage.setItem(k, v); } catch (e) {} }
     }
   }
-  const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed'];
+  const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed', 'request', 'inbox'];
   let lastTap = null;
   let annReturn = 'home';
 
@@ -320,6 +362,7 @@
     $('who').textContent = name || '';
     $('b-bell').classList.toggle('hidden', !name || view === 'login');
     $('b-admin').classList.toggle('hidden', store.get('wt_admin') !== '1');
+    $('b-inbox').classList.toggle('hidden', store.get('wt_sup') !== '1');
     window.scrollTo(0, 0);
   }
 
@@ -353,7 +396,7 @@
     if (q.has('p') && q.has('a') && q.has('c')) {
       sessionStorage.setItem('wt_pending', JSON.stringify({ a: q.get('a'), p: q.get('p'), c: q.get('c') }));
     }
-    if (q.get('view') === 'ann') sessionStorage.setItem('wt_view', 'ann');
+    if (['ann', 'rules', 'requests'].includes(q.get('view'))) sessionStorage.setItem('wt_view', q.get('view'));
     if (location.search) history.replaceState(null, '', location.pathname);
     const raw = sessionStorage.getItem('wt_pending');
     return raw ? JSON.parse(raw) : null;
@@ -366,6 +409,12 @@
     $('r-msg').textContent = msg;
     $('r-msg').className = cls || '';
     show('result');
+  }
+
+  function setRuleBadge(n) {
+    $('badge-rules').textContent = n;
+    $('badge-rules').classList.toggle('hidden', !n);
+    $('b-rules').classList.toggle('secondary', !n);
   }
 
   function setBadge(n) {
@@ -396,7 +445,7 @@
   function showTip(t) {
     $('r-tip').classList.toggle('hidden', !t);
     if (!t) return;
-    $('tip-title').textContent = t.title;
+    $('tip-title').replaceChildren(el('span', 'rule-no', '[' + t.id + '] '), document.createTextNode(t.title));
     $('tip-content').textContent = t.content;
   }
 
@@ -419,7 +468,8 @@
       return;
     }
     showTip(null);
-    $('r-ann-card').replaceChildren(annCard(a, null, false));
+    $('r-ann').querySelector('.alert').textContent = alertFor(a);
+    $('r-ann-card').replaceChildren(itemCard(a, a.kind));
     setMain('confirm', 'I have read and understood');
   }
 
@@ -429,10 +479,11 @@
     const a = annQueue[0];
     $('b-main').disabled = true;
     try {
-      const r = await api({ action: 'confirm', token: token(), id: a.id });
+      const r = await api({ action: FEEDS[a.kind].confirm, token: token(), id: a.id });
       if (!r.ok) throw new Error(r.error);
       annQueue.shift();
-      setBadge(r.unread);
+      if (r.unread != null) setBadge(r.unread);
+      if (r.unreadRules != null) setRuleBadge(r.unreadRules);
       window.scrollTo(0, 0);
       showNextAnn();
     } catch (e) {
@@ -483,11 +534,13 @@
     result('✅', r.info, r.date + '  ' + r.time, 'Saved. Thank you!', 'ok');
     $('b-modify').classList.remove('hidden');
     setBadge(r.unread);
-    if (r.unread > 0) {
+    setRuleBadge(r.unreadRules);
+    if (r.unread > 0 || r.unreadRules > 0) {
       setMain(null, 'Loading…');
       try {
-        const list = await api({ action: 'anns', token: token() });
-        annQueue = (list.announcements || []).filter((a) => !a.confirmedAt).reverse(); // 오래된 것부터
+        const [anns, rules] = await Promise.all([
+          r.unread > 0 ? loadFeed('ann') : [], r.unreadRules > 0 ? loadFeed('rules') : []]);
+        annQueue = unreadOf(anns, 'ann').concat(unreadOf(rules, 'rules')); // 공지 먼저, 오래된 것부터
       } catch (e) { annQueue = []; }
     }
     showNextAnn();
@@ -510,6 +563,9 @@
         store.set('wt_admin', r.admin ? '1' : '0');
         $('b-admin').classList.toggle('hidden', !r.admin);
         setBadge(r.unread);
+        setRuleBadge(r.unreadRules);
+        store.set('wt_sup', r.supervisor ? '1' : '0');
+        $('b-inbox').classList.toggle('hidden', !r.supervisor);
         saveTips(r.tips);
       }
     } catch (e) { /* 오프라인이어도 홈 화면은 유지 */ }
@@ -523,103 +579,134 @@
     return n;
   };
 
-  async function openAnns(returnTo, savedMsg) {
+  // 공지(ann)와 룰(rules)은 같은 화면 구조를 씀:
+  // 확인 안 한 것이 있으면 그것만 하나씩 (하단 고정 버튼), 다 확인한 뒤에만 전체 목록
+  const FEEDS = {
+    ann: { title: 'Announcements', list: 'anns', field: 'announcements', confirm: 'confirm', photo: 'photo',
+           alert: 'I have an unread announcement !', empty: 'No announcements yet.',
+           done: '✓ All caught up. Here are the past announcements.' },
+    rules: { title: 'Our Rules', list: 'rules', field: 'rules', confirm: 'ruleConfirm', photo: 'rulePhoto',
+             alert: 'Our Rules have changed — please read', empty: 'No rules yet.',
+             done: '✓ All caught up. Here are all our rules.' },
+  };
+  let feed = 'ann', feedItems = [], canEditRules = false;
+
+  async function loadFeed(kind) {
+    const r = await api({ action: FEEDS[kind].list, token: token() });
+    if (!r.ok) throw Object.assign(new Error(r.error), { code: r.code });
+    if (kind === 'rules') canEditRules = !!r.admin;
+    return r[FEEDS[kind].field].map((x) => Object.assign(x, { kind }));
+  }
+
+  const needsConfirm = (x) => !x.confirmedAt && (x.kind === 'ann' || x.mustConfirm);
+  const alertFor = (x) => (x.kind === 'ann' ? FEEDS.ann.alert
+    : x.updatedAt ? 'A rule has been updated — please read' : 'New rule — please read');
+  // 공지는 서버가 최신순으로 줌 -> 오래된 것부터. 룰은 번호순 그대로.
+  const unreadOf = (list, kind) => {
+    const u = list.filter(needsConfirm);
+    return kind === 'ann' ? u.reverse() : u;
+  };
+
+  async function openFeed(kind, returnTo, savedMsg) {
+    feed = kind;
     annReturn = returnTo || 'home';
+    $('feed-title').textContent = FEEDS[kind].title;
     $('ann-saved').textContent = savedMsg || '';
     $('ann-saved').classList.toggle('hidden', !savedMsg);
     $('ann-alert').classList.add('hidden');
+    $('ann-dock').classList.add('hidden');
     $('ann-list').replaceChildren(el('p', 'hint', 'Loading…'));
     show('ann');
-    let r;
     try {
-      r = await api({ action: 'anns', token: token() });
+      renderFeed(await loadFeed(kind));
     } catch (e) {
-      $('ann-list').replaceChildren(el('p', 'err', 'Network problem. Please try again.' + detail(e)));
-      return;
+      if (e.code === 'AUTH') return logout(e.message);
+      $('ann-list').replaceChildren(el('p', 'err', 'Network problem. Please try again. (' + e.message + ')'));
     }
-    if (!r.ok) return r.code === 'AUTH' ? logout(r.error) : $('ann-list').replaceChildren(el('p', 'err', r.error));
-    renderAnns(r.announcements);
   }
+  const openAnns = (returnTo, savedMsg) => openFeed('ann', returnTo, savedMsg);
 
-  // 확인 안 한 공지가 있으면 그것만 하나씩 (오래된 것부터) 보여주고, 다 확인한 뒤에만 지난 공지 목록을 보여줌
-  let annList = [];
-
-  function renderAnns(list, justFinished) {
-    annList = list;
-    const unread = list.filter((a) => !a.confirmedAt).reverse();
-    const focus = unread.length > 0;
-    setBadge(unread.length);
+  function renderFeed(list, justFinished) {
+    feedItems = list;
+    const F = FEEDS[feed], unread = unreadOf(list, feed), focus = unread.length > 0;
+    (feed === 'ann' ? setBadge : setRuleBadge)(unread.length);
     $('v-ann').classList.toggle('focus', focus);
+    if (focus) $('ann-alert').textContent = alertFor(unread[0]);
     $('ann-alert').classList.toggle('hidden', !focus);
     $('ann-dock').classList.toggle('hidden', !focus);
     $('b-ann-later').classList.toggle('hidden', !focus);
     $('b-ann-back').classList.toggle('hidden', focus);
+    $('ann-done').textContent = F.done;
     $('ann-done').classList.toggle('hidden', focus || !justFinished);
     const box = $('ann-list');
     box.replaceChildren();
     if (focus) {
       if (unread.length > 1) box.append(el('div', 'count', '1 of ' + unread.length));
-      box.append(annCard(unread[0], list, false));
+      box.append(itemCard(unread[0], feed, feed === 'rules' && canEditRules));
       $('b-ann-confirm').disabled = false;
       return;
     }
-    if (!list.length) box.append(el('p', 'hint', 'No announcements yet.'));
-    for (const a of list) box.append(annCard(a, list, false));
+    if (!list.length) box.append(el('p', 'hint', F.empty));
+    for (const x of list) box.append(itemCard(x, feed, feed === 'rules' && canEditRules));
   }
+  const renderAnns = renderFeed;
 
   $('b-ann-confirm').addEventListener('click', async () => {
-    const a = annList.filter((x) => !x.confirmedAt).reverse()[0];
-    if (!a) return;
+    const x = unreadOf(feedItems, feed)[0];
+    if (!x) return;
     $('b-ann-confirm').disabled = true;
     try {
-      const r = await api({ action: 'confirm', token: token(), id: a.id });
+      const r = await api({ action: FEEDS[feed].confirm, token: token(), id: x.id });
       if (!r.ok) throw new Error(r.error);
-      a.confirmedAt = r.confirmedAt;
+      x.confirmedAt = r.confirmedAt;
       window.scrollTo(0, 0);
-      renderAnns(annList, true);
+      renderFeed(feedItems, true);
     } catch (e) {
       $('b-ann-confirm').disabled = false;
       alert('Could not save. Please try again. (' + e.message + ')');
     }
   });
 
-  function annCard(a, list, withButton = true) {
-    const card = el('article', 'ann' + (a.confirmedAt ? '' : ' unread'));
-    card.append(el('div', 'meta', a.posted + ' · ' + a.by), el('h2', null, a.title), el('div', 'content', a.content));
-    if (a.photos) {
+  /** 공지/룰 카드. 업로더 이름은 표시하지 않음. */
+  function itemCard(x, kind, editable) {
+    const card = el('article', 'ann' + (needsConfirm(x) ? ' unread' : ''));
+    if (kind === 'rules') {
+      const h = el('h2');
+      h.append(el('span', 'rule-no', '[' + x.id + '] '), document.createTextNode(x.title));
+      card.append(h);
+      if (x.updatedAt) card.append(el('div', 'updated', 'Updated ' + x.updatedAt.slice(0, 16)));
+    } else {
+      card.append(el('div', 'meta', x.posted), el('h2', null, x.title));
+    }
+    card.append(el('div', 'content', x.content));
+    if (x.photos) {
       const ph = el('div', 'photos');
       card.append(ph);
-      loadPhotos(a, ph);
+      loadPhotos(x, ph, kind);
     }
-    if (a.confirmedAt) {
-      card.append(el('div', 'done', '✓ Confirmed ' + a.confirmedAt));
-    } else if (withButton) {
-      const btn = el('button', null, 'I have read and understood');
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        try {
-          const r = await api({ action: 'confirm', token: token(), id: a.id });
-          if (!r.ok) { btn.disabled = false; return alert(r.error); }
-          a.confirmedAt = r.confirmedAt;
-          renderAnns(list);
-          if (!r.unread) $('ann-saved').classList.add('hidden');
-        } catch (e) {
-          btn.disabled = false;
-          alert('Network problem. Please try again.' + detail(e));
-        }
-      });
-      card.append(btn);
+    for (const v of x.history || []) {
+      const prev = el('div', 'prev');
+      const head = el('div');
+      head.append(el('b', null, 'Before (v' + v.version + ', ' + v.at.slice(0, 10) + '): '), document.createTextNode(v.title));
+      prev.append(head, el('div', 'content', v.content));
+      card.append(prev);
+    }
+    if (x.confirmedAt) card.append(el('div', 'done', '✓ Confirmed ' + x.confirmedAt));
+    if (editable) {
+      const b = el('button', 'link edit-link', 'Edit rule');
+      b.addEventListener('click', () => startEditRule(x));
+      card.append(b);
     }
     return card;
   }
 
   const photoCache = {};
-  async function loadPhotos(a, box) {
+  async function loadPhotos(a, box, kind) {
     for (let i = 0; i < a.photos; i++) {
-      const key = a.id + '/' + i;
+      const key = a.id + '/' + (a.version || '') + '/' + i;
       try {
         if (!photoCache[key]) {
-          const r = await api({ action: 'photo', token: token(), id: a.id, index: i });
+          const r = await api({ action: FEEDS[kind || 'ann'].photo, token: token(), id: a.id, index: i });
           if (!r.ok) continue;
           photoCache[key] = r.dataUrl;
         }
@@ -631,7 +718,8 @@
     }
   }
 
-  $('b-anns').addEventListener('click', () => openAnns('home'));
+  $('b-anns').addEventListener('click', () => openFeed('ann', 'home'));
+  $('b-rules').addEventListener('click', () => openFeed('rules', 'home'));
   const leaveAnns = () => (annReturn === 'result' ? show('result') : goHome());
   $('b-ann-back').addEventListener('click', leaveAnns);
   $('b-ann-later').addEventListener('click', leaveAnns);
@@ -698,8 +786,79 @@
     }
   });
 
+  // ---------------------------------------------------------------- Request (직원 -> Supervisor)
+  $('b-request').addEventListener('click', () => { $('q-msg').textContent = ''; show('request'); });
+  $('b-request-back').addEventListener('click', () => goHome());
+  $('f-request').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const btn = ev.submitter; btn.disabled = true;
+    $('q-msg').className = ''; $('q-msg').textContent = 'Sending…';
+    try {
+      const r = await api({ action: 'request', token: token(), message: $('q-message').value });
+      if (!r.ok) { $('q-msg').className = 'err'; $('q-msg').textContent = r.error; return; }
+      $('q-message').value = '';
+      $('q-msg').className = 'ok';
+      $('q-msg').textContent = 'Sent. The supervisor has been notified.';
+    } catch (e) {
+      $('q-msg').className = 'err'; $('q-msg').textContent = 'Network problem.' + detail(e);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  async function openInbox() {
+    show('inbox');
+    const box = $('inbox-list');
+    box.replaceChildren(el('p', 'hint', 'Loading…'));
+    try {
+      const r = await api({ action: 'requests', token: token() });
+      if (!r.ok) return box.replaceChildren(el('p', 'err', r.error));
+      box.replaceChildren();
+      if (!r.requests.length) box.append(el('p', 'hint', 'No requests yet.'));
+      for (const q of r.requests) {
+        const c = el('div', 'req');
+        c.append(el('div', 'meta', q.at.slice(0, 16) + ' · ' + q.from), el('div', 'content', q.message));
+        box.append(c);
+      }
+    } catch (e) {
+      box.replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
+    }
+  }
+  $('b-inbox').addEventListener('click', openInbox);
+  $('b-inbox-back').addEventListener('click', () => goHome());
+
   // ---------------------------------------------------------------- 관리자
   let pickedPhotos = [];
+  let editingRule = null;
+
+  function startEditRule(x) {
+    editingRule = x.id;
+    show('admin'); loadStatus(); loadStaff();
+    $('post-heading').textContent = 'Edit rule';
+    $('editing').textContent = 'Editing [' + x.id + '] — saving creates version ' + (x.version + 1) +
+      '. Everyone it applies to will be asked to read it again.';
+    $('editing').classList.remove('hidden');
+    $('kind-pick').classList.add('hidden');
+    $('aud-box').classList.add('hidden');
+    $('p-title').value = x.title;
+    $('p-content').value = x.content;
+    $('p-photos-label').textContent = 'Photos (leave empty to keep the current photos)';
+    $('b-post').textContent = 'Save new version and notify';
+    $('b-edit-cancel').classList.remove('hidden');
+  }
+
+  function stopEditRule() {
+    editingRule = null;
+    $('post-heading').textContent = 'New announcement or rule';
+    $('editing').classList.add('hidden');
+    $('kind-pick').classList.remove('hidden');
+    $('aud-box').classList.remove('hidden');
+    $('p-photos-label').textContent = 'Photos (optional, up to 6)';
+    $('b-edit-cancel').classList.add('hidden');
+    $('f-post').reset(); pickedPhotos = []; $('p-thumbs').replaceChildren();
+    resetAudience();
+  }
+  $('b-edit-cancel').addEventListener('click', stopEditRule);
 
   function resizeImage(file) {
     return new Promise((resolve, reject) => {
@@ -807,20 +966,24 @@
   $('f-post').addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const aud = audience();
-    if (!recipientsOf(aud).length) { $('post-msg').className = 'err'; $('post-msg').textContent = 'Choose at least one team or person.'; return; }
+    if (!editingRule && !recipientsOf(aud).length) { $('post-msg').className = 'err'; $('post-msg').textContent = 'Choose at least one team or person.'; return; }
+    const kind = document.querySelector('input[name=kind]:checked').value;
     const btn = ev.submitter; btn.disabled = true;
     $('post-msg').className = '';
     $('post-msg').textContent = 'Posting and sending notifications…';
     try {
-      const r = await api({ action: 'post', token: token(), title: $('p-title').value,
-                            content: $('p-content').value, photos: pickedPhotos, rule: $('p-rule').checked,
-                            audience: aud });
+      const r = editingRule
+        ? await api({ action: 'ruleEdit', token: token(), id: editingRule, title: $('p-title').value,
+                      content: $('p-content').value, photos: pickedPhotos })
+        : await api({ action: 'post', token: token(), kind, title: $('p-title').value,
+                      content: $('p-content').value, photos: pickedPhotos, audience: aud });
       if (!r.ok) { $('post-msg').className = 'err'; $('post-msg').textContent = r.error; return; }
       $('post-msg').className = 'ok';
+      const what = r.id + (r.version > 1 ? ' v' + r.version : '');
       $('post-msg').textContent = r.queued
-        ? 'Posted (' + r.id + '). Quiet hours: notifications and emails will be sent at ' + r.sendAt + '.'
-        : 'Posted (' + r.id + '). Notified ' + r.notified + ' people.';
-      $('f-post').reset(); pickedPhotos = []; $('p-thumbs').replaceChildren(); resetAudience();
+        ? 'Saved (' + what + '). Quiet hours: notifications and emails will be sent at ' + r.sendAt + '.'
+        : 'Saved (' + what + '). Notified ' + r.notified + ' people.';
+      stopEditRule();
       loadStatus();
     } catch (e) {
       $('post-msg').className = 'err';
@@ -843,7 +1006,7 @@
       for (const a of r.announcements) {
         const d = el('details');
         const total = a.confirmed.length + a.pending.length;
-        d.append(el('summary', null, (a.rule ? '[Rule] ' : '') + a.title + ' — ' + a.confirmed.length + '/' + total));
+        d.append(el('summary', null, a.title + ' — ' + a.confirmed.length + '/' + total));
         d.append(el('div', 'meta', a.id + ' · posted ' + a.posted + ' · to ' + a.audience));
         const ok = el('ul', 'names');
         a.confirmed.forEach((c) => ok.append(el('li', null, '✓ ' + c.name + ' — ' + c.at)));
@@ -856,16 +1019,19 @@
     }
   }
 
-  $('b-admin').addEventListener('click', () => { show('admin'); loadStatus(); loadStaff(); });
-  $('b-admin-back').addEventListener('click', () => goHome());
+  $('b-admin').addEventListener('click', () => { stopEditRule(); show('admin'); loadStatus(); loadStaff(); });
+  $('b-admin-back').addEventListener('click', () => { stopEditRule(); goHome(); });
 
   // ---------------------------------------------------------------- 로그인 / 시간 변경
   function afterLogin() {
     const pending = takeTagParams();
     if (pending) return submitTap(pending);
-    if (sessionStorage.getItem('wt_view') === 'ann') {
+    const view = sessionStorage.getItem('wt_view');
+    if (view) {
       sessionStorage.removeItem('wt_view');
-      return openAnns('home');
+      if (view === 'ann') return openFeed('ann', 'home');
+      if (view === 'rules') return openFeed('rules', 'home');
+      if (view === 'requests') return openInbox();
     }
     goHome();
   }
