@@ -30,6 +30,8 @@ var WEEKDAY_NAMES_ = [
 ];
 var MONTH_RE_ = [/^jan/, /^(f[eé]v|feb)/, /^(mar)/, /^(avr|apr)/, /^(mai|may)/, /^(juin|jun)/, /^(juil|jul)/,
                  /^(ao[uû]|aug)/, /^sep/, /^oct/, /^nov/, /^d[eé]c/];
+var MONTH_LONG_ = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October',
+                   'November', 'December'];
 var MONTH_SHORT_ = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 // ------------------------------------------------------------------ setup / config
@@ -502,25 +504,27 @@ function scheduleView_(req) {
     (pending[0] && list.filter(function (x) { return x.name === pending[0].sched; })[0]) ||
     list.filter(function (x) { return me && me.team && x.teams.indexOf(me.team) >= 0; })[0] || list[0];
   var tabs = schedTabs_(s);
+  var base = { ok: true, admin: admin, schedules: list.map(function (x) { return { name: x.name }; }), sched: s.name,
+               tabs: [], weeks: [], pending: [] };
   if (!tabs.length) {
-    return { ok: true, admin: admin, schedules: list.map(function (x) { return { name: x.name }; }), sched: s.name,
-             tabs: [], weeks: [], pending: [], error: 'The schedule spreadsheet could not be opened. Please tell your manager.' };
+    return Object.assign(base, { error: 'The schedule spreadsheet could not be opened. Please tell your manager.' });
   }
+  // 직원에게는 이번 달과 다음 달 탭만 (같은 달 탭이 여러 파일에 있으면 Schedules 탭에서 위쪽 줄 파일)
+  var cur = +todayIso_().slice(5, 7), next = cur % 12 + 1, all = tabs;
+  tabs = [cur, next].map(function (m) { return all.filter(function (t) { return t.month === m; })[0]; })
+    .filter(Boolean);
+  if (!tabs.length) return Object.assign(base, { error: 'The schedule for this month is not ready yet.' });
   var pick = tabs.filter(function (t) { return t.file === req.file && t.tab === req.tab; })[0];
   var mine = pending.filter(function (p) { return p.sched === s.name; })[0];
   if (!pick && mine) pick = tabs.filter(function (t) { return t.file === mine.file && t.tab === mine.tab; })[0];
-  if (!pick) {
-    var month = +todayIso_().slice(5, 7);
-    pick = tabs.filter(function (t) { return t.month === month; })[0] || tabs[0];
-  }
+  if (!pick) pick = tabs[0];
   var data = readTab_(pick.file, pick.tab), people = schedPeople_();
   var today = todayIso_(), recips = schedRecipients_(s), isRecip = recips.some(function (e) { return e.name === name; });
-  var dupe = function (t) { return tabs.filter(function (x) { return x.tab === t.tab; }).length > 1; };
 
   return {
     ok: true, admin: admin, sched: s.name, file: pick.file, tab: pick.tab, readAt: data.readAt,
     schedules: list.map(function (x) { return { name: x.name }; }),
-    tabs: tabs.map(function (t) { return { file: t.file, tab: t.tab, label: t.tab + (dupe(t) ? ' · ' + t.fileName : '') }; }),
+    tabs: tabs.map(function (t) { return { file: t.file, tab: t.tab, label: MONTH_LONG_[t.month - 1] }; }),
     cols: data.cols, intro: data.intro,
     people: people.names.map(function (n) { return { name: n, color: people.colors[n] || '' }; }),
     pending: pending.map(function (p) {
@@ -529,7 +533,7 @@ function scheduleView_(req) {
     weeks: data.weeks.map(function (w) {
       var out = { monday: w.monday, label: w.label, rows: w.rows };
       if (!w.monday || addDays_(w.monday, 6) < today && !admin && !isRecip) return out;
-      var due = schedDue_(w.monday), f = findWeek_(s, w.monday, tabs, people);
+      var due = schedDue_(w.monday), f = findWeek_(s, w.monday, all, people);
       out.fp = f.fpOf(name);
       out.slots = f.slots;
       out.dueLabel = weekdayLabel_(due);

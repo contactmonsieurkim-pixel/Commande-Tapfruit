@@ -961,7 +961,7 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     const r = S.call({ action: 'schedule', token: yu });
     assert.ok(r.ok, JSON.stringify(r));
     assert.strictEqual(r.sched, 'Kitchen');
-    assert.deepStrictEqual(r.tabs.map((t) => t.label), ['10', '09'], 'hidden tab left out, sheet order kept');
+    assert.deepStrictEqual(r.tabs.map((t) => t.label), ['October'], 'only this month and next (no November tab yet)');
     assert.strictEqual(r.tab, '10', 'opens on the month of the week to confirm');
     assert.deepStrictEqual(r.weeks.map((w) => w.monday),
       ['2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26']);
@@ -980,10 +980,9 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.strictEqual(S.call({ action: 'me', token: yu }).schedulePending, 2);
   });
 
-  test('schedule: other month tab; the same week shows in both months', () => {
+  test('schedule: staff only get this month and next month', () => {
     const r = S.call({ action: 'schedule', token: yu, sched: 'Kitchen', file: FILE, tab: '09' });
-    assert.strictEqual(r.tab, '09');
-    assert.deepStrictEqual(r.weeks.map((w) => w.monday), ['2026-09-28']);
+    assert.strictEqual(r.tab, '10', 'September is not offered any more');
   });
 
   test('schedule: confirm needs the tick; once per person and week', () => {
@@ -1165,6 +1164,13 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     const sent = S.sent.mail.slice(m0).filter((m) => m.subject.includes('changed'));
     assert.deepStrictEqual(sent.map((m) => m.to), ['yuna@example.com'], 'No Mail has no email; push only');
     assert.match(sent[0].htmlBody, /16 Nov – 22 Nov 2026/);
+  });
+
+  test('schedule: month buttons = this month + next month, in that order', () => {
+    at('2026-10-30T12:00:00+01:00');
+    const r = S.call({ action: 'schedule', token: yu, sched: 'Kitchen' });
+    assert.deepStrictEqual(r.tabs.map((t) => [t.tab, t.label]), [['10', 'October'], ['11', 'November']]);
+    assert.strictEqual(S.call({ action: 'schedule', token: yu, sched: 'Kitchen', file: FILE, tab: '11' }).tab, '11');
   });
 
   test('schedule: an unreadable spreadsheet never breaks the home screen', () => {
