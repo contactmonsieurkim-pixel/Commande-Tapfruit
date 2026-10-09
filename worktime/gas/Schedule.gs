@@ -461,13 +461,14 @@ function findWeek_(s, monday, tabs, people) {
   var months = [+monday.slice(5, 7), +addDays_(monday, 6).slice(5, 7)];
   var named = tabs.filter(function (t) { return months.indexOf(t.month) >= 0; });
   var others = tabs.filter(function (t) { return named.indexOf(t) < 0; });
-  var first = null, parts = [], slots = [], seen = {};
+  var first = null, parts = [], slots = [], seen = {}, blocks = [];
   var scan = function (t) {
     var data;
     try { data = readTab_(t.file, t.tab); } catch (err) { console.error(err); return; }
     data.weeks.forEach(function (w) {
       if (w.monday !== monday) return;
       if (!first) first = { file: t.file, tab: t.tab, week: w };
+      blocks.push({ month: t.month, rows: w.rows });
       parts.push(w.rows.map(function (r) {
         return r.map(function (c) { return c ? [c.t || '', c.bg || '', c.fc || ''].join('|') : '^'; }).join('\t');
       }).join('\n'));
@@ -483,11 +484,33 @@ function findWeek_(s, monday, tabs, people) {
   if (!first) return null;
   first.fp = hash10_(parts.join('\n§\n'));
   first.slots = slots.sort(function (x, y) { return x.d - y.d; });
+  first.blocks = blocks;
   first.fpOf = function (name) {
     if (!people.colors[name]) return first.fp;
     return hash10_(slots.filter(function (x) { return x.names.indexOf(name) >= 0; }).map(slotKey_).sort().join('\n'));
   };
   return first;
+}
+
+/**
+ * 두 달에 걸친 주를 표 하나로: 요일 열마다 그 날짜의 달 탭에서 칸을 가져옴
+ * (10월 탭 첫 주의 월~수 = 9월 탭, 금~일이 11월이면 11월 탭). 탭마다 표 모양이 다르면 지금 탭 그대로.
+ */
+function wholeWeekRows_(rows, blocks, monday) {
+  if (!blocks || blocks.length < 2) return rows;
+  var same = function (b) {
+    return b.rows.length === rows.length && b.rows.every(function (r, i) { return r.length === rows[i].length; });
+  };
+  var dayOf = rows[0].map(function (c) { return c ? weekdayIndex_(c.t) : -1; });
+  var out = rows.map(function (r) { return r.slice(); });
+  dayOf.forEach(function (d, j) {
+    if (d < 0) return;
+    var month = +addDays_(monday, d).slice(5, 7);
+    var src = blocks.filter(function (b) { return b.month === month && same(b); })[0];
+    if (!src) return;
+    for (var r = 1; r < rows.length; r++) out[r][j] = src.rows[r][j]; // 요일 이름 줄은 그대로
+  });
+  return out;
 }
 
 function slotKey_(x) { return [x.date, x.zone, x.role, x.start, x.end, (x.breaks || []).join(';')].join('|'); }
@@ -603,10 +626,11 @@ function scheduleView_(req) {
     }),
     weeks: data.weeks.map(function (w) {
       var out = { monday: w.monday, label: w.label, rows: w.rows };
-      if (!w.monday || addDays_(w.monday, 6) < today && !admin && !isRecip) return out;
+      if (!w.monday) return out;
       var due = schedDue_(w.monday), f = findWeek_(s, w.monday, all, people);
       out.fp = f.fpOf(name);
       out.slots = f.slots;
+      out.rows = wholeWeekRows_(w.rows, f.blocks, w.monday);
       out.dueLabel = weekdayLabel_(due);
       out.state = addDays_(w.monday, 6) < today ? 'ended' : w.monday <= today ? 'started'
         : today < due ? 'early' : today === due ? 'due' : 'overdue';

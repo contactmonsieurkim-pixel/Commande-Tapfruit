@@ -1294,6 +1294,26 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.ok(!all.some((x) => x.names.length === 0), 'dark background cells are not shifts');
   });
 
+  test('schedule: a week split over two month tabs shows whole (table and shifts)', () => {
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const F3 = '1SplitWeekSplitWeekSplitWeek000000000';
+    const blk = (dates, cells) => [['', ''].concat(DAYS), ['Date', ''].concat(dates), ['Morning', 'P'].concat(cells)];
+    const Y = { t: '', bg: '#f09a37' }; // Yuna
+    S.files[F3] = makeScheduleFile(F3, 'Split', {
+      10: { grid: blk(['', '', '', '1/10', '2/10', '3/10', '4/10'], ['', '', '', Y, '', '', '']) },
+      '09': { grid: blk(['28/9', '29/9', '30/9', '', '', '', ''], [Y, '', Y, '', '', '', '']) },
+    });
+    cfg.getSheetByName('Schedules').getRange(3, 1, 1, 3).setValues([['Split', F3, 'Kitchen']]);
+    at('2026-10-02T12:00:00+02:00');
+    const r = S.call({ action: 'schedule', token: yu, sched: 'Split' });
+    assert.deepStrictEqual(r.tabs.map((t) => t.tab), ['10']);
+    const w = r.weeks[0];
+    assert.deepStrictEqual(w.rows[1].slice(2).map((c) => c && c.t), ['28/9', '29/9', '30/9', '1/10', '2/10', '3/10', '4/10']);
+    assert.deepStrictEqual(w.rows[2].slice(2).map((c) => (c && c.bg) || ''), ['#f09a37', '', '#f09a37', '#f09a37', '', '', '']);
+    assert.deepStrictEqual(w.slots.filter((x) => x.names.includes('Yuna')).map((x) => x.date),
+      ['2026-09-28', '2026-09-30', '2026-10-01']);
+  });
+
   test('schedule: records still verify', () => {
     assert.ok(S.ctx.verifyRecords().every((x) => x.ok));
   });
