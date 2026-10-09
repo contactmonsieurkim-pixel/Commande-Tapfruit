@@ -385,7 +385,8 @@ function readTab_(fileId, tab) {
 }
 
 /**
- * 이 월요일의 주 -> { file, tab, week, fp, slots, fpOf(name) } (없으면 null). 그 주의 월·일요일 달 탭부터 찾음.
+ * 이 월요일의 주 -> { file, tab, week, fp, slots, fpOf(name) } (없으면 null). 그 주의 월·일요일 달 탭부터 찾고,
+ * 거기 없으면 나머지 탭에서.
  * 두 달에 걸친 주는 두 탭의 내용을 합침 (slots 도 합쳐서 -> 월~일이 다 보임).
  * fp = 주 전체 내용(글자·색)의 지문. fpOf(이름) = 그 사람 근무(날짜·시간대·역할·시간·글자)만의 지문
  *   -> 다른 사람 칸이 바뀌어도 내 지문은 그대로. Schedule Colors 에 색이 없는 사람은 주 전체 지문.
@@ -394,10 +395,10 @@ function findWeek_(s, monday, tabs, people) {
   tabs = tabs || schedTabs_(s);
   people = people || { byColor: {}, colors: {}, names: [] };
   var months = [+monday.slice(5, 7), +addDays_(monday, 6).slice(5, 7)];
-  var list = tabs.filter(function (t) { return months.indexOf(t.month) >= 0; })
-    .concat(tabs.filter(function (t) { return !t.month; }));
+  var named = tabs.filter(function (t) { return months.indexOf(t.month) >= 0; });
+  var others = tabs.filter(function (t) { return named.indexOf(t) < 0; });
   var first = null, parts = [], slots = [], seen = {};
-  list.forEach(function (t) {
+  var scan = function (t) {
     var data;
     try { data = readTab_(t.file, t.tab); } catch (err) { console.error(err); return; }
     data.weeks.forEach(function (w) {
@@ -411,7 +412,10 @@ function findWeek_(s, monday, tabs, people) {
         if (!seen[k]) { seen[k] = 1; slots.push(x); }
       });
     });
-  });
+  };
+  // 그 주의 달 탭부터. 없으면 다른 탭에서 (예: 10월 탭 맨 아래에 11월 첫 주가 있고 11월 탭은 아직 없을 때)
+  named.forEach(scan);
+  if (!first) others.forEach(scan);
   if (!first) return null;
   first.fp = hash10_(parts.join('\n§\n'));
   first.slots = slots.sort(function (x, y) { return x.d - y.d; });

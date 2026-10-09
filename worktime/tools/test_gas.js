@@ -1202,6 +1202,23 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.strictEqual(S.ctx.cellDate_(new Date('2026-10-01T00:00:00+09:00'), ''), '2026-10-01');
   });
 
+  test('schedule: a November week at the bottom of the October tab (no November tab)', () => {
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const F2 = '1ZyXwVuTsRqPoNmLkJiHgFeDcBa9876543210';
+    S.files[F2] = makeScheduleFile(F2, 'Bar', { 10: { grid: [
+      ['', ''].concat(DAYS), ['Date', ''].concat(['26/10', '27/10', '28/10', '29/10', '30/10', '31/10', '1/11']),
+      ['Morning', 'P', { t: '', bg: '#f09a37' }],
+      ['', ''].concat(DAYS), ['Date', ''].concat(['2/11', '3/11', '4/11', '5/11', '6/11', '7/11', '8/11']),
+      ['Morning', 'P', { t: '', bg: '#f09a37' }],
+    ] } });
+    cfg.getSheetByName('Schedules').getRange(3, 1, 1, 3).setValues([['Bar', F2, 'Kitchen']]);
+    at('2026-10-20T12:00:00+02:00');
+    const r = S.call({ action: 'schedule', token: yu, sched: 'Bar' });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.deepStrictEqual(r.weeks.map((w) => [w.monday, w.slots.length]), [['2026-10-26', 1], ['2026-11-02', 1]]);
+    assert.ok(S.call({ action: 'me', token: yu }).ok);
+  });
+
   test('schedule: records still verify', () => {
     assert.ok(S.ctx.verifyRecords().every((x) => x.ok));
   });
