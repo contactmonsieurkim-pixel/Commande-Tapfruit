@@ -19,7 +19,7 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 - **Announcement Records** (보호 + HMAC 체인): `Announcements`, `Confirmations`, `Notifications`, `Logins`, `Our Rules`, `Requests`
 - `Announcement Photos` 폴더 (비공개, 앱에는 API 로 base64 전달)
 
-## 2. 서버 파일 (Apps Script 에 같은 이름으로 6개 + appsscript.json)
+## 2. 서버 파일 (Apps Script 에 같은 이름으로 7개 + appsscript.json)
 
 | 파일 | 내용 | `setup` 잘림 검사 표식(파일 마지막 함수) |
 |---|---|---|
@@ -29,12 +29,13 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 | `Announce.gs` | 기록 시트·해시 체인, 공지, 수신 대상(팀/개인), 알림(`notify_`), 조용한 시간, `morningRun` | `morningRun` |
 | `Supervisor.gs` | Supervisor 알림(출퇴근 즉시 / 로그인은 밤에 보류), 로그인 기록, Request | `recordLogin_` |
 | `Rules.gs` | Our Rules (번호, 버전, 이관, 확인, 수정) | `announceRule_` |
+| `Schedule.gs` | 스케줄 시트 읽기(주 단위), 주별 읽고 동의(내용 지문), 2주 전 화요일 알림, 변경 감지 | `scheduleMail_` |
 
-API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests`
+API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm`
 
 스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
 
-트리거: `scheduleMorning`(매일 07시대) → 그날 09:00 정각 1회용 `morningRun` 예약.
+트리거: `scheduleMorning`(매일 07시대) → 그날 09:00 정각 1회용 `morningRun` 예약. `checkScheduleChanges`(30분마다, 조용한 시간엔 건너뜀).
 
 ## 3. 주요 결정과 이유 (바꾸기 전에 읽기)
 
@@ -82,12 +83,19 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 53개)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 66개)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```
 - `test_gas.js` 의 테스트 시계는 파리 정오로 고정(실행 시각 무관). `makeEnv()` 를 export 하므로 Playwright 로 `index.html` 을 띄우고 `https://script.google.com/**` 요청을 `env.call()` 로 연결해 화면 테스트 가능(이 방식으로 매번 확인해 왔음).
 - 이 환경(클라우드)에서는 script.google.com / github.io / 실제 푸시 서버 접속이 막혀 있음 → 실기기 확인은 사장님께 요청.
+
+**Schedule**
+- 스케줄은 시트에서만 수정(앱은 읽기 전용, 웹 게시 불필요 — Apps Script 가 `openById` 로 읽음, 2분 캐시). WorkTime Config `Schedules` 탭에 URL 등록.
+- 주 = `Monday…Sunday` 줄 + 다음 줄 날짜로 월요일 계산. 확인 ID 에 **주 내용 지문**(글자+배경색+글자색, 두 달에 걸친 주는 두 탭 합산)을 넣음 → 확인 후 시트가 바뀌면 "다시 확인".
+- 지문은 **주 전체** 기준: 한 칸만 바뀌어도 그 주를 확인했던 모두가 다시 확인(사장님 요청: 변경 시 알림 + 재확인). 개인별로 좁히려면 색↔사람 매핑이 필요(아직 없음).
+- 알림: 2주 전 화요일 09:00 부터 매일 리마인더(공지와 같은 방식). 변경은 30분 검사 + "한 번 더 같게 보일 때" 발송(편집 중 연속 알림 방지), 같은 변경은 1번.
+- 직원의 변경 요청 = Request(`topic: 'schedule'`), 별도 기록 시트 없음.
 
 ## 6. 남은 일
 

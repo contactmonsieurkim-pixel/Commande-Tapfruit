@@ -145,6 +145,32 @@
     .chip.covered { border-color: var(--brand); color: var(--brand); }
     .chip small { opacity: .75; }
     #aud-summary { margin-top: 8px; }
+    /* Schedule: 스프레드시트 그대로 (읽기 전용) */
+    main.wide { max-width: 1100px; }
+    .tabs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 8px; margin-bottom: 4px; -webkit-overflow-scrolling: touch; }
+    .tab { flex: none; width: auto; margin: 0; padding: 8px 16px; font-size: 15px; border-radius: 10px;
+           background: var(--card); color: var(--text); border: 1px solid var(--line); font-weight: 600; }
+    .tab.on { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+    .sch-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 10px; }
+    .sch-bar button.link { white-space: nowrap; }
+    .week { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; margin-bottom: 14px; }
+    .week.todo { border: 2px solid var(--err); }
+    .week-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .week-head h3 { font-size: 17px; margin: 0; }
+    .pill { font-size: 12px; font-weight: 700; border-radius: 10px; padding: 2px 9px; background: var(--bg); color: var(--muted); }
+    .pill.due, .pill.overdue { background: var(--err); color: #fff; }
+    .pill.ok { background: var(--ok); color: #fff; }
+    .sheet-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid #d9d9d9; border-radius: 6px; background: #fff; }
+    table.sheet { border-collapse: collapse; table-layout: fixed; background: #fff; color: #000;
+                  font-family: Arial, Helvetica, sans-serif; }
+    table.sheet td { border: 1px solid #e2e2e2; padding: 1px 4px; height: 21px; vertical-align: middle;
+                     white-space: pre-line; overflow: hidden; overflow-wrap: anywhere; line-height: 1.25; background: #fff; }
+    table.sheet td.c0 { position: sticky; left: 0; z-index: 1; }
+    .agree { margin-top: 12px; }
+    .agree .check { margin-top: 0; }
+    .agree button { margin-top: 10px; }
+    .due-note { font-size: 14px; margin-top: 8px; }
+    .pending-box button { width: auto; margin: 6px 6px 0 0; padding: 8px 12px; font-size: 14px; background: #fff; color: var(--err); }
   </style>
 </head>
 <body>
@@ -180,6 +206,7 @@
   <section id="v-home" class="hidden">
     <button id="b-anns" class="secondary">Announcements<span id="badge" class="badge hidden"></span></button>
     <button id="b-rules" class="secondary">Our Rules<span id="badge-rules" class="badge hidden"></span></button>
+    <button id="b-sched" class="secondary">Schedule<span id="badge-sched" class="badge hidden"></span></button>
     <button id="b-request" class="secondary">Request</button>
     <button id="b-inbox" class="secondary hidden">Requests inbox</button>
     <button id="b-admin" class="secondary hidden">Manager</button>
@@ -197,10 +224,22 @@
     <div id="ann-dock" class="dock hidden"><button id="b-ann-confirm">I have read and understood</button></div>
   </section>
 
+  <!-- 스케줄 (스프레드시트를 그대로 읽어 옴, 수정은 Supervisor 가 시트에서) -->
+  <section id="v-schedule" class="hidden">
+    <h2 class="feed-title">Schedule</h2>
+    <div id="sch-scheds" class="tabs hidden"></div>
+    <div id="sch-tabs" class="tabs"></div>
+    <div id="sch-pending" class="alert pending-box hidden"></div>
+    <div class="sch-bar"><span id="sch-meta" class="meta"></span><button id="b-sch-zoom" class="link" type="button"></button></div>
+    <div id="sch-body"><p class="hint">Loading…</p></div>
+    <button id="b-sch-back" class="secondary">Back</button>
+  </section>
+
   <!-- 직원 -> Supervisor 요청 (공개되지 않음) -->
   <section id="v-request" class="hidden">
     <div class="card">
-      <h3>Request to the supervisor</h3>
+      <h3 id="q-heading">Request to the supervisor</h3>
+      <p id="q-about" class="editing hidden"></p>
       <p class="meta">Only the supervisor can read this. Ask for anything you need at work, or share a concern.</p>
       <form id="f-request">
         <textarea id="q-message" required maxlength="3000" placeholder="Write your request…"></textarea>
@@ -354,7 +393,7 @@
       if (v != null) { try { localStorage.setItem(k, v); } catch (e) {} }
     }
   }
-  const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed', 'request', 'inbox'];
+  const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed', 'request', 'inbox', 'schedule'];
   let lastTap = null;
   let annReturn = 'home';
 
@@ -362,6 +401,7 @@
   function show(view) {
     currentView = view;
     for (const v of VIEWS) $('v-' + v).classList.toggle('hidden', v !== view);
+    document.querySelector('main').classList.toggle('wide', view === 'schedule');
     const name = store.get('wt_name');
     $('who').textContent = name || '';
     $('b-bell').classList.toggle('hidden', !name || view === 'login');
@@ -400,7 +440,7 @@
     if (q.has('p') && q.has('a') && q.has('c')) {
       sessionStorage.setItem('wt_pending', JSON.stringify({ a: q.get('a'), p: q.get('p'), c: q.get('c') }));
     }
-    if (['ann', 'rules', 'requests'].includes(q.get('view'))) sessionStorage.setItem('wt_view', q.get('view'));
+    if (['ann', 'rules', 'requests', 'schedule'].includes(q.get('view'))) sessionStorage.setItem('wt_view', q.get('view'));
     if (location.search) history.replaceState(null, '', location.pathname);
     const raw = sessionStorage.getItem('wt_pending');
     return raw ? JSON.parse(raw) : null;
@@ -419,6 +459,12 @@
     $('badge-rules').textContent = n;
     $('badge-rules').classList.toggle('hidden', !n);
     $('b-rules').classList.toggle('secondary', !n);
+  }
+
+  function setSchedBadge(n) {
+    $('badge-sched').textContent = n;
+    $('badge-sched').classList.toggle('hidden', !n);
+    $('b-sched').classList.toggle('secondary', !n);
   }
 
   function setBadge(n) {
@@ -569,6 +615,7 @@
         $('b-admin').classList.toggle('hidden', !r.admin);
         setBadge(r.unread);
         setRuleBadge(r.unreadRules);
+        setSchedBadge(r.schedulePending || 0);
         store.set('wt_sup', r.supervisor ? '1' : '0');
         $('b-inbox').classList.toggle('hidden', !r.supervisor);
         saveTips(r.tips);
@@ -793,14 +840,26 @@
   });
 
   // ---------------------------------------------------------------- Request (직원 -> Supervisor)
-  $('b-request').addEventListener('click', () => { $('q-msg').textContent = ''; show('request'); });
-  $('b-request-back').addEventListener('click', () => goHome());
+  // 스케줄 화면의 'Request a change' 도 같은 Request 로 (어느 주인지 붙여서 Supervisor 에게)
+  let reqTopic = null;
+  function openRequest(topic) {
+    reqTopic = topic || null;
+    $('q-msg').textContent = '';
+    $('q-heading').textContent = reqTopic ? 'Ask for a schedule change' : 'Request to the supervisor';
+    $('q-about').textContent = reqTopic ? 'Week ' + reqTopic.about : '';
+    $('q-about').classList.toggle('hidden', !reqTopic);
+    $('q-message').placeholder = reqTopic ? 'Which day and shift, and what would you like instead?' : 'Write your request…';
+    show('request');
+  }
+  $('b-request').addEventListener('click', () => openRequest());
+  $('b-request-back').addEventListener('click', () => (reqTopic ? show('schedule') : goHome()));
   $('f-request').addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const btn = ev.submitter; btn.disabled = true;
     $('q-msg').className = ''; $('q-msg').textContent = 'Sending…';
     try {
-      const r = await api({ action: 'request', token: token(), message: $('q-message').value });
+      const r = await api(Object.assign({ action: 'request', token: token(), message: $('q-message').value },
+        reqTopic ? { topic: 'schedule', about: reqTopic.about } : {}));
       if (!r.ok) { $('q-msg').className = 'err'; $('q-msg').textContent = r.error; return; }
       $('q-message').value = '';
       $('q-msg').className = 'ok';
@@ -832,6 +891,201 @@
   }
   $('b-inbox').addEventListener('click', openInbox);
   $('b-inbox-back').addEventListener('click', () => goHome());
+
+  // ---------------------------------------------------------------- Schedule (읽기 전용 + 주마다 읽고 동의)
+  let schedSel = {}, schedData = null;
+  const ZOOMS = { fit: 'Zoom in', read: 'Whole week' }; // 버튼 글자 = 누르면 바뀔 모양
+  let schedZoom = store.get('wt_sch_zoom') === 'fit' ? 'fit' : 'read';
+
+  async function openSchedule(sel, focus = true) {
+    schedSel = sel || {};
+    show('schedule');
+    if (!schedData) $('sch-body').replaceChildren(el('p', 'hint', 'Loading…'));
+    try {
+      const r = await api(Object.assign({ action: 'schedule', token: token() }, schedSel));
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) throw new Error(r.error);
+      schedData = r;
+      renderSchedule(r, focus);
+    } catch (e) {
+      $('sch-body').replaceChildren(el('p', 'err', 'Network problem. Please try again. (' + e.message + ')'));
+    }
+  }
+
+  function tabButton(label, on, onClick) {
+    const b = el('button', 'tab' + (on ? ' on' : ''), label);
+    b.type = 'button';
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  function renderSchedule(r, focus = true) {
+    const body = $('sch-body');
+    body.replaceChildren();
+    $('sch-scheds').classList.toggle('hidden', (r.schedules || []).length < 2);
+    $('sch-scheds').replaceChildren(...(r.schedules || []).map((s) =>
+      tabButton(s.name, s.name === r.sched, () => openSchedule({ sched: s.name }))));
+    $('sch-tabs').replaceChildren(...(r.tabs || []).map((t) =>
+      tabButton(t.label, t.file === r.file && t.tab === r.tab, () => openSchedule({ sched: r.sched, file: t.file, tab: t.tab }))));
+    const pend = r.pending || [];
+    setSchedBadge(pend.length);
+    $('sch-pending').classList.toggle('hidden', !pend.length);
+    $('sch-pending').replaceChildren(el('div', null, pend.length === 1 ? 'Please read and confirm 1 week'
+      : 'Please read and confirm ' + pend.length + ' weeks'));
+    for (const p of pend) {
+      $('sch-pending').append(tabButton((r.schedules.length > 1 ? p.sched + ' · ' : '') + p.label + (p.changed ? ' (changed)' : ''), false, () => {
+        if (p.sched === r.sched && p.tab === r.tab && p.file === r.file) return scrollToWeek(p.monday);
+        openSchedule({ sched: p.sched, file: p.file, tab: p.tab });
+      }));
+    }
+    $('sch-meta').textContent = r.readAt ? 'From the spreadsheet · ' + r.readAt : '';
+    $('b-sch-zoom').textContent = ZOOMS[schedZoom];
+    $('b-sch-zoom').classList.toggle('hidden', !(r.weeks || []).length);
+    if (!r.schedules.length) return body.append(el('p', 'hint', 'No schedule yet.'));
+    if (r.error) return body.append(el('p', 'err', r.error));
+    if (r.intro) body.append(weekCard(r, { rows: r.intro.rows }, true));
+    for (const w of r.weeks) body.append(weekCard(r, w));
+    if (!r.weeks.length && !r.intro) body.append(el('p', 'hint', 'This month is empty.'));
+    applyZoom();
+    if (focus) {
+      const first = r.weeks.find((w) => w.mustConfirm && (w.changed || w.state !== 'early')) || r.weeks.find((w) => w.mustConfirm);
+      if (first) scrollToWeek(first.monday);
+    }
+  }
+
+  function scrollToWeek(monday) {
+    const card = document.querySelector('.week[data-monday="' + monday + '"]');
+    if (card) setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+  }
+
+  function sheetTable(cols, rows) {
+    const t = el('table', 'sheet'), cg = el('colgroup');
+    for (const w of cols) { const c = el('col'); c.style.width = w + 'px'; cg.append(c); }
+    t.style.width = cols.reduce((a, b) => a + b, 0) + 'px';
+    t.append(cg);
+    const tb = el('tbody');
+    for (const row of rows) {
+      const tr = el('tr');
+      row.forEach((x, j) => {
+        if (!x) return; // 병합으로 가려진 칸
+        const td = el('td', j === 0 ? 'c0' : null, x.t || '');
+        if (x.rs) td.rowSpan = x.rs;
+        if (x.cs) td.colSpan = x.cs;
+        if (x.bg) td.style.background = x.bg;
+        if (x.fc) td.style.color = x.fc;
+        if (x.b) td.style.fontWeight = '700';
+        if (x.i) td.style.fontStyle = 'italic';
+        td.style.fontSize = Math.round((x.fs || 10) * 1.333) + 'px';
+        td.style.textAlign = x.al || (/^[\d:./\s-]+$/.test(x.t || '') ? 'right' : 'left');
+        tr.append(td);
+      });
+      tb.append(tr);
+    }
+    t.append(tb);
+    return t;
+  }
+
+  function applyZoom() {
+    document.querySelectorAll('#sch-body .sheet-wrap').forEach((wrap) => {
+      const t = wrap.querySelector('table');
+      const fit = Math.min(1, (wrap.clientWidth - 2) / parseFloat(t.style.width));
+      t.style.zoom = schedZoom === 'fit' ? fit : Math.max(fit, 0.8);
+    });
+  }
+  window.addEventListener('resize', () => { if (currentView === 'schedule') applyZoom(); });
+  $('b-sch-zoom').addEventListener('click', () => {
+    schedZoom = schedZoom === 'fit' ? 'read' : 'fit';
+    store.set('wt_sch_zoom', schedZoom);
+    $('b-sch-zoom').textContent = ZOOMS[schedZoom];
+    applyZoom();
+  });
+
+  function weekCard(r, w, intro) {
+    const card = el('article', 'week' + (w.mustConfirm && (w.changed || w.state !== 'early') ? ' todo' : ''));
+    if (w.monday) card.dataset.monday = w.monday;
+    if (!intro) {
+      const head = el('div', 'week-head');
+      head.append(el('h3', null, w.label));
+      if (w.confirmedAt) head.append(el('span', 'pill ok', '✓ Agreed'));
+      else if (w.mustConfirm && w.changed) head.append(el('span', 'pill overdue', 'Changed — confirm again'));
+      else if (w.mustConfirm) {
+        head.append(el('span', 'pill ' + w.state, w.state === 'early' ? 'To confirm by ' + w.dueLabel
+          : w.state === 'due' ? 'Confirm today' : 'Not confirmed yet'));
+      }
+      card.append(head);
+    }
+    const wrap = el('div', 'sheet-wrap');
+    wrap.append(sheetTable(r.cols, w.rows));
+    card.append(wrap);
+    if (w.mustConfirm) card.append(agreeBox(r, w, card));
+    else if (w.confirmedAt) card.append(el('div', 'done', '✓ Read and agreed · ' + w.confirmedAt.slice(0, 16)));
+    if (w.monday && w.state !== 'ended') {
+      const ask = el('button', 'link edit-link', 'Request a change');
+      ask.type = 'button';
+      ask.addEventListener('click', () => openRequest({ about: (r.schedules.length > 1 ? r.sched + ' · ' : '') + w.label }));
+      card.append(ask);
+    }
+    if (w.status) {
+      const d = el('details');
+      const total = w.status.confirmed.length + w.status.pending.length;
+      d.append(el('summary', null, 'Who has agreed — ' + w.status.confirmed.length + '/' + (total + (w.status.changed || []).length)));
+      const ul = el('ul', 'names');
+      w.status.confirmed.forEach((c) => ul.append(el('li', null, '✓ ' + c.name + ' — ' + c.at.slice(0, 16))));
+      (w.status.changed || []).forEach((n) => ul.append(el('li', 'pending', '↻ ' + n + ' — changed after agreeing, not re-confirmed')));
+      w.status.pending.forEach((n) => ul.append(el('li', 'pending', '✗ ' + n + ' — not yet')));
+      d.append(ul);
+      card.append(d);
+    }
+    return card;
+  }
+
+  function agreeBox(r, w, card) {
+    const box = el('div', 'agree');
+    const lab = el('label', 'check'), tick = el('input');
+    tick.type = 'checkbox';
+    lab.append(tick, document.createTextNode('I have read the schedule for this week and I agree with it.'));
+    const btn = el('button', null, 'Confirm');
+    btn.disabled = true;
+    tick.addEventListener('change', () => { btn.disabled = !tick.checked; });
+    const note = el('div', 'due-note ' + (w.state === 'early' && !w.changed ? 'meta' : 'err'),
+      w.changed ? 'This week was changed after you agreed (' + w.changedAfter.slice(0, 16) + '). Please read it again.'
+        : w.state === 'early' ? 'Please confirm by ' + w.dueLabel + '.'
+        : w.state === 'due' ? 'Please confirm today (' + w.dueLabel + ').'
+          : 'Please confirm now — it was due ' + w.dueLabel + '.');
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      try {
+        const x = await api({ action: 'scheduleConfirm', token: token(), sched: r.sched, file: r.file, tab: r.tab,
+                              monday: w.monday, fp: w.fp, agree: tick.checked });
+        if (x.code === 'CHANGED') {
+          toast(x.error);
+          return openSchedule({ sched: r.sched, file: r.file, tab: r.tab });
+        }
+        if (!x.ok) throw new Error(x.error);
+        if (x.already) toast('Already confirmed on ' + x.confirmedAt.slice(0, 16) + '.');
+        w.confirmedAt = x.confirmedAt; w.mustConfirm = false; w.changed = false;
+        r.pending = (r.pending || []).filter((p) => !(p.sched === r.sched && p.monday === w.monday));
+        if (w.status) {
+          const me = store.get('wt_name');
+          w.status.pending = w.status.pending.filter((n) => n !== me);
+          w.status.changed = (w.status.changed || []).filter((n) => n !== me);
+          w.status.confirmed.push({ name: me, at: x.confirmedAt });
+        }
+        const y = window.scrollY;
+        renderSchedule(r, false);
+        window.scrollTo(0, y);
+        setSchedBadge(x.schedulePending != null ? x.schedulePending : r.pending.length);
+      } catch (e) {
+        btn.disabled = false;
+        alert('Could not save. Please try again. (' + e.message + ')');
+      }
+    });
+    box.append(lab, btn, note);
+    return box;
+  }
+
+  $('b-sched').addEventListener('click', () => { schedData = null; openSchedule(); });
+  $('b-sch-back').addEventListener('click', () => goHome());
 
   // ---------------------------------------------------------------- 관리자
   let pickedPhotos = [];
@@ -1038,6 +1292,7 @@
       if (view === 'ann') return openFeed('ann', 'home');
       if (view === 'rules') return openFeed('rules', 'home');
       if (view === 'requests') return openInbox();
+      if (view === 'schedule') return openSchedule();
     }
     goHome();
   }
@@ -1100,6 +1355,11 @@
       if (currentView === 'home') return goHome();
       if (currentView === 'ann') return openFeed(feed, annReturn);
       if (currentView === 'inbox') return openInbox();
+      if (currentView === 'schedule') {
+        const y = window.scrollY;
+        await openSchedule(schedData ? { sched: schedData.sched, file: schedData.file, tab: schedData.tab } : {}, false);
+        return window.scrollTo(0, y);
+      }
       if (currentView === 'result' && annQueue.length) {
         const kinds = [...new Set(annQueue.map((a) => a.kind))];
         const lists = await Promise.all(kinds.map((k) => loadFeed(k)));
