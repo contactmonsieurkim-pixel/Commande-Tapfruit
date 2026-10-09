@@ -29,7 +29,7 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 | `Announce.gs` | 기록 시트·해시 체인, 공지, 수신 대상(팀/개인), 알림(`notify_`), 조용한 시간, `morningRun` | `morningRun` |
 | `Supervisor.gs` | Supervisor 알림(출퇴근 즉시 / 로그인은 밤에 보류), 로그인 기록, Request | `recordLogin_` |
 | `Rules.gs` | Our Rules (번호, 버전, 이관, 확인, 수정) | `announceRule_` |
-| `Schedule.gs` | 스케줄 시트 읽기(주 단위), 주별 읽고 동의(내용 지문), 2주 전 화요일 알림, 변경 감지 | `scheduleMail_` |
+| `Schedule.gs` | 스케줄 시트 읽기(주 단위), 주별 읽고 동의(내용 지문), 2주 전 화요일 알림, 변경 감지 | `checkSchedule` |
 
 API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm`
 
@@ -86,7 +86,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 68개)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 71개)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```
@@ -100,6 +100,8 @@ node test_webpush.js                    # 푸시 암호를 Node crypto 와 교�
   내 지문 = 내 근무 칸들의 (날짜, 시간대=첫 열 라벨, 역할=요일 앞 열, 그 시간대 같은 열의 HH:MM 시작·끝, 칸 글자). 색이 없는 사람은 주 전체 지문.
   라벨 열에 쓰인 색은 디자인(배경)으로 보고 무시. 색 표 자체를 바꾸면 해당 사람들 지문도 바뀜(재확인 요청됨).
 - 폰 UI: 주마다 My shifts / By day / Table. 서버가 주마다 `slots`(근무 칸 목록) 를 줌 (`weekSlots_`). 두 달에 걸친 주는 두 탭 합산.
+- 문제 찾기: 편집기에서 `checkSchedule` 실행 → 실행 로그에 단계별 OK/FAIL. 서버 오류는 앱에도 `(문구 @ 파일:줄)` 로 보임(`errDetail_`).
+- 날짜는 칸에 **보이는 글자**('1/10') 기준 (시트 시간대가 파리와 다르면 날짜 값이 하루 밀려 보일 수 있어서).
 - 한계: "Yuna off" 처럼 이름이 들어간 메모 칸도 그 사람 근무로 표시됨(글자는 그대로 보여 줌).
 - 알림: 2주 전 화요일 09:00 부터 매일 리마인더(공지와 같은 방식). 변경은 30분 검사 + "한 번 더 같게 보일 때" 발송(편집 중 연속 알림 방지), 같은 변경은 1번.
 - 직원의 변경 요청 = Request(`topic: 'schedule'`), 별도 기록 시트 없음.

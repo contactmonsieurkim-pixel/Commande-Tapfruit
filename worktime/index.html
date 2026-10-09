@@ -461,6 +461,8 @@
   }
 
   const detail = (e) => ' (' + e.message + ')';
+  // 서버가 거절한 경우: 진짜 원인 (+ 서버 오류면 파일:줄)
+  const serverMsg = (r) => r.error + (r.detail ? ' (' + r.detail + ')' : '');
   const token = () => store.get('wt_token');
 
   // 1) 태그로 열렸으면 URL 파라미터를 꺼내고 주소창에서 즉시 지움 (새로고침/복사 방지)
@@ -933,7 +935,7 @@
     try {
       const r = await api(Object.assign({ action: 'schedule', token: token() }, schedSel));
       if (r.code === 'AUTH') return logout(r.error);
-      if (!r.ok) throw new Error(r.error);
+      if (!r.ok) return $('sch-body').replaceChildren(el('p', 'err', serverMsg(r)));
       schedData = r;
       renderSchedule(r, focus);
     } catch (e) {
@@ -1228,7 +1230,7 @@
           toast(x.error);
           return openSchedule({ sched: r.sched, file: r.file, tab: r.tab });
         }
-        if (!x.ok) throw new Error(x.error);
+        if (!x.ok) throw new Error(serverMsg(x));
         if (x.already) toast('Already confirmed on ' + x.confirmedAt.slice(0, 16) + '.');
         w.confirmedAt = x.confirmedAt; w.mustConfirm = false; w.changed = false;
         r.pending = (r.pending || []).filter((p) => !(p.sched === r.sched && p.monday === w.monday));

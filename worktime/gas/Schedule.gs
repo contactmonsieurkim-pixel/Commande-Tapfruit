@@ -214,14 +214,17 @@ function windowMondays_(today) {
 
 /** 셀 -> 'yyyy-MM-dd' (날짜 값이면 그대로, '1/10' 같은 글자면 오늘에 가장 가까운 해). */
 function cellDate_(v, text) {
-  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) {
-    return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
-  }
+  var isDate = Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime());
   var m = String(text || '').match(/^\s*(\d{1,2})\s*[\/.\-]\s*(\d{1,2})(?:\s*[\/.\-]\s*(\d{2,4}))?\s*$/);
-  if (!m || +m[1] < 1 || +m[1] > 31 || +m[2] < 1 || +m[2] > 12) return null;
+  if (!m || +m[1] < 1 || +m[1] > 31 || +m[2] < 1 || +m[2] > 12) {
+    // 보이는 글자로 못 읽으면 날짜 값 그대로 (정오로 옮겨서 시트·스크립트 시간대 차이로 하루 밀리지 않게)
+    return isDate ? Utilities.formatDate(new Date(v.getTime() + 12 * 3600000), TZ, 'yyyy-MM-dd') : null;
+  }
+  // 보이는 글자('1/10')가 기준 — 날짜 값은 시트 시간대(예: 한국)에 따라 파리 기준 하루 전으로 보일 수 있음
   var pad = function (n) { return ('0' + n).slice(-2); };
   var md = pad(+m[2]) + '-' + pad(+m[1]);
   if (m[3]) return (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + md;
+  if (isDate) return Utilities.formatDate(new Date(v.getTime() + 12 * 3600000), TZ, 'yyyy') + '-' + md;
   var today = todayIso_(), y = +today.slice(0, 4), best = null;
   [y - 1, y, y + 1].forEach(function (yy) {
     var iso = yy + '-' + md, d = Math.abs(Date.parse(iso) - Date.parse(today));
@@ -732,4 +735,65 @@ function scheduleMail_(title, weeks, url) {
     '"I have read and agree". To ask for a change, use "Request a change" under the week. ' +
     'You will get a reminder every day until you confirm.</p>' +
     '<p style="color:#9aa49f;font-size:11px">Ref ' + esc_(ref) + '</p></div>';
+}
+
+/**
+ * 편집기에서 실행: 스케줄을 단계별로 읽어 보고 결과를 실행 로그(아래 "Journal d'exécution")에 씀.
+ * 앱에서 Schedule 이 안 열릴 때 원인 찾기용. 아무것도 바꾸지 않음.
+ */
+function checkSchedule() {
+  var step = function (label, fn) {
+    try {
+      var r = fn();
+      Logger.log('OK   ' + label + (r !== undefined ? ' → ' + r : ''));
+      return true;
+    } catch (err) {
+      Logger.log('FAIL ' + label + ' → ' + errDetail_(err));
+      Logger.log(String(err && err.stack || ''));
+      return false;
+    }
+  };
+  var list, people, today = todayIso_();
+  if (!step('Schedules 탭', function () {
+    list = schedules_();
+    return list.map(function (s) { return s.name + ' (' + s.files.length + ' file, team: ' + (s.teams.join(', ') || 'all') + ')'; }).join(' | ') || '(비어 있음)';
+  })) return;
+  step('Schedule Colors 탭', function () {
+    people = schedPeople_();
+    return people.names.map(function (n) { return n + ' ' + (people.colors[n] || '(색 없음)'); }).join(', ') || '(비어 있음)';
+  });
+  people = people || { byColor: {}, colors: {}, names: [] };
+  list.forEach(function (s) {
+    var tabs;
+    if (!step(s.name + ': 파일 열기', function () {
+      tabs = schedTabs_(s);
+      if (tabs.errors.length) throw new Error('열 수 없는 파일: ' + tabs.errors.join(', '));
+      return tabs.map(function (t) { return t.tab + '→' + (t.month || '?'); }).join(', ');
+    })) return;
+    var cur = +today.slice(5, 7);
+    tabs.filter(function (t) { return t.month === cur || t.month === cur % 12 + 1; }).forEach(function (t) {
+      var data;
+      if (!step(s.name + ' / ' + t.tab + ': 읽기', function () {
+        CacheService.getScriptCache().remove('schtab_' + t.file + '_' + t.tab);
+        data = readTab_(t.file, t.tab);
+        return data.weeks.length + '주: ' + data.weeks.map(function (w) { return w.monday || '?'; }).join(', ') +
+          ' (캐시 ' + JSON.stringify(data).length + ' bytes)';
+      })) return;
+      data.weeks.forEach(function (w) {
+        if (!w.monday) return;
+        step(s.name + ' / ' + t.tab + ' / ' + w.monday + ': 근무 칸', function () {
+          var f = findWeek_(s, w.monday, tabs, people);
+          return f.slots.length + '칸, 예: ' + f.slots.slice(0, 3).map(function (x) {
+            return x.date + ' ' + x.zone + ' ' + x.role + ' ' + x.start + '-' + x.end + ' ' + (x.names.join('+') || '색?');
+          }).join(' / ');
+        });
+      });
+    });
+    schedRecipients_(s).forEach(function (e) {
+      step(s.name + ': ' + e.name + ' 확인할 주', function () {
+        return pendingWeeks_(e.name, list).map(function (p) { return p.monday + (p.changed ? '(changed)' : ''); }).join(', ') || '없음';
+      });
+    });
+  });
+  Logger.log('끝.');
 }

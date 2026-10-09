@@ -1182,6 +1182,26 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.ok(r.ok); assert.ok(r.error);
   });
 
+  test('schedule: server errors show their cause; checkSchedule runs from the editor', () => {
+    const orig = S.ctx.schedules_;
+    S.ctx.schedules_ = () => { throw new TypeError('boom'); };
+    const r = S.call({ action: 'schedule', token: yu });
+    S.ctx.schedules_ = orig;
+    assert.strictEqual(r.ok, false);
+    assert.match(r.detail, /^boom/);
+    const logs = [];
+    S.ctx.Logger.log = (x) => logs.push(String(x));
+    S.ctx.checkSchedule();
+    assert.ok(logs.some((l) => /^OK   Schedules/.test(l)), logs.join('\n'));
+    assert.ok(logs.some((l) => /^FAIL .*파일 열기/.test(l)), 'the broken file is reported');
+  });
+
+  test('schedule: dates come from what the cell shows (sheet time zone does not shift them)', () => {
+    // 한국 시간 자정 = 파리 전날 17:00 -> 날짜 값만 쓰면 하루 밀림
+    assert.strictEqual(S.ctx.cellDate_(new Date('2026-10-01T00:00:00+09:00'), '1/10'), '2026-10-01');
+    assert.strictEqual(S.ctx.cellDate_(new Date('2026-10-01T00:00:00+09:00'), ''), '2026-10-01');
+  });
+
   test('schedule: records still verify', () => {
     assert.ok(S.ctx.verifyRecords().every((x) => x.ok));
   });
