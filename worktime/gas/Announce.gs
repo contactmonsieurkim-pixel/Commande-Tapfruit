@@ -6,6 +6,9 @@
 //                    대상을 좁힌 경우 'Rule · Teams: Kitchen · People: Yuna' 처럼 대상이 이어서 기록됨)
 //   Confirmations : Announcement ID | Title | Name | Confirmed at | Hash
 //   Notifications : Sent at | Announcement IDs | Name | Channel | Result | Hash
+//   Our Rules     : Rule ID | Version | Saved at | Saved by | Title | Content | Photos | Recipients | Audience | Legacy ID | Hash
+//                   (수정할 때마다 새 버전 행 추가. 확인 기록은 Confirmations 에 'Rule-001 v2' 로)
+//   Requests      : Sent at | From | Message | Hash   (직원 → Supervisor)
 // 각 행의 Hash 는 직전 행 Hash + 내용으로 만든 HMAC 체인 -> verifyRecords() 로 수정 여부 검사.
 
 var APP_URL_DEFAULT = 'https://contactmonsieurkim-pixel.github.io/Commande-Tapfruit/worktime/';
@@ -14,6 +17,7 @@ var APP_URL_DEFAULT = 'https://contactmonsieurkim-pixel.github.io/Commande-Tapfr
 var QUIET_START = 23;
 var QUIET_END = 9;
 var PUSH_TITLE = 'I have an unread announcement !';
+var RULE_PUSH_TITLE = 'Our Rules: please read and confirm';
 var MAX_PHOTOS = 6;
 
 var REC_SHEETS = {
@@ -21,6 +25,9 @@ var REC_SHEETS = {
   Confirmations: ['Announcement ID', 'Title', 'Name', 'Confirmed at', 'Hash'],
   Notifications: ['Sent at', 'Announcement IDs', 'Name', 'Channel', 'Result', 'Hash'],
   Logins: ['Logged in at', 'Name', 'Device', 'Devices so far', 'Hash'],
+  'Our Rules': ['Rule ID', 'Version', 'Saved at', 'Saved by', 'Title', 'Content', 'Photos', 'Recipients', 'Audience',
+                'Legacy ID', 'Hash'],
+  Requests: ['Sent at', 'From', 'Message', 'Hash'],
 };
 
 // ------------------------------------------------------------------ setup helpers
@@ -102,6 +109,7 @@ function scheduleMorning() {
   }
 }
 
+/** 조용한 시간에 만든 공지/룰 -> 09:00 발송 대기 (공지 'A0001', 룰 'Rule-001 v2'). */
 function queueAnnouncement_(id) {
   var q = JSON.parse(props_.getProperty('NOTIFY_QUEUE') || '[]');
   q.push(id);
@@ -166,8 +174,19 @@ function announcements_() {
       recipients: r[6] ? r[6].split(', ') : [],
       rule: r[7].split(' · ')[0] === 'Rule',
       audience: parseAudience_(r[7]),
+      kind: 'ann', key: r[0],
     };
   });
+}
+
+/** 일반 공지만 (예전에 공지로 올린 Rule 은 Our Rules 로 옮겨졌으므로 제외). */
+function notices_() {
+  return announcements_().filter(function (a) { return !a.rule; });
+}
+
+/** 확인 일시 (없으면 null). 룰 v1 은 이관 전 공지(Legacy ID)에서 확인한 것도 인정. */
+function confirmedAt_(item, name, confs) {
+  return confs[item.key + '\n' + name] || (item.legacy && confs[item.legacy + '\n' + name]) || null;
 }
 
 function confirmations_() {
@@ -177,10 +196,10 @@ function confirmations_() {
 }
 
 function unreadFor_(name, anns, confs) {
-  anns = anns || announcements_();
+  anns = anns || notices_();
   confs = confs || confirmations_();
   return anns.filter(function (a) {
-    return a.recipients.indexOf(name) >= 0 && !confs[a.id + '\n' + name];
+    return a.recipients.indexOf(name) >= 0 && !confirmedAt_(a, name, confs);
   });
 }
 
@@ -235,20 +254,13 @@ function staff_(req) {
   return { ok: true, staff: activeEmployees_().map(function (e) { return { name: e.name, team: e.team }; }) };
 }
 
-/**
- * 출근 도장 화면에 랜덤으로 보여줄 규칙 목록 (Type = Rule).
- * 전체 대상 규칙은 모두에게, 팀 대상 규칙은 지금 그 팀 사람(신규 입사자 포함)에게, 개인 대상은 그 사람에게.
- */
+/** 출근 도장 화면에 랜덤으로 보여줄 규칙 = 이 사람에게 해당하는 Our Rules (최신 버전). */
 function tips_(name) {
   if (!props_.getProperty('ANN_SHEET_ID')) return [];
-  var me = name ? findEmployee_(name) : null;
-  return announcements_().filter(function (a) {
-    if (!a.rule) return false;
-    if (!a.audience || !me) return true;
-    return a.recipients.indexOf(me.name) >= 0 || a.audience.people.indexOf(me.name) >= 0 ||
-      (me.team && a.audience.teams.indexOf(me.team) >= 0);
-  })
-    .map(function (a) { return { id: a.id, title: a.title, content: a.content }; });
+  return visibleRules_(name).map(function (r) {
+    var c = ruleItem_(r);
+    return { id: c.id, title: c.title, content: c.content };
+  });
 }
 
 function nowStamp_() { return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm:ss'); }
@@ -271,10 +283,10 @@ function subscribe_(req) {
 
 function annList_(req) {
   var name = whoAmI_(req.token), confs = confirmations_();
-  var list = announcements_().filter(function (a) { return a.recipients.indexOf(name) >= 0; })
+  var list = notices_().filter(function (a) { return a.recipients.indexOf(name) >= 0; })
     .map(function (a) {
-      return { id: a.id, posted: a.posted, by: a.by, title: a.title, content: a.content, rule: a.rule,
-               photos: a.photos.length, confirmedAt: confs[a.id + '\n' + name] || null };
+      return { id: a.id, posted: a.posted, title: a.title, content: a.content,
+               photos: a.photos.length, confirmedAt: confirmedAt_(a, name, confs) };
     }).reverse();
   return { ok: true, announcements: list };
 }
@@ -294,14 +306,15 @@ function confirm_(req) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
-    var a = announcements_().filter(function (x) { return x.id === req.id; })[0];
+    var a = notices_().filter(function (x) { return x.id === req.id; })[0];
     if (!a || a.recipients.indexOf(name) < 0) fail_('Announcement not found.');
     var confs = confirmations_(), at = confs[a.id + '\n' + name];
     if (!at) {
       at = nowStamp_();
       appendRecord_('Confirmations', [a.id, a.title, name, at]);
     }
-    return { ok: true, confirmedAt: at, unread: unreadFor_(name, null, null).length };
+    return { ok: true, confirmedAt: at, unread: unreadFor_(name, null, null).length,
+             unreadRules: unreadRulesFor_(name).length };
   } finally {
     lock.releaseLock();
   }
@@ -310,29 +323,21 @@ function confirm_(req) {
 function post_(req) {
   var name = whoAmI_(req.token);
   if (!isAdmin_(name)) fail_('Only managers can post announcements.');
+  if (req.kind === 'rule' || req.rule) return createRule_(req, name);
   var title = String(req.title || '').trim().replace(/\s+/g, ' ');
   var content = String(req.content || '').replace(/\r\n?/g, '\n').trim();
   if (!title || !content) fail_('Please enter a title and the content.');
-  var photos = (req.photos || []).map(function (p, i) {
-    var m = String(p || '').match(/^data:(image\/[\w.+-]+);base64,(.+)$/);
-    if (!m) fail_('Photo ' + (i + 1) + ' is not an image.');
-    return { type: m[1], data: m[2] };
-  });
-  if (photos.length > MAX_PHOTOS) fail_('Up to ' + MAX_PHOTOS + ' photos.');
+  var photos = parsePhotos_(req.photos);
 
   var target = resolveAudience_(req), recipients = target.recipients;
-  var type = (req.rule ? 'Rule' : 'Notice') + (target.audience ? ' · ' + audienceLabel_(target.audience) : '');
+  var type = 'Notice' + (target.audience ? ' · ' + audienceLabel_(target.audience) : '');
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   var ann;
   try {
     var seq = Number(props_.getProperty('ANN_SEQ') || 0) + 1;
     var id = 'A' + ('000' + seq).slice(-4);
-    var folder = photoFolder_();
-    var links = photos.map(function (p, i) {
-      var file = folder.createFile(Utilities.newBlob(Utilities.base64Decode(p.data), p.type, id + '-' + (i + 1) + '.jpg'));
-      return 'https://drive.google.com/file/d/' + file.getId() + '/view';
-    });
+    var links = savePhotos_(photos, id);
     var posted = nowStamp_();
     appendRecord_('Announcements', [id, posted, name, title, content, links.join('\n'), recipients.join(', '), type]);
     props_.setProperty('ANN_SEQ', String(seq));
@@ -350,31 +355,59 @@ function post_(req) {
   return { ok: true, id: ann.id, notified: sent.length };
 }
 
+function parsePhotos_(list) {
+  var photos = (list || []).map(function (p, i) {
+    var m = String(p || '').match(/^data:(image\/[\w.+-]+);base64,(.+)$/);
+    if (!m) fail_('Photo ' + (i + 1) + ' is not an image.');
+    return { type: m[1], data: m[2] };
+  });
+  if (photos.length > MAX_PHOTOS) fail_('Up to ' + MAX_PHOTOS + ' photos.');
+  return photos;
+}
+
+function savePhotos_(photos, prefix) {
+  if (!photos.length) return [];
+  var folder = photoFolder_();
+  return photos.map(function (p, i) {
+    var file = folder.createFile(Utilities.newBlob(Utilities.base64Decode(p.data), p.type, prefix + '-' + (i + 1) + '.jpg'));
+    return 'https://drive.google.com/file/d/' + file.getId() + '/view';
+  });
+}
+
 function annStatus_(req) {
   var name = whoAmI_(req.token);
   if (!isAdmin_(name)) fail_('Only managers can see this.');
   var confs = confirmations_();
-  var list = announcements_().map(function (a) {
+  var row = function (a, label) {
     var done = [], pending = [];
     a.recipients.forEach(function (r) {
-      var at = confs[a.id + '\n' + r];
+      var at = confirmedAt_(a, r, confs);
       if (at) done.push({ name: r, at: at }); else pending.push(r);
     });
-    return { id: a.id, posted: a.posted, title: a.title, rule: a.rule, audience: audienceLabel_(a.audience) || 'Everyone',
-             confirmed: done, pending: pending };
-  }).reverse();
+    return { id: a.key, posted: a.posted, title: label, rule: a.kind === 'rule',
+             audience: audienceLabel_(a.audience) || 'Everyone', confirmed: done, pending: pending };
+  };
+  var list = notices_().map(function (a) { return row(a, a.title); })
+    .concat(rules_().map(function (r) {
+      var c = ruleItem_(r);
+      return row(c, '[' + c.id + '] ' + c.title + (c.version > 1 ? ' (v' + c.version + ')' : ''));
+    }))
+    .sort(function (x, y) { return x.posted < y.posted ? 1 : -1; });
   var integrity = verifyRecords().every(function (x) { return x.ok; });
   return { ok: true, announcements: list, integrity: integrity };
 }
 
 // ------------------------------------------------------------------ notifications
 
-/** 직원 한 명에게 웹 푸시 + 메일 (읽지 않은 공지 목록). */
+/** 직원 한 명에게 웹 푸시 + 메일. anns 는 모두 공지이거나 모두 룰 (알림은 따로 감). */
 function notify_(emp, anns, isNew) {
-  var ids = anns.map(function (a) { return a.id; }).join(', ');
-  var appUrl = (props_.getProperty('APP_URL') || APP_URL_DEFAULT) + '?view=ann';
-  var body = anns.length === 1 ? anns[0].title : anns.length + ' announcements: ' +
-    anns.map(function (a) { return a.title; }).join(', ');
+  var isRule = anns[0].kind === 'rule';
+  var heading = isRule ? RULE_PUSH_TITLE : PUSH_TITLE;
+  var ids = anns.map(function (a) { return a.key; }).join(', ');
+  var appUrl = (props_.getProperty('APP_URL') || APP_URL_DEFAULT) + (isRule ? '?view=rules' : '?view=ann');
+  var label = function (a) { return isRule ? '[' + a.id + '] ' + a.title + (a.version > 1 ? ' (updated)' : '') : a.title; };
+  var body = anns.length === 1 ? label(anns[0]) : anns.length + (isRule ? ' rules: ' : ' announcements: ') +
+    anns.map(label).join(', ');
   var results = [];
 
   var subs = pushSubscriptions_(emp.name);
@@ -382,7 +415,7 @@ function notify_(emp, anns, isNew) {
   subs.forEach(function (s) {
     var code;
     try {
-      code = sendWebPush_(s.sub, { title: PUSH_TITLE, body: body, url: appUrl });
+      code = sendWebPush_(s.sub, { title: heading, body: body, url: appUrl, tag: isRule ? 'rules' : 'announcement' });
     } catch (err) {
       code = 'error: ' + err.message;
     }
@@ -393,7 +426,7 @@ function notify_(emp, anns, isNew) {
   if (emp.email) {
     try {
       var mail = buildMail_(anns, appUrl, isNew);
-      MailApp.sendEmail({ to: emp.email, subject: PUSH_TITLE, htmlBody: mail.html,
+      MailApp.sendEmail({ to: emp.email, subject: heading, htmlBody: mail.html,
                           inlineImages: mail.images, name: 'monsieur Kim' });
       results.push(['email', 'sent']);
     } catch (err2) {
@@ -407,7 +440,8 @@ function notify_(emp, anns, isNew) {
   lock.waitLock(20000);
   try {
     results.forEach(function (r) {
-      appendRecord_('Notifications', [nowStamp_(), ids, emp.name, (isNew ? 'new ' : 'reminder ') + r[0], r[1]]);
+      appendRecord_('Notifications', [nowStamp_(), ids, emp.name,
+        (isNew ? 'new ' : 'reminder ') + (isRule ? 'rule ' : '') + r[0], r[1]]);
     });
   } finally {
     lock.releaseLock();
@@ -434,14 +468,16 @@ function buildMail_(anns, appUrl, withPhotos) {
     var imgs = '';
     if (withPhotos) {
       a.photos.forEach(function (fid, i) {
-        var key = 'p' + a.id + '_' + i;
+        var key = 'p' + a.key.replace(/\W/g, '') + '_' + i;
         images[key] = DriveApp.getFileById(fid).getBlob();
         imgs += '<p><img src="cid:' + key + '" style="max-width:100%;border-radius:8px"></p>';
       });
     }
     return '<div style="border:1px solid #dfe4e1;border-radius:12px;padding:16px;margin:12px 0">' +
-      '<div style="color:#66706b;font-size:13px">' + esc_(a.posted) + ' · ' + esc_(a.by) + '</div>' +
-      '<h2 style="margin:4px 0 8px;font-size:18px">' + esc_(a.title) + '</h2>' +
+      '<div style="color:#66706b;font-size:13px">' +
+      (a.kind === 'rule' ? (a.version > 1 ? 'Updated ' : 'New rule · ') : '') + esc_(a.posted) + '</div>' +
+      '<h2 style="margin:4px 0 8px;font-size:18px">' +
+      (a.kind === 'rule' ? '[' + esc_(a.id) + '] ' : '') + esc_(a.title) + '</h2>' +
       '<div style="white-space:pre-wrap">' + esc_(a.content) + '</div>' + imgs + '</div>';
   });
   // 같은 제목의 메일이 쌓이면 Gmail 이 반복되는 뒷부분을 "…" 로 접어버림.
@@ -449,10 +485,11 @@ function buildMail_(anns, appUrl, withPhotos) {
   var button = '<p style="margin:16px 0"><a href="' + esc_(appUrl) + '" style="display:inline-block;' +
     'background:#1f6f54;color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;' +
     'font-weight:700;font-size:16px">Go to Confirm</a></p>';
-  var ref = anns.map(function (a) { return a.id; }).join(', ') + ' · sent ' + nowStamp_() + ' · ' +
+  var heading = anns[0].kind === 'rule' ? RULE_PUSH_TITLE : PUSH_TITLE;
+  var ref = anns.map(function (a) { return a.key; }).join(', ') + ' · sent ' + nowStamp_() + ' · ' +
     Utilities.getUuid().slice(0, 8);
   var html = '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px">' +
-    '<h1 style="font-size:20px;margin:0 0 4px">' + PUSH_TITLE + '</h1>' + button + parts.join('') +
+    '<h1 style="font-size:20px;margin:0 0 4px">' + heading + '</h1>' + button + parts.join('') +
     '<p style="color:#66706b;font-size:13px">Please confirm in the app. ' +
     'You will get a reminder every day until you confirm.</p>' +
     '<p style="color:#9aa49f;font-size:11px">Ref ' + esc_(ref) + '</p></div>';
@@ -478,12 +515,19 @@ function morningRun() {
   var queued = JSON.parse(props_.getProperty('NOTIFY_QUEUE') || '[]');
   props_.deleteProperty('NOTIFY_QUEUE');
   var today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
-  var all = announcements_(), confs = confirmations_();
-  var fresh = all.filter(function (a) { return queued.indexOf(a.id) >= 0; });
-  var old = all.filter(function (a) { return queued.indexOf(a.id) < 0 && a.posted.slice(0, 10) < today; });
+  var confs = confirmations_();
+  var split = function (all) {
+    return {
+      fresh: all.filter(function (a) { return queued.indexOf(a.key) >= 0; }),
+      old: all.filter(function (a) { return queued.indexOf(a.key) < 0 && a.posted.slice(0, 10) < today; }),
+    };
+  };
+  var kinds = [split(notices_()), split(rules_().map(ruleItem_))]; // 공지와 룰은 알림을 따로 보냄
   activeEmployees_().forEach(function (e) {
-    var n = unreadFor_(e.name, fresh, confs), r = unreadFor_(e.name, old, confs);
-    if (n.length || r.length) notify_(e, n.concat(r), n.length > 0);
+    kinds.forEach(function (k) {
+      var n = unreadFor_(e.name, k.fresh, confs), r = unreadFor_(e.name, k.old, confs);
+      if (n.length || r.length) notify_(e, n.concat(r), n.length > 0);
+    });
   });
   flushSupervisorQueue_();
 }

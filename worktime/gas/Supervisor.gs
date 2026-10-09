@@ -68,6 +68,50 @@ function pushSupervisors_(message) {
   return sent;
 }
 
+// ------------------------------------------------------------------ Request (직원 → Supervisor)
+
+/** 직원이 Supervisor 에게 직접 보내는 요청/고민. 공개되지 않음. 밤에도 바로 알림 + 메일. */
+function request_(req) {
+  var name = whoAmI_(req.token);
+  var message = String(req.message || '').replace(/\r\n?/g, '\n').trim();
+  if (!message) fail_('Please write your request.');
+  if (message.length > 3000) fail_('Please keep it under 3000 characters.');
+  var at = nowStamp_();
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    appendRecord_('Requests', [at, name, message]);
+  } finally {
+    lock.releaseLock();
+  }
+  var url = (props_.getProperty('APP_URL') || APP_URL_DEFAULT) + '?view=requests';
+  try {
+    pushSupervisors_({ title: '✉️ Request · ' + name,
+                       body: message.length > 160 ? message.slice(0, 160) + '…' : message,
+                       url: url, tag: 'request-' + Utilities.getUuid() });
+  } catch (err) { console.error(err); }
+  supervisors_().forEach(function (s) {
+    if (!s.email) return;
+    try {
+      MailApp.sendEmail({ to: s.email, subject: 'Request from ' + name, name: 'monsieur Kim',
+        htmlBody: '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px">' +
+          '<p style="color:#66706b;font-size:13px">' + esc_(at) + '</p>' +
+          '<h2 style="font-size:18px;margin:0 0 8px">Request from ' + esc_(name) + '</h2>' +
+          '<div style="white-space:pre-wrap">' + esc_(message) + '</div>' +
+          '<p><a href="' + esc_(url) + '">Open requests</a></p></div>' });
+    } catch (err2) { console.error(err2); }
+  });
+  return { ok: true, sentAt: at };
+}
+
+/** Supervisor 전용: 받은 요청 (최신순). */
+function requestsList_(req) {
+  var me = findEmployee_(whoAmI_(req.token));
+  if (!me || !me.supervisor) fail_('Only the supervisor can see requests.');
+  var list = readRecords_('Requests').map(function (r) { return { at: r[0], from: r[1], message: r[2] }; });
+  return { ok: true, requests: list.reverse().slice(0, 300) };
+}
+
 /** 이 직원 이름으로 로그인되어 있는 기기(브라우저) 수. */
 function deviceCount_(name) {
   var all = props_.getProperties(), n = 0;

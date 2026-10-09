@@ -105,6 +105,25 @@ URL 기록 → SDM(SUN) 켜기 → NDEF 쓰기 잠금 → Key1/Key2 교체 → �
    iPhone: 태그는 항상 **Safari**로 열리므로 Safari에서 한 번 로그인해 두면 됩니다.
    (iPhone은 홈 화면 앱과 Safari가 로그인 정보를 공유하지 않습니다)
 
+## Our Rules (규칙)
+
+- 관리자 화면에서 **Rule** 을 선택해 올리면 `Rule-001`, `Rule-002` … 번호가 붙고, 공지와 따로 관리·알림됩니다.
+  (알림 제목: "Our Rules: please read and confirm", 앱의 **Our Rules** 버튼)
+- 출근 도장 화면의 팁도 Our Rules 에서 `[Rule-001] 제목` 형태로 랜덤 표시됩니다.
+- **수정**: Admin 이상이 Our Rules 화면의 *Edit rule* → 저장하면 새 버전(v2, v3…)이 됩니다.
+  - 룰 안에 "Updated 날짜"가 표시되고, 예전 내용은 그 아래 작게 남습니다.
+  - 대상자에게 다시 알림이 가고, 다시 *I have read and understood* 를 눌러야 합니다.
+  - 사진을 새로 고르지 않으면 기존 사진을 유지합니다. 대상(팀/개인)은 처음 지정한 그대로입니다.
+- 기록: `Announcement Records` 의 **Our Rules** 탭(버전마다 한 줄, 서명 체인). 확인 기록은 Confirmations 탭에 `Rule-001 v2` 로.
+- 예전에 공지에서 "Rule" 체크로 올린 것은 처음 한 번 자동으로 Rule-001… 로 옮겨지고, 그때 확인한 사람은 확인한 것으로 인정됩니다.
+- 앱과 메일에는 올린 사람 이름이 표시되지 않습니다. (기록 시트에는 감사용으로 남음)
+
+## Request (직원 → Supervisor)
+
+- 모든 직원이 앱의 **Request** 로 Supervisor 에게 직접 요청·고민을 보낼 수 있습니다. 공개되지 않습니다.
+- Supervisor 폰에 **밤낮 상관없이 바로** 푸시("✉️ Request · 이름") + 메일이 갑니다.
+- Supervisor 는 앱의 **Requests inbox** 에서 모두 볼 수 있습니다. 기록: Requests 탭.
+
 ## 공지사항 · 읽음 확인
 
 ```
@@ -125,7 +144,7 @@ URL 기록 → SDM(SUN) 켜기 → NDEF 쓰기 잠금 → Key1/Key2 교체 → �
 - **출근 도장 화면**: 태그를 찍는 순간 `Rule`로 게시한 규칙 중 하나가 랜덤으로 뜨고(직전과 다른 것), 저장 후에도 그대로 남습니다.
   화면 맨 아래의 큰 버튼은 항상 같은 자리·같은 모양입니다:
   확인 안 한 공지가 있으면 **I have read and understood**, 다 확인하면 **Close**(브라우저 탭 닫기).
-  - 공지를 올릴 때 "Rule" 체크 → 팁으로도 표시. 회의 내용 같은 일반 공지는 체크하지 않으면 팁에 안 나옵니다.
+  - 팁은 Our Rules 에서만 나옵니다. 일반 공지는 팁에 나오지 않습니다.
   - Close: Android Chrome은 태그로 열린 탭이 닫힙니다. iPhone은 브라우저가 탭 닫기를 허용하지 않아
     "Done – you can close this tab" 화면이 뜹니다. (Safari 설정 → 탭 닫기 → "1일 후"로 두면 쌓이지 않습니다)
 - **수신 대상**: 게시할 때 *Everyone* 또는 *Choose teams / people*. 팀(예: Kitchen)과 개인을 섞어서 고를 수 있고,

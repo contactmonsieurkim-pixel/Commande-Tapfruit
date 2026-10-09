@@ -35,7 +35,7 @@ function setup() {
 /** 붙여넣기 중 파일 끝이 잘리지 않았는지 확인 (각 파일의 마지막 함수가 있는지). */
 function checkFiles_() {
   var last = { 'Code.gs': 'json_', 'Crypto.gs': 'verifySun_', 'WebPush.gs': 'sendWebPush_',
-               'Announce.gs': 'morningRun', 'Supervisor.gs': 'recordLogin_' };
+               'Announce.gs': 'morningRun', 'Supervisor.gs': 'recordLogin_', 'Rules.gs': 'announceRule_' };
   var missing = Object.keys(last).filter(function (f) { return typeof this[last[f]] !== 'function'; }, this);
   if (typeof props_ === 'undefined' || typeof TZ === 'undefined' || typeof DEFAULT_FOLDER_ID === 'undefined') {
     missing.push('Code.gs (맨 윗부분: var DEFAULT_FOLDER_ID ... var props_)');
@@ -83,6 +83,8 @@ function doPost(e) {
       login: login_, tap: tap_, modify: modify_, me: me_,
       pushKey: pushKey_, subscribe: subscribe_, anns: annList_, photo: annPhoto_,
       confirm: confirm_, post: post_, status: annStatus_, staff: staff_,
+      rules: rulesList_, ruleConfirm: ruleConfirm_, rulePhoto: rulePhoto_, ruleEdit: ruleEdit_,
+      request: request_, requests: requestsList_,
     };
     var fn = handlers[req.action];
     if (!fn) return json_({ ok: false, error: 'Unknown action.' });
@@ -113,7 +115,9 @@ function login_(req) {
 
 function me_(req) {
   var name = whoAmI_(req.token);
-  return { ok: true, name: name, admin: isAdmin_(name), unread: unreadCount_(name), tips: tips_(name) };
+  var me = findEmployee_(name);
+  return { ok: true, name: name, admin: isAdmin_(name), supervisor: !!(me && me.supervisor),
+           unread: unreadCount_(name), unreadRules: unreadRulesFor_(name).length, tips: tips_(name) };
 }
 
 function unreadCount_(name) {
@@ -161,7 +165,7 @@ function tap_(req) {
   CacheService.getScriptCache().put('edit_' + editToken,
     JSON.stringify({ ssId: ss.getId(), sheet: name, row: row, name: name }), EDIT_WINDOW_SEC);
   return { ok: true, name: name, date: date, time: time, info: a, editToken: editToken,
-           unread: unreadCount_(name), tips: tips_(name) };
+           unread: unreadCount_(name), unreadRules: unreadRulesFor_(name).length, tips: tips_(name) };
 }
 
 function modify_(req) {

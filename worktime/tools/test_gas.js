@@ -181,7 +181,7 @@ function makeEnv(propsInit) {
     },
   };
   vm.createContext(ctx);
-  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs']) {
+  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs', 'Rules.gs']) {
     vm.runInContext(fs.readFileSync(path.join(GAS, f), 'utf8'), ctx, { filename: f });
   }
   ctx.setup();
@@ -297,12 +297,13 @@ try { ece = require(process.env.HTTP_ECE_PATH || 'http_ece'); } catch (e) { /* o
 const recRows = (name) => {
   const sh = env.files[env.props.ANN_SHEET_ID].getSheetByName(name);
   return sh.getDataRange ? Array.from({ length: sh.getLastRow() - 1 }, (_, i) =>
-    sh.getRange(i + 2, 1, 1, 9).getValues()[0]) : [];
+    sh.getRange(i + 2, 1, 1, 11).getValues()[0]) : [];
 };
 
 test('setup: protected record sheets, daily trigger, VAPID keys', () => {
   const ss = env.files[env.props.ANN_SHEET_ID];
-  assert.deepStrictEqual(ss.sheets.map((x) => x.name), ['Announcements', 'Confirmations', 'Notifications', 'Logins']);
+  assert.deepStrictEqual(ss.sheets.map((x) => x.name),
+    ['Announcements', 'Confirmations', 'Notifications', 'Logins', 'Our Rules', 'Requests']);
   assert.ok(ss.sheets.every((x) => x.protected));
   assert.deepStrictEqual(env.triggers.map((t) => [t.getHandlerFunction(), t.hour]), [['scheduleMorning', 7]]);
   const head = env.files[env.props.CONFIG_SHEET_ID].sheets[0];
@@ -336,7 +337,7 @@ const photo = 'data:image/jpeg;base64,' + nodeCrypto.randomBytes(300).toString('
 let annId;
 test('admin posts announcement -> push + email to every active employee', () => {
   const before = { mail: env.sent.mail.length, push: env.sent.push.length };
-  const r = env.call({ action: 'post', token, title: 'Kitchen rules', content: 'Wash hands.\r\nWear caps.', photos: [photo], rule: true });
+  const r = env.call({ action: 'post', token, title: 'Kitchen rules', content: 'Wash hands.\r\nWear caps.', photos: [photo] });
   assert.ok(r.ok, JSON.stringify(r));
   annId = r.id;
   assert.strictEqual(annId, 'A0001');
@@ -344,12 +345,13 @@ test('admin posts announcement -> push + email to every active employee', () => 
   assert.deepStrictEqual(row.slice(2, 5), ['Nam KIM', 'Kitchen rules', 'Wash hands.\nWear caps.']);
   assert.match(row[5], /^https:\/\/drive\.google\.com\/file\/d\/file\d+\/view$/);
   assert.strictEqual(row[6], 'Nam KIM, Yuna, No Mail');
-  assert.strictEqual(row[7], 'Rule');
+  assert.strictEqual(row[7], 'Notice');
   const mails = env.sent.mail.slice(before.mail);
   assert.deepStrictEqual(mails.map((m) => m.to).sort(), ['nam@example.com', 'yuna@example.com']);
   assert.strictEqual(mails[0].subject, 'I have an unread announcement !');
   assert.strictEqual(Object.keys(mails[0].inlineImages).length, 1);
   assert.match(mails[0].htmlBody, /Kitchen rules/);
+  assert.ok(!/Nam KIM/.test(mails[0].htmlBody), 'uploader is not shown');
   assert.strictEqual(mails[0].name, 'monsieur Kim');
   const h = mails[0].htmlBody;
   assert.ok(h.indexOf('Go to Confirm') < h.indexOf('Kitchen rules'), 'button above the content');
@@ -378,7 +380,7 @@ test('push request: valid VAPID JWT + payload decrypts to the notification', () 
   const msg = JSON.parse(ece.decrypt(Buffer.from(req.o.payload.map((x) => x & 0xff)),
     { version: 'aes128gcm', privateKey: ua, authSecret: uaAuth.toString('base64url') }));
   assert.deepStrictEqual(msg, { title: 'I have an unread announcement !', body: 'Kitchen rules',
-    url: 'https://contactmonsieurkim-pixel.github.io/Commande-Tapfruit/worktime/?view=ann' });
+    url: 'https://contactmonsieurkim-pixel.github.io/Commande-Tapfruit/worktime/?view=ann', tag: 'announcement' });
 });
 
 test('unread count on me + on NFC tap', () => {
@@ -386,8 +388,7 @@ test('unread count on me + on NFC tap', () => {
   const [t] = tagUrls(keys, 'START', 1);
   const r = env.call(Object.assign({ action: 'tap', token: yuna }, t));
   assert.ok(r.ok); assert.strictEqual(r.unread, 1);
-  assert.deepStrictEqual(JSON.parse(JSON.stringify(r.tips)),
-    [{ id: 'A0001', title: 'Kitchen rules', content: 'Wash hands.\nWear caps.' }]);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(r.tips)), [], 'announcements are never tips');
 });
 
 test('announcement list + photo for recipient', () => {
@@ -449,7 +450,7 @@ test('formula-looking content is stored as text and still verifies', () => {
   assert.ok(r.ok);
   assert.deepStrictEqual(recRows('Announcements')[1].slice(3, 5), ['=1+1', '=HYPERLINK("x")']);
   assert.strictEqual(recRows('Announcements')[1][7], 'Notice');
-  assert.strictEqual(env.call({ action: 'me', token }).tips.length, 1, 'notices are not tips');
+  assert.strictEqual(env.call({ action: 'me', token }).tips.length, 0, 'notices are not tips');
   assert.ok(env.ctx.verifyRecords().every((x) => x.ok));
 });
 
@@ -486,14 +487,17 @@ test('staff list for the audience picker (managers only)', () => {
 test('post to a team -> only that team is notified and must confirm', () => {
   const m0 = env.sent.mail.length;
   const r = env.call({ action: 'post', token, title: 'Knife storage', content: 'Knives on the magnet only.',
-                      rule: true, audience: { teams: ['kitchen'] } });
+                      kind: 'rule', audience: { teams: ['kitchen'] } });
   assert.ok(r.ok, JSON.stringify(r));
-  const row = lastAnn();
-  assert.strictEqual(row[6], 'Yuna, No Mail');
-  assert.strictEqual(row[7], 'Rule · Teams: Kitchen');
+  assert.strictEqual(r.id, 'Rule-001');
+  const row = recRows('Our Rules').slice(-1)[0];
+  assert.deepStrictEqual(row.slice(0, 2), ['Rule-001', '1']);
+  assert.strictEqual(env.files[env.props.ANN_SHEET_ID].getSheetByName('Our Rules').cells['2,8'], 'Yuna, No Mail');
+  assert.strictEqual(env.files[env.props.ANN_SHEET_ID].getSheetByName('Our Rules').cells['2,9'], 'Teams: Kitchen');
   assert.deepStrictEqual(env.sent.mail.slice(m0).map((m) => m.to), ['yuna@example.com']);
-  assert.ok(env.call({ action: 'anns', token: yuna }).announcements.some((a) => a.title === 'Knife storage'));
-  assert.ok(!env.call({ action: 'anns', token }).announcements.some((a) => a.title === 'Knife storage'));
+  assert.ok(env.call({ action: 'rules', token: yuna }).rules.some((x) => x.title === 'Knife storage'));
+  assert.ok(!env.call({ action: 'rules', token }).rules.some((x) => x.title === 'Knife storage'));
+  assert.ok(!env.call({ action: 'anns', token: yuna }).announcements.some((a) => a.title === 'Knife storage'));
 });
 
 test('post to a team + individual people', () => {
@@ -521,18 +525,18 @@ test('invalid audiences are rejected and nothing is recorded', () => {
 
 test('team rules show as tips only to that team (including new hires)', () => {
   const titles = (t) => env.call({ action: 'me', token: t }).tips.map((x) => x.title).sort();
-  assert.deepStrictEqual(titles(yuna), ['Kitchen rules', 'Knife storage']);
-  assert.deepStrictEqual(titles(token), ['Kitchen rules']);
+  assert.deepStrictEqual(titles(yuna), ['Knife storage']);
+  assert.deepStrictEqual(titles(token), []);
   const config = env.files[env.props.CONFIG_SHEET_ID];
   config.sheets[0].getRange(7, 1, 1, 6).setValues([['New Cook', '7777', 'TRUE', '', '', 'Kitchen']]);
   const cook = env.call({ action: 'login', name: 'New Cook', pin: '7777' }).token;
-  assert.deepStrictEqual(titles(cook), ['Kitchen rules', 'Knife storage']);
+  assert.deepStrictEqual(titles(cook), ['Knife storage']);
   assert.strictEqual(env.call({ action: 'me', token: cook }).unread, 0, 'not a recipient of old posts');
 });
 
 test('admin status shows the audience; records still verify', () => {
   const st = env.call({ action: 'status', token });
-  assert.strictEqual(st.announcements.find((a) => a.title === 'Knife storage').audience, 'Teams: Kitchen');
+  assert.strictEqual(st.announcements.find((a) => a.title === '[Rule-001] Knife storage').audience, 'Teams: Kitchen');
   assert.strictEqual(st.announcements.find((a) => a.title === 'Kitchen rules').audience, 'Everyone');
   assert.strictEqual(st.integrity, true);
 });
@@ -713,6 +717,144 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
 
   test('records still verify after the night', () => {
     assert.ok(q.ctx.verifyRecords().every((x) => x.ok));
+  });
+}
+
+// ------------------------------------------------------------------ Our Rules + Requests
+{
+  const R = makeEnv({ SDM_META_KEY: keys.K1_SDM_META, SDM_FILE_KEY: keys.K2_SDM_FILE });
+  const at = (iso) => { R.clock.fixed = iso; R.clock.days = 0; };
+  const sheetRows = (name, n) => {
+    const sh = R.files[R.props.ANN_SHEET_ID].getSheetByName(name);
+    return Array.from({ length: sh.getLastRow() - 1 }, (_, i) => sh.getRange(i + 2, 1, 1, n || 11).getValues()[0]);
+  };
+  const decryptFor = (req, key, auth) => JSON.parse(ece.decrypt(Buffer.from(req.o.payload.map((x) => x & 0xff)),
+    { version: 'aes128gcm', privateKey: key, authSecret: auth.toString('base64url') }));
+  const boss = R.call({ action: 'login', name: 'Nam KIM', pin: '4321' }).token;
+  const yu = R.call({ action: 'login', name: 'Yuna', pin: '2222' }).token;
+  const YU_EP = 'https://web.push.apple.com/yuna-phone';
+  R.call({ action: 'subscribe', token: boss, sub: { endpoint: SUP_ENDPOINT, keys: {
+    p256dh: supKey.getPublicKey().toString('base64url'), auth: supAuth.toString('base64url') } } });
+  R.call({ action: 'subscribe', token: yu, sub: { endpoint: YU_EP, keys: {
+    p256dh: ua.getPublicKey().toString('base64url'), auth: uaAuth.toString('base64url') } } });
+
+  test('rules: old "Rule" announcements migrate to Rule-001… (confirmations carried over)', () => {
+    // 예전 방식으로 기록된 공지 (Type = Rule) 를 직접 만들어 둠
+    R.ctx.appendRecord_('Announcements', ['A0001', '2026-10-01 10:00:00', 'Nam KIM', 'Old rule A', 'Be on time.', '',
+      'Nam KIM, Yuna, No Mail', 'Rule']);
+    R.ctx.appendRecord_('Announcements', ['A0002', '2026-10-02 10:00:00', 'Nam KIM', 'Old notice', 'Hello.', '',
+      'Nam KIM, Yuna, No Mail', 'Notice']);
+    R.ctx.appendRecord_('Announcements', ['A0003', '2026-10-03 10:00:00', 'Nam KIM', 'Old rule B', 'Knives.', '',
+      'Yuna, No Mail', 'Rule · Teams: Kitchen']);
+    R.ctx.appendRecord_('Confirmations', ['A0001', 'Old rule A', 'Yuna', '2026-10-01 11:00:00']);
+    R.props.ANN_SEQ = '3';
+    const list = R.call({ action: 'rules', token: yu }).rules;
+    assert.deepStrictEqual(list.map((x) => [x.id, x.title, x.confirmedAt]),
+      [['Rule-001', 'Old rule A', '2026-10-01 11:00:00'], ['Rule-002', 'Old rule B', null]]);
+    assert.ok(!('by' in list[0]), 'uploader not exposed');
+    assert.deepStrictEqual(R.call({ action: 'rules', token: boss }).rules.map((x) => x.id), ['Rule-001']);
+    assert.deepStrictEqual(R.call({ action: 'anns', token: yu }).announcements.map((x) => x.title), ['Old notice']);
+    R.call({ action: 'rules', token: yu });
+    assert.strictEqual(sheetRows('Our Rules').length, 2, 'migrated once');
+    assert.strictEqual(R.call({ action: 'me', token: yu }).unreadRules, 1);
+  });
+
+  test('rules: new rule gets the next number and its own notification', () => {
+    at('2026-10-09T10:00:00+02:00');
+    const m0 = R.sent.mail.length, p0 = R.sent.push.length;
+    const r = R.call({ action: 'post', token: boss, kind: 'rule', title: 'Fridge labels',
+                      content: 'Label every container.', photos: [photo] });
+    assert.ok(r.ok, JSON.stringify(r)); assert.strictEqual(r.id, 'Rule-003');
+    const mail = R.sent.mail.slice(m0).find((m) => m.to === 'yuna@example.com');
+    assert.strictEqual(mail.subject, 'Our Rules: please read and confirm');
+    assert.match(mail.htmlBody, /\[Rule-003\] Fridge labels/); assert.match(mail.htmlBody, /New rule/);
+    assert.ok(!/Nam KIM/.test(mail.htmlBody));
+    assert.match(mail.htmlBody, /\?view=rules/);
+    const p = R.sent.push.slice(p0).find((x) => x.url === YU_EP);
+    if (ece) {
+      const msg = decryptFor(p, ua, uaAuth);
+      assert.deepStrictEqual([msg.title, msg.body, msg.tag], ['Our Rules: please read and confirm', '[Rule-003] Fridge labels', 'rules']);
+    }
+    assert.ok(sheetRows('Notifications', 6).some((x) => x[2] === 'Yuna' && x[3] === 'new rule email'));
+    assert.strictEqual(R.call({ action: 'anns', token: yu }).announcements.length, 1, 'not an announcement');
+  });
+
+  test('rules: confirm, then an edit by a manager needs a new confirmation', () => {
+    assert.strictEqual(R.call({ action: 'ruleConfirm', token: yu, id: 'Rule-003' }).ok, true);
+    assert.ok(sheetRows('Confirmations', 5).some((x) => x[0] === 'Rule-003 v1' && x[2] === 'Yuna'));
+    assert.strictEqual(R.call({ action: 'ruleEdit', token: yu, id: 'Rule-003', title: 'x', content: 'y' }).ok, false);
+    at('2026-10-12T15:30:00+02:00');
+    const p0 = R.sent.push.length;
+    const e = R.call({ action: 'ruleEdit', token: boss, id: 'Rule-003', title: 'Fridge labels',
+                      content: 'Label every container: what, who, date.' });
+    assert.ok(e.ok, JSON.stringify(e)); assert.strictEqual(e.version, 2);
+    const mine = R.call({ action: 'rules', token: yu }).rules.find((x) => x.id === 'Rule-003');
+    assert.strictEqual(mine.version, 2);
+    assert.strictEqual(mine.updatedAt, '2026-10-12 15:30:00');
+    assert.strictEqual(mine.confirmedAt, null, 'must confirm again');
+    assert.strictEqual(mine.photos, 1, 'photo kept when none uploaded');
+    assert.deepStrictEqual(JSON.parse(JSON.stringify(mine.history)),
+      [{ version: 1, at: '2026-10-09 10:00:00', title: 'Fridge labels', content: 'Label every container.' }]);
+    if (ece) assert.strictEqual(decryptFor(R.sent.push.slice(p0).find((x) => x.url === YU_EP), ua, uaAuth).body,
+      '[Rule-003] Fridge labels (updated)');
+    R.call({ action: 'ruleConfirm', token: yu, id: 'Rule-003' });
+    const st = R.call({ action: 'status', token: boss }).announcements.find((x) => x.id === 'Rule-003 v2');
+    assert.strictEqual(st.title, '[Rule-003] Fridge labels (v2)');
+    assert.deepStrictEqual(st.confirmed.map((c) => c.name), ['Yuna']);
+  });
+
+  test('rules: clock-in tips come from Our Rules (latest version)', () => {
+    const tips = R.call({ action: 'me', token: yu }).tips;
+    assert.deepStrictEqual(tips.map((t) => t.id), ['Rule-001', 'Rule-002', 'Rule-003']);
+    assert.strictEqual(tips[2].content, 'Label every container: what, who, date.');
+  });
+
+  test('09:00: announcements and rules are notified separately', () => {
+    at('2026-10-12T23:30:00+02:00');
+    R.call({ action: 'post', token: boss, title: 'Late notice', content: 'Tomorrow.' });
+    assert.strictEqual(R.call({ action: 'post', token: boss, kind: 'rule', title: 'Night rule', content: 'Lock up.' }).queued, true);
+    at('2026-10-13T09:00:00+02:00');
+    const m0 = R.sent.mail.length;
+    R.ctx.morningRun();
+    const toYuna = R.sent.mail.slice(m0).filter((m) => m.to === 'yuna@example.com');
+    assert.deepStrictEqual(toYuna.map((m) => m.subject).sort(),
+      ['I have an unread announcement !', 'Our Rules: please read and confirm']);
+    const ruleMail = toYuna.find((m) => m.subject.startsWith('Our Rules'));
+    assert.match(ruleMail.htmlBody, /\[Rule-004\] Night rule/);
+    assert.match(ruleMail.htmlBody, /\[Rule-002\] Old rule B/, 'still-unconfirmed migrated rule is reminded');
+  });
+
+  test('request: any employee -> supervisor at once (even at night), private', () => {
+    at('2026-10-13T23:50:00+02:00');
+    const m0 = R.sent.mail.length, p0 = R.sent.push.length;
+    assert.strictEqual(R.call({ action: 'request', token: yu, message: '  ' }).ok, false);
+    const r = R.call({ action: 'request', token: yu, message: 'Could I swap Saturday with Leo?\nFamily event.' });
+    assert.ok(r.ok);
+    const sup = R.sent.push.slice(p0).filter((x) => x.url === SUP_ENDPOINT);
+    assert.strictEqual(sup.length, 1);
+    assert.strictEqual(R.sent.push.length - p0, 1, 'nobody else');
+    if (ece) {
+      const msg = decrypt(sup[0]);
+      assert.strictEqual(msg.title, '✉️ Request · Yuna');
+      assert.strictEqual(msg.body, 'Could I swap Saturday with Leo?\nFamily event.');
+      assert.match(msg.url, /\?view=requests$/);
+    }
+    const mails = R.sent.mail.slice(m0);
+    assert.deepStrictEqual(mails.map((m) => [m.to, m.subject]), [['nam@example.com', 'Request from Yuna']]);
+    assert.deepStrictEqual(sheetRows('Requests', 4)[0].slice(0, 3),
+      ['2026-10-13 23:50:00', 'Yuna', 'Could I swap Saturday with Leo?\nFamily event.']);
+  });
+
+  test('request inbox: supervisor only', () => {
+    assert.strictEqual(R.call({ action: 'requests', token: yu }).ok, false);
+    const r = R.call({ action: 'requests', token: boss });
+    assert.deepStrictEqual(r.requests.map((x) => x.from), ['Yuna']);
+    assert.strictEqual(R.call({ action: 'me', token: boss }).supervisor, true);
+    assert.strictEqual(R.call({ action: 'me', token: yu }).supervisor, false);
+  });
+
+  test('rules + requests: records still verify', () => {
+    assert.ok(R.ctx.verifyRecords().every((x) => x.ok), JSON.stringify(R.ctx.verifyRecords()));
   });
 }
 
