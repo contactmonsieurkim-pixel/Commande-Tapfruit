@@ -100,6 +100,22 @@ function timesIn_(t) {
   });
 }
 
+/** 라벨 글자 속 식사 시간들. 시간 범위 옆(앞/뒤)에 meal/break/… 가 있으면 'Meal break 11:00 – 11:30'. */
+function labelBreaks_(text) {
+  var out = [], t = String(text || '');
+  var range = '(\\d{1,2}[:h.]\\d{2})\\s*[-–~à]\\s*(\\d{1,2}[:h.]\\d{2})';
+  var kw = '(?:meal\\s*break|meal|break|pause|repas|식사|휴식)';
+  var re = new RegExp(range + '\\s*' + kw + '|' + kw + '\\s*:?\\s*' + range, 'gi'), m;
+  while ((m = re.exec(t))) {
+    var a = timesIn_(m[1] || m[3])[0], b = timesIn_(m[2] || m[4])[0];
+    out.push('Meal break ' + a + ' – ' + b);
+  }
+  if (!out.length) {
+    t.split('\n').forEach(function (line) { if (BREAK_RE_.test(line)) out.push(line.replace(/[()]/g, '').trim()); });
+  }
+  return out;
+}
+
 function minutes_(hhmm) { var p = hhmm.split(':'); return +p[0] * 60 + +p[1]; }
 
 function weekSlots_(rows, people, monday) {
@@ -142,8 +158,8 @@ function weekSlots_(rows, people, monday) {
       }
       if (!names.length && (!bg || design[bg])) continue; // 빈 칸 / 배경색
       var z = zoneAt[r], times = [], breaks = [];
-      // 시간대 라벨 안의 식사 시간 줄
-      raw(z, 0).split('\n').forEach(function (line) { if (BREAK_RE_.test(line)) breaks.push(line.trim()); });
+      // 시간대 라벨 안의 식사 시간: 'Morning Time zone 1 (11:00-11:30 Meal Break)' -> 'Meal break 11:00 – 11:30'
+      breaks = labelBreaks_(raw(z, 0));
       for (var x = z; x <= zoneEnd(z); x++) {
         var c = rows[x][j];
         if (isBreakRow(x)) {

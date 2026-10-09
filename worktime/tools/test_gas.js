@@ -1246,6 +1246,54 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     ]);
   });
 
+  test('schedule: the real kitchen layout (screenshot 1/10–4/10)', () => {
+    const D = '#434343', W = '#ffffff';
+    const c = (t, bg, fc) => ({ t, bg, fc });
+    const e = (n) => Array(n).fill({});
+    const dk = (n, t) => Array(n).fill(c(t || '', D, W));
+    const days = (vals) => e(3).concat(vals); // 월~수 비어 있음 (지난달)
+    const C = { o: '#f09a37', g: '#77ff55', p: '#6b1f45', v: '#8b7cf0', y: '#ffff55', s: '#999999' };
+    const rows = [
+      [{}, {}].concat(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((t) => ({ t }))),
+      [{ t: 'Date' }, {}].concat(days(['1/10', '2/10', '3/10', '4/10'].map((t) => ({ t })))),
+      [{ t: 'Morning\nTime zone 1\n(11:00-11:30 Meal Break)', rs: 5 }, {}].concat(days(['09:00', '09:00', '09:00', '09:00'].map((t) => ({ t })))),
+      [null, {}].concat(days(['15:00', '15:00', '15:30', '15:30'].map((t) => ({ t })))),
+      [null, { t: 'P', b: 1 }].concat(days([c('', C.o), c('', C.o), {}, {}])),
+      [null, { t: 'F', b: 1 }].concat(days([{}, {}, {}, {}])),
+      [null, { t: 'W', b: 1 }].concat(days([{}, {}, {}, {}])),
+      [{ t: 'Morning Time zone 2 (11:00-11:30 Meal Break)', rs: 5 }, {}].concat(days(['10:00', '10:00', '10:00', '10:00'].map((t) => ({ t })))),
+      [null, {}].concat(days(['15:00', '15:00', '15:30', '15:30'].map((t) => ({ t })))),
+      [null, { t: 'P', b: 1 }].concat(days([{}, {}, c('', C.g), c('', C.s)])),
+      [null, { t: 'F', b: 1 }].concat(days([c('', C.p), c('', C.v), c('', C.s), c('', C.y)])),
+      [null, { t: 'W', b: 1 }].concat(days([{}, {}, c('', C.y), c('', C.p)])),
+      [c('Dinner\nTime zone 1\n(18:00-18:30 Meal Break)', D, W), c('', D)].concat(e(3), dk(1, '16:30'), dk(1, '16:30'), dk(2, '17:00')),
+      [null, c('', D)].concat(e(3), dk(1, '22:30'), dk(3, '23:00')),
+      [null, c('P', D, W)].concat(e(3), [c('', C.g), c('', C.g), c('', C.g), c('', C.g)]),
+      [null, c('F', D, W)].concat(e(3), [c('', D), c('', D), c('', C.s), c('', C.y)]),
+      [null, c('W', D, W)].concat(e(3), [c('23:00', C.p, W), c('', C.p), c('', C.y), c('', C.s)]),
+    ];
+    rows[12][0].rs = 5;
+    const names = { [C.o]: 'Ana', [C.g]: 'Tom', [C.p]: 'Chris', [C.v]: 'Leo', [C.y]: 'Yuna', [C.s]: 'Sam' };
+    const people = { byColor: names, colors: Object.fromEntries(Object.entries(names).map(([k, v]) => [v, k])),
+                     names: Object.values(names) };
+    const all = JSON.parse(JSON.stringify(S.ctx.weekSlots_(rows, people, '2026-09-28')));
+    const of = (n) => all.filter((x) => x.names.includes(n))
+      .map((x) => [x.date.slice(5), x.role, x.start + '-' + x.end, x.breaks.join(), x.special ? '*' : ''].join(' ')).sort();
+    assert.deepStrictEqual(of('Chris'), [
+      '10-01 F 10:00-15:00 Meal break 11:00 – 11:30 ',
+      '10-01 W 16:30-23:00 Meal break 18:00 – 18:30 *',   // 칸 안의 23:00: 끝(22:30) 쪽
+      '10-02 W 16:30-23:00 Meal break 18:00 – 18:30 ',
+      '10-04 W 10:00-15:30 Meal break 11:00 – 11:30 ',
+    ].sort());
+    assert.deepStrictEqual(of('Yuna'), [
+      '10-03 W 10:00-15:30 Meal break 11:00 – 11:30 ',
+      '10-03 W 17:00-23:00 Meal break 18:00 – 18:30 ',
+      '10-04 F 10:00-15:30 Meal break 11:00 – 11:30 ',
+      '10-04 F 17:00-23:00 Meal break 18:00 – 18:30 ',
+    ]);
+    assert.ok(!all.some((x) => x.names.length === 0), 'dark background cells are not shifts');
+  });
+
   test('schedule: records still verify', () => {
     assert.ok(S.ctx.verifyRecords().every((x) => x.ok));
   });
