@@ -92,11 +92,12 @@ function parisTodayAt_(h) {
  */
 function installTriggers_() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (['dailyReminder', 'scheduleMorning', 'morningRun'].indexOf(t.getHandlerFunction()) >= 0) {
+    if (['dailyReminder', 'scheduleMorning', 'morningRun', 'checkScheduleChanges'].indexOf(t.getHandlerFunction()) >= 0) {
       ScriptApp.deleteTrigger(t);
     }
   });
   ScriptApp.newTrigger('scheduleMorning').timeBased().everyDays(1).atHour(7).inTimezone(TZ).create();
+  ScriptApp.newTrigger('checkScheduleChanges').timeBased().everyMinutes(30).create(); // 스케줄 변경 감지
   scheduleMorning();
 }
 
@@ -507,6 +508,7 @@ function dailyReminder() {
  *  2) 어제까지 게시된 공지 중 확인 안 한 사람 -> 리마인더
  *  한 사람에게는 1)+2)를 합쳐 메일 1통·푸시 1번만 보냄.
  *  3) 밤사이 Supervisor 알림(출퇴근·로그인)을 한 번에 요약해서 보냄.
+ *  4) 스케줄 확인 요청 (Schedule.gs)
  */
 function morningRun() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
@@ -530,4 +532,9 @@ function morningRun() {
     });
   });
   flushSupervisorQueue_();
+  try {
+    notifySchedules_(); // 스케줄 확인 요청 (2주 전 화요일부터 확인할 때까지 매일)
+  } catch (err) {
+    console.error(err); // 스케줄 파일 문제가 다른 아침 알림을 막지 않도록
+  }
 }

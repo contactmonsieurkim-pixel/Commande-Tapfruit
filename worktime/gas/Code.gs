@@ -23,6 +23,7 @@ function setup() {
   checkFiles_();
   var config = ensureConfig_();
   var records = ensureRecords_();
+  ensureScheduleConfig_(config);
   vapidKeys_();
   if (!props_.getProperty('VAPID_SUBJECT')) {
     props_.setProperty('VAPID_SUBJECT', 'mailto:' + Session.getEffectiveUser().getEmail());
@@ -35,7 +36,8 @@ function setup() {
 /** 붙여넣기 중 파일 끝이 잘리지 않았는지 확인 (각 파일의 마지막 함수가 있는지). */
 function checkFiles_() {
   var last = { 'Code.gs': 'json_', 'Crypto.gs': 'verifySun_', 'WebPush.gs': 'sendWebPush_',
-               'Announce.gs': 'morningRun', 'Supervisor.gs': 'recordLogin_', 'Rules.gs': 'announceRule_' };
+               'Announce.gs': 'morningRun', 'Supervisor.gs': 'recordLogin_', 'Rules.gs': 'announceRule_',
+               'Schedule.gs': 'scheduleMail_' };
   var missing = Object.keys(last).filter(function (f) { return typeof this[last[f]] !== 'function'; }, this);
   if (typeof props_ === 'undefined' || typeof TZ === 'undefined' || typeof DEFAULT_FOLDER_ID === 'undefined') {
     missing.push('Code.gs (맨 윗부분: var DEFAULT_FOLDER_ID ... var props_)');
@@ -85,6 +87,7 @@ function doPost(e) {
       confirm: confirm_, post: post_, status: annStatus_, staff: staff_,
       rules: rulesList_, ruleConfirm: ruleConfirm_, rulePhoto: rulePhoto_, ruleEdit: ruleEdit_,
       request: request_, requests: requestsList_,
+      schedule: scheduleView_, scheduleConfirm: scheduleConfirm_,
     };
     var fn = handlers[req.action];
     if (!fn) return json_({ ok: false, error: 'Unknown action.' });
@@ -117,7 +120,8 @@ function me_(req) {
   var name = whoAmI_(req.token);
   var me = findEmployee_(name);
   return { ok: true, name: name, admin: isAdmin_(name), supervisor: !!(me && me.supervisor),
-           unread: unreadCount_(name), unreadRules: unreadRulesFor_(name).length, tips: tips_(name) };
+           unread: unreadCount_(name), unreadRules: unreadRulesFor_(name).length, tips: tips_(name),
+           schedulePending: schedulePendingCount_(name) };
 }
 
 function unreadCount_(name) {

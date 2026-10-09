@@ -62,6 +62,9 @@ function makeEnv(propsInit) {
           },
           setValue: (x) => rng.setValues([[x]]),
           getValue: () => cells[r + ',' + c] || '',
+          getDisplayValues: () => rng.getValues(),
+          getBackgrounds: () => Array.from({ length: nr }, (_, i) =>
+            Array.from({ length: nc }, (_, j) => sheet.bg[(r + i) + ',' + (c + j)] || '#ffffff')),
           getValues: () => Array.from({ length: nr }, (_, i) =>
             Array.from({ length: nc }, (_, j) => cells[(r + i) + ',' + (c + j)] || '')),
         };
@@ -126,9 +129,9 @@ function makeEnv(propsInit) {
       getProjectTriggers: () => triggers.slice(),
       deleteTrigger: (t) => triggers.splice(triggers.indexOf(t), 1),
       newTrigger: (fn) => {
-        const b = { timeBased: () => b, everyDays: () => b, atHour: (h) => { b.hour = h; return b; },
+        const b = { timeBased: () => b, everyDays: () => b, everyMinutes: (m) => { b.minutes = m; return b; }, atHour: (h) => { b.hour = h; return b; },
                     at: (d) => { b.at = d; return b; }, inTimezone: () => b,
-                    create: () => triggers.push({ getHandlerFunction: () => fn, hour: b.hour, at: b.at }) };
+                    create: () => triggers.push({ getHandlerFunction: () => fn, hour: b.hour, at: b.at, minutes: b.minutes }) };
         return b;
       },
     },
@@ -151,7 +154,9 @@ function makeEnv(propsInit) {
       newBlob: (bytes, type, name) => blob(bytes, type, name),
       getUuid: () => crypto.randomUUID(),
       formatDate: (d, tz, fmt) => {
-        d = new Date((clock.fixed ? new Date(clock.fixed).getTime() : d.getTime()) + clock.days * 86400000);
+        // 테스트 시계는 '지금'에만 적용 (시트의 날짜 값 등 다른 날짜는 그대로)
+        const isNow = Math.abs(d.getTime() - Date.now()) < 60000;
+        d = new Date((clock.fixed && isNow ? new Date(clock.fixed).getTime() : d.getTime()) + (isNow ? clock.days * 86400000 : 0));
         if (fmt === 'Z') {
           const off = new Intl.DateTimeFormat('en-GB', { timeZone: tz, timeZoneName: 'longOffset' })
             .formatToParts(d).find((x) => x.type === 'timeZoneName').value; // GMT+02:00
@@ -181,7 +186,7 @@ function makeEnv(propsInit) {
     },
   };
   vm.createContext(ctx);
-  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs', 'Rules.gs']) {
+  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs', 'Rules.gs', 'Schedule.gs']) {
     vm.runInContext(fs.readFileSync(path.join(GAS, f), 'utf8'), ctx, { filename: f });
   }
   ctx.setup();
@@ -193,7 +198,47 @@ function makeEnv(propsInit) {
     ['No Mail', '3333', 'TRUE', '', '', 'Kitchen', ''],
   ]);
   const call = (body) => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).body);
-  return { ctx, call, props, files, sent, clock, triggers };
+  return { ctx, call, props, files, sent, clock, triggers, cache };
+}
+
+/**
+ * 스케줄 스프레드시트 흉내: tabs = { 탭이름: { grid: [[셀…]…], merges: [[r,c,nr,nc]…], hiddenCols: [c…], hidden } }
+ * 셀은 문자열 또는 { t: 표시 글자, v: 값(Date 등), bg, fc, b }. 행·열 번호는 1부터.
+ */
+function makeScheduleFile(id, title, tabs) {
+  const sheet = (name, spec) => {
+    const g = spec.grid, nr = g.length, nc = Math.max(...g.map((r) => r.length));
+    const cell = (r, c) => { const x = (g[r] || [])[c]; return x == null ? {} : typeof x === 'string' ? { t: x } : x; };
+    const grid = (f) => (r, c, h, w) => Array.from({ length: h }, (_, i) => Array.from({ length: w }, (_, j) => f(cell(r - 1 + i, c - 1 + j))));
+    return {
+      spec,
+      getName: () => name,
+      isSheetHidden: () => !!spec.hidden,
+      getLastRow: () => nr,
+      getLastColumn: () => nc,
+      isColumnHiddenByUser: (c) => (spec.hiddenCols || []).includes(c),
+      getColumnWidth: (c) => (c === 1 ? 120 : 100),
+      getRange: (r, c, h, w) => ({
+        getDisplayValues: () => grid((x) => x.t || '')(r, c, h, w),
+        getValues: () => grid((x) => (x.v !== undefined ? x.v : x.t || ''))(r, c, h, w),
+        getBackgrounds: () => grid((x) => x.bg || '#ffffff')(r, c, h, w),
+        getFontColors: () => grid((x) => x.fc || '#000000')(r, c, h, w),
+        getFontWeights: () => grid((x) => (x.b ? 'bold' : 'normal'))(r, c, h, w),
+        getFontStyles: () => grid(() => 'normal')(r, c, h, w),
+        getFontSizes: () => grid((x) => x.fs || 10)(r, c, h, w),
+        getHorizontalAlignments: () => grid(() => 'general-left')(r, c, h, w),
+        getMergedRanges: () => (spec.merges || []).map(([mr, mc, mh, mw]) => ({
+          getRow: () => mr, getColumn: () => mc, getNumRows: () => mh, getNumColumns: () => mw })),
+      }),
+    };
+  };
+  const sheets = Object.keys(tabs).map((n) => sheet(n, tabs[n]));
+  return {
+    kind: 'sheet', title, sheets,
+    getId: () => id, getName: () => title,
+    getSheets: () => sheets,
+    getSheetByName: (n) => sheets.find((x) => x.getName() === n) || null,
+  };
 }
 
 // Python 시뮬레이터로 실제와 같은 태그 URL 생성
@@ -209,7 +254,7 @@ print(json.dumps([nt.read_and_verify(tag, keys)[0] for _ in range(int(sys.argv[3
   return JSON.parse(out).map((u) => Object.fromEntries(new URL(u).searchParams));
 }
 
-module.exports = { makeEnv, tagUrls };
+module.exports = { makeEnv, tagUrls, makeScheduleFile };
 if (require.main !== module) return;
 
 // ------------------------------------------------------------------ tests
@@ -305,12 +350,13 @@ test('setup: protected record sheets, daily trigger, VAPID keys', () => {
   assert.deepStrictEqual(ss.sheets.map((x) => x.name),
     ['Announcements', 'Confirmations', 'Notifications', 'Logins', 'Our Rules', 'Requests']);
   assert.ok(ss.sheets.every((x) => x.protected));
-  assert.deepStrictEqual(env.triggers.map((t) => [t.getHandlerFunction(), t.hour]), [['scheduleMorning', 7]]);
+  assert.deepStrictEqual(env.triggers.map((t) => [t.getHandlerFunction(), t.hour || t.minutes]),
+    [['scheduleMorning', 7], ['checkScheduleChanges', 30]]);
   const head = env.files[env.props.CONFIG_SHEET_ID].sheets[0];
   assert.deepStrictEqual([1, 2, 3, 4, 5, 6, 7].map((c) => head.cells['1,' + c]),
     ['Name', 'PIN', 'Active', 'Email', 'Admin', 'Team', 'Supervisor']);
   env.ctx.setup(); // 다시 실행해도 중복 생성 없음
-  assert.strictEqual(env.triggers.length, 1);
+  assert.strictEqual(env.triggers.length, 2);
   assert.strictEqual(Buffer.from(env.call({ action: 'pushKey' }).publicKey, 'base64url').length, 65);
 });
 
@@ -860,6 +906,284 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
 
   test('rules + requests: records still verify', () => {
     assert.ok(R.ctx.verifyRecords().every((x) => x.ok), JSON.stringify(R.ctx.verifyRecords()));
+  });
+}
+
+// ------------------------------------------------------------------ Schedule
+{
+  const S = makeEnv({ SDM_META_KEY: keys.K1_SDM_META, SDM_FILE_KEY: keys.K2_SDM_FILE });
+  const at = (iso) => { S.clock.fixed = iso; S.clock.days = 0; S.cache && Object.keys(S.cache).forEach((k) => delete S.cache[k]); };
+  const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  // 한 주 = 6줄: 요일 / 날짜 / Morning P·F·W (A열 3줄 병합) / 빈 줄
+  const week = (dates) => [
+    ['', ''].concat(DAYS),
+    ['Date', ''].concat(dates),
+    ['Morning', 'P', { t: '09:00', bg: '#f09a37' }],
+    ['', 'F', '', { t: '', bg: '#8b7cf0' }],
+    ['', 'W', { t: 'Chris 23:00', bg: '#6b1f45', fc: '#ffffff', b: 1 }, '', '', '', '', '', '', '', { t: 'secret' }],
+    [],
+  ];
+  const oct = [['', ''], []]
+    .concat(week(['#REF!', '', '', { t: '1/10', v: new Date('2026-10-01T00:00:00+02:00') }, '2/10', '3/10', '4/10']))
+    .concat(week(['5/10', '6/10', '7/10', '8/10', '9/10', '10/10', '11/10']))
+    .concat(week(['12/10', '13/10', '14/10', '15/10', '16/10', '17/10', '18/10']))
+    .concat(week(['19/10', '20/10', '21/10', '22/10', '23/10', '24/10', '25/10']))
+    .concat(week(['26/10', '27/10', '28/10', '29/10', '30/10', '31/10', '1/11']));
+  const merges = (n) => Array.from({ length: n }, (_, k) => [3 + 6 * k + 2, 1, 3, 1]);
+  const FILE = '1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789';
+  S.files[FILE] = makeScheduleFile(FILE, 'Schedule Cuisine 08,09,10', {
+    10: { grid: oct, merges: merges(5), hiddenCols: [11] },
+    '09': { grid: week(['28/9', '29/9', '30/9', '', '', '', '']), merges: [[3, 1, 3, 1]], hiddenCols: [11] },
+    old: { grid: [['x']], hidden: true },
+  });
+  const cfg = S.files[S.props.CONFIG_SHEET_ID];
+  const boss = S.call({ action: 'login', name: 'Nam KIM', pin: '4321' }).token;
+  const yu = S.call({ action: 'login', name: 'Yuna', pin: '2222' }).token;
+  S.call({ action: 'subscribe', token: boss, sub: { endpoint: SUP_ENDPOINT, keys: {
+    p256dh: supKey.getPublicKey().toString('base64url'), auth: supAuth.toString('base64url') } } });
+  const conf = () => {
+    const sh = S.files[S.props.ANN_SHEET_ID].getSheetByName('Confirmations');
+    return Array.from({ length: sh.getLastRow() - 1 }, (_, i) => sh.getRange(i + 2, 1, 1, 4).getValues()[0]);
+  };
+
+  test('schedule: setup adds the Schedules tab; nothing configured yet', () => {
+    const tab = cfg.getSheetByName('Schedules');
+    assert.deepStrictEqual([1, 2, 3].map((c) => tab.cells['1,' + c]), ['Name', 'Spreadsheet', 'Team']);
+    const r = S.call({ action: 'schedule', token: yu });
+    assert.ok(r.ok); assert.deepStrictEqual(r.schedules, []);
+    assert.strictEqual(S.call({ action: 'me', token: yu }).schedulePending, 0);
+  });
+
+  test('schedule: reads the sheet directly, month tabs, weeks by Monday', () => {
+    at('2026-10-09T12:00:00+02:00'); // 금요일
+    cfg.getSheetByName('Schedules').getRange(2, 1, 1, 3)
+      .setValues([['Kitchen', 'https://docs.google.com/spreadsheets/d/' + FILE + '/edit#gid=0', 'Kitchen']]);
+    const r = S.call({ action: 'schedule', token: yu });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.strictEqual(r.sched, 'Kitchen');
+    assert.deepStrictEqual(r.tabs.map((t) => t.label), ['October'], 'only this month and next (no November tab yet)');
+    assert.strictEqual(r.tab, '10', 'opens on the month of the week to confirm');
+    assert.deepStrictEqual(r.weeks.map((w) => w.monday),
+      ['2026-09-28', '2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26']);
+    assert.strictEqual(r.weeks[0].label, '28 Sep – 4 Oct 2026');
+    assert.deepStrictEqual(r.cols, [120, 100, 100, 100, 100, 100, 100, 100, 100], 'hidden + empty columns dropped');
+    const w = r.weeks[0];
+    assert.strictEqual(w.rows.length, 5, 'empty last row trimmed');
+    assert.deepStrictEqual(w.rows[2][0], { t: 'Morning', rs: 3 });
+    assert.strictEqual(w.rows[3][0], null, 'covered by the merge');
+    assert.deepStrictEqual(w.rows[4][2], { t: 'Chris 23:00', bg: '#6b1f45', fc: '#ffffff', b: 1 });
+    assert.deepStrictEqual(r.weeks.map((x) => x.state), ['ended', 'started', 'overdue', 'overdue', 'early']);
+    assert.deepStrictEqual(r.weeks.map((x) => !!x.mustConfirm), [false, false, true, true, true]);
+    assert.strictEqual(r.weeks[4].dueLabel, 'Tue 13 Oct', 'due on the Tuesday two weeks before');
+    assert.deepStrictEqual(r.pending.map((p) => p.monday), ['2026-10-12', '2026-10-19']);
+    assert.strictEqual(r.weeks[2].status, undefined, 'staff do not see who confirmed');
+    assert.strictEqual(S.call({ action: 'me', token: yu }).schedulePending, 2);
+  });
+
+  test('schedule: staff only get this month and next month', () => {
+    const r = S.call({ action: 'schedule', token: yu, sched: 'Kitchen', file: FILE, tab: '09' });
+    assert.strictEqual(r.tab, '10', 'September is not offered any more');
+  });
+
+  test('schedule: confirm needs the tick; once per person and week', () => {
+    const fp = S.call({ action: 'schedule', token: yu }).weeks[2].fp;
+    assert.match(fp, /^[0-9a-f]{10}$/);
+    const base = { action: 'scheduleConfirm', token: yu, sched: 'Kitchen', file: FILE, tab: '10', monday: '2026-10-12', fp };
+    assert.strictEqual(S.call(base).ok, false, 'agree box not ticked');
+    assert.strictEqual(S.call(Object.assign({}, base, { agree: true, fp: '0000000000' })).code, 'CHANGED');
+    const r = S.call(Object.assign({ agree: true }, base));
+    assert.ok(r.ok, JSON.stringify(r)); assert.strictEqual(r.already, false);
+    assert.strictEqual(r.confirmedAt, '2026-10-09 12:00:00');
+    assert.strictEqual(r.schedulePending, 1);
+    assert.strictEqual(S.call(Object.assign({ agree: true }, base)).already, true);
+    assert.deepStrictEqual(conf().map((x) => x.slice(0, 3)),
+      [['Schedule · Kitchen · 2026-10-12 · ' + fp, 'Schedule Kitchen: 12 Oct – 18 Oct 2026', 'Yuna']]);
+    const v = S.call({ action: 'schedule', token: yu });
+    assert.strictEqual(v.weeks[2].confirmedAt, '2026-10-09 12:00:00');
+    assert.strictEqual(v.weeks[2].mustConfirm, false);
+  });
+
+  test('schedule: started weeks, unknown weeks and non-recipients are refused', () => {
+    const weeks = S.call({ action: 'schedule', token: yu }).weeks;
+    const base = { action: 'scheduleConfirm', sched: 'Kitchen', file: FILE, tab: '10', agree: true };
+    assert.strictEqual(S.call(Object.assign({}, base, { token: yu, monday: '2026-10-05', fp: weeks[1].fp })).ok, false);
+    assert.strictEqual(S.call(Object.assign({}, base, { token: yu, monday: '2026-11-30' })).ok, false);
+    assert.strictEqual(S.call(Object.assign({}, base, { token: boss, monday: '2026-10-19', fp: weeks[3].fp })).ok, false, 'supervisor writes it');
+    assert.strictEqual(S.call(Object.assign({}, base, { token: yu, sched: 'Bar', monday: '2026-10-19', fp: weeks[3].fp })).ok, false);
+    assert.strictEqual(conf().length, 1);
+  });
+
+  test('schedule: managers see who has confirmed each week', () => {
+    const r = S.call({ action: 'schedule', token: boss });
+    assert.strictEqual(r.admin, true);
+    assert.deepStrictEqual(r.weeks[2].status, { confirmed: [{ name: 'Yuna', at: '2026-10-09 12:00:00' }], changed: [], pending: ['No Mail'] });
+    assert.deepStrictEqual(r.weeks[3].status.pending, ['Yuna', 'No Mail']);
+    assert.strictEqual(r.weeks[0].status, undefined, 'old weeks without confirmations: nothing to show');
+    assert.strictEqual(S.call({ action: 'me', token: boss }).schedulePending, 0);
+  });
+
+  test('schedule: 09:00 Tuesday -> new week + reminders in one push/email per person', () => {
+    at('2026-10-13T09:00:00+02:00');
+    const m0 = S.sent.mail.length;
+    S.ctx.morningRun();
+    const mails = S.sent.mail.slice(m0).filter((m) => m.subject.includes('Schedule'));
+    assert.deepStrictEqual(mails.map((m) => m.to), ['yuna@example.com'], 'No Mail has no address; supervisor excluded');
+    assert.match(mails[0].htmlBody, /19 Oct – 25 Oct 2026/);
+    assert.match(mails[0].htmlBody, /26 Oct – 1 Nov 2026[\s\S]*Please confirm today \(Tue 13 Oct\)/);
+    const notes = S.files[S.props.ANN_SHEET_ID].getSheetByName('Notifications');
+    const rows = Array.from({ length: notes.getLastRow() - 1 }, (_, i) => notes.getRange(i + 2, 1, 1, 5).getValues()[0]);
+    const sched = rows.filter((x) => x[3].includes('schedule'));
+    assert.deepStrictEqual(sched.map((x) => [x[2], x[3]]), [
+      ['Yuna', 'reminder schedule push'], ['Yuna', 'reminder schedule email'],
+      ['No Mail', 'reminder schedule push'], ['No Mail', 'reminder schedule email']]);
+  });
+
+  test('schedule: week missing from the sheet -> supervisor is told', () => {
+    at('2026-10-20T09:00:00+02:00');
+    const p0 = S.sent.push.length;
+    S.ctx.morningRun();
+    const sup = S.sent.push.slice(p0).filter((x) => x.url === SUP_ENDPOINT);
+    assert.strictEqual(sup.length, 1, 'week of 2 Nov is not in the sheet yet');
+    assert.strictEqual(S.call({ action: 'me', token: yu }).schedulePending, 1, '26 Oct still unconfirmed (19 Oct has started)');
+  });
+
+  test('schedule: supervisor edits a confirmed week -> "changed", alert after it stays the same 30 min', () => {
+    at('2026-10-21T10:00:00+02:00');
+    const v = S.call({ action: 'schedule', token: yu });
+    const w26 = v.weeks[4];
+    assert.ok(S.call({ action: 'scheduleConfirm', token: yu, sched: 'Kitchen', file: FILE, tab: '10',
+                       monday: w26.monday, fp: w26.fp, agree: true }).ok);
+    assert.strictEqual(S.call({ action: 'me', token: yu }).schedulePending, 0);
+    S.ctx.checkScheduleChanges();
+    const m0 = S.sent.mail.length;
+    // Supervisor 가 시트에서 26 Oct 주의 칸 하나를 바꿈
+    const grid = S.files[FILE].getSheetByName('10').spec.grid;
+    grid[3 + 6 * 4 + 2 - 1][3] = { t: 'Yuna 10:00', bg: '#ffff55' };
+    at('2026-10-21T10:30:00+02:00'); // (캐시 2분이 지난 뒤)
+    const me = S.call({ action: 'me', token: yu });
+    assert.strictEqual(me.schedulePending, 1, 'badge in the Schedule button right away');
+    const after = S.call({ action: 'schedule', token: yu }).weeks[4];
+    assert.strictEqual(after.changed, true); assert.strictEqual(after.mustConfirm, true);
+    assert.strictEqual(after.confirmedAt, null); assert.ok(after.changedAfter);
+    S.ctx.checkScheduleChanges();
+    assert.strictEqual(S.sent.mail.length, m0, 'first sighting: wait (supervisor may still be editing)');
+    at('2026-10-21T11:00:00+02:00');
+    S.ctx.checkScheduleChanges();
+    const mails = S.sent.mail.slice(m0);
+    assert.deepStrictEqual(mails.map((m) => [m.to, m.subject]), [['yuna@example.com', '📅 Schedule changed: please confirm again']]);
+    assert.match(mails[0].htmlBody, /Changed after you agreed/);
+    at('2026-10-21T11:30:00+02:00');
+    S.ctx.checkScheduleChanges();
+    assert.strictEqual(S.sent.mail.length, m0 + 1, 'only once per change');
+    const boss2 = S.call({ action: 'schedule', token: boss }).weeks[4].status;
+    assert.deepStrictEqual(boss2.changed, ['Yuna']);
+    // 다시 확인
+    const r = S.call({ action: 'scheduleConfirm', token: yu, sched: 'Kitchen', file: FILE, tab: '10',
+                      monday: after.monday, fp: after.fp, agree: true });
+    assert.ok(r.ok, JSON.stringify(r)); assert.strictEqual(r.already, false); assert.strictEqual(r.schedulePending, 0);
+    assert.match(conf().slice(-1)[0][1], /\(changed\)$/);
+  });
+
+  test('schedule: a change during the week itself still asks again (until Sunday)', () => {
+    at('2026-10-27T12:00:00+02:00'); // 26 Oct 주의 화요일
+    const grid = S.files[FILE].getSheetByName('10').spec.grid;
+    grid[3 + 6 * 4 + 2 - 1][4] = { t: 'Leo', bg: '#99ff99' };
+    const w = S.call({ action: 'schedule', token: yu }).weeks[4];
+    assert.strictEqual(w.state, 'started'); assert.strictEqual(w.changed, true); assert.strictEqual(w.mustConfirm, true);
+    assert.ok(S.call({ action: 'scheduleConfirm', token: yu, sched: 'Kitchen', file: FILE, tab: '10',
+                       monday: w.monday, fp: w.fp, agree: true }).ok);
+  });
+
+  test('schedule: "Request a change" goes to the supervisor through Request', () => {
+    at('2026-10-27T23:30:00+02:00'); // 밤에도 바로
+    const p0 = S.sent.push.length, m0 = S.sent.mail.length;
+    const r = S.call({ action: 'request', token: yu, topic: 'schedule', about: 'Kitchen · 2 Nov – 8 Nov 2026',
+                       message: 'Could I swap Saturday with Leo?' });
+    assert.ok(r.ok);
+    const sup = S.sent.push.slice(p0).filter((x) => x.url === SUP_ENDPOINT);
+    assert.strictEqual(sup.length, 1);
+    assert.deepStrictEqual(S.sent.mail.slice(m0).map((m) => m.subject), ['Schedule change request from Yuna']);
+    const inbox = S.call({ action: 'requests', token: boss }).requests;
+    assert.strictEqual(inbox[0].message, '[Schedule change · Kitchen · 2 Nov – 8 Nov 2026]\nCould I swap Saturday with Leo?');
+  });
+
+  test('schedule: colour table -> my shifts, who works each day', () => {
+    at('2026-10-28T12:00:00+01:00');
+    const cs = cfg.getSheetByName('Schedule Colors');
+    assert.deepStrictEqual([1, 2].map((c) => cs.cells['1,' + c]), ['Name', 'Color']);
+    cs.getRange(2, 1, 3, 1).setValues([['yuna'], ['No Mail'], ['Chris']]);
+    cs.getRange(2, 2).setBackground('#f09a37');      // 칠한 칸
+    cs.getRange(3, 2).setValue('#8B7CF0');           // 글자로 쓴 색
+    const r = S.call({ action: 'schedule', token: yu, sched: 'Kitchen', file: FILE, tab: '10' });
+    assert.deepStrictEqual(r.people, [{ name: 'Yuna', color: '#f09a37' }, { name: 'No Mail', color: '#8b7cf0' },
+                                      { name: 'Chris', color: '' }]);
+    const w = r.weeks[1]; // 5 Oct
+    const show = (x) => [x.date, x.zone, x.role, x.text, x.names.join('+')];
+    assert.deepStrictEqual(w.slots.map(show), [
+      ['2026-10-05', 'Morning', 'P', '09:00', 'Yuna'],
+      ['2026-10-05', 'Morning', 'W', 'Chris 23:00', 'Chris'],
+      ['2026-10-06', 'Morning', 'F', '', 'No Mail'],
+    ]);
+  });
+
+  test('schedule: a change to someone else\'s shift does not ask me again', () => {
+    at('2026-11-03T10:00:00+01:00'); // 화요일: 16 Nov 주 확인 시작 -> 시트에 11월 탭 추가
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const nov = [
+      ['', ''].concat(DAYS),
+      ['Date', ''].concat(['16/11', '17/11', '18/11', '19/11', '20/11', '21/11', '22/11']),
+      ['Morning', '', '09:00', '09:00', '09:00'],
+      ['', '', '15:00', '15:00', '15:00'],
+      ['', 'P', { t: '', bg: '#f09a37' }, { t: '', bg: '#8b7cf0' }],
+      ['', 'F', { t: '', bg: '#8b7cf0' }, '', { t: 'Yuna', bg: '' }],
+    ];
+    S.files[FILE].sheets.push(makeScheduleFile('x', 'x', { 11: { grid: nov, merges: [[3, 1, 4, 1]] } }).sheets[0]);
+    const nm = S.call({ action: 'login', name: 'No Mail', pin: '3333' }).token;
+    const view = (t) => S.call({ action: 'schedule', token: t, sched: 'Kitchen', file: FILE, tab: '11' }).weeks[0];
+    const yw = view(yu), nw = view(nm);
+    assert.deepStrictEqual(yw.slots.filter((x) => x.names.includes('Yuna')).map((x) => [x.date, x.role, x.start, x.end]),
+      [['2026-11-16', 'P', '09:00', '15:00'], ['2026-11-18', 'F', '09:00', '15:00']]);
+    assert.notStrictEqual(yw.fp, nw.fp, 'each person has their own fingerprint');
+    for (const [t, w] of [[yu, yw], [nm, nw]]) {
+      assert.ok(S.call({ action: 'scheduleConfirm', token: t, sched: 'Kitchen', file: FILE, tab: '11',
+                         monday: w.monday, fp: w.fp, agree: true }).ok);
+    }
+    // Supervisor 가 No Mail 의 화요일 칸만 지움 -> No Mail 만 다시 확인
+    nov[4][3] = '';
+    at('2026-11-03T10:30:00+01:00');
+    assert.strictEqual(view(yu).changed, false, 'Yuna: her shifts are the same');
+    assert.strictEqual(view(nm).changed, true);
+    // 시간대 시간이 바뀌면 그 칸에서 일하는 사람만 (월요일 09:00 -> 10:00: Yuna P, No Mail F)
+    nov[2][2] = '10:00';
+    at('2026-11-03T11:00:00+01:00');
+    assert.strictEqual(view(yu).changed, true);
+    const m0 = S.sent.mail.length;
+    S.ctx.checkScheduleChanges();
+    at('2026-11-03T11:30:00+01:00');
+    S.ctx.checkScheduleChanges();
+    const sent = S.sent.mail.slice(m0).filter((m) => m.subject.includes('changed'));
+    assert.deepStrictEqual(sent.map((m) => m.to), ['yuna@example.com'], 'No Mail has no email; push only');
+    assert.match(sent[0].htmlBody, /16 Nov – 22 Nov 2026/);
+  });
+
+  test('schedule: month buttons = this month + next month, in that order', () => {
+    at('2026-10-30T12:00:00+01:00');
+    const r = S.call({ action: 'schedule', token: yu, sched: 'Kitchen' });
+    assert.deepStrictEqual(r.tabs.map((t) => [t.tab, t.label]), [['10', 'October'], ['11', 'November']]);
+    assert.strictEqual(S.call({ action: 'schedule', token: yu, sched: 'Kitchen', file: FILE, tab: '11' }).tab, '11');
+  });
+
+  test('schedule: an unreadable spreadsheet never breaks the home screen', () => {
+    cfg.getSheetByName('Schedules').getRange(2, 2).setValue('https://docs.google.com/spreadsheets/d/NoAccessNoAccessNoAccess123/edit');
+    at('2026-10-20T12:00:00+02:00');
+    const me = S.call({ action: 'me', token: yu });
+    assert.ok(me.ok); assert.strictEqual(me.schedulePending, 0);
+    const r = S.call({ action: 'schedule', token: yu });
+    assert.ok(r.ok); assert.ok(r.error);
+  });
+
+  test('schedule: records still verify', () => {
+    assert.ok(S.ctx.verifyRecords().every((x) => x.ok));
   });
 }
 

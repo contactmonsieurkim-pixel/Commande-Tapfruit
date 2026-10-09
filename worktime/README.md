@@ -126,6 +126,35 @@ URL 기록 → SDM(SUN) 켜기 → NDEF 쓰기 잠금 → Key1/Key2 교체 → �
 - Supervisor 폰에 **밤낮 상관없이 바로** 푸시("✉️ Request · 이름") + 메일이 갑니다.
 - Supervisor 는 앱의 **Requests inbox** 에서 모두 볼 수 있습니다. 기록: Requests 탭.
 
+## Schedule (주간 스케줄 · 읽고 동의)
+
+- **수정은 Supervisor 가 스프레드시트에서 직접.** 앱은 읽기 전용이고, 웹 게시(Publish to web)는 필요 없습니다.
+  앱이 Apps Script 로 시트를 바로 읽어 옵니다(시트 수정이 앱에 보이기까지 최대 2분).
+- 연결: `WorkTime Config` 의 **Schedules** 탭(`setup` 이 만듦)에 한 줄씩:
+  `Name | Spreadsheet | Team` → 예: `Kitchen | https://docs.google.com/spreadsheets/d/…/edit | Kitchen`
+  - Spreadsheet 는 URL 그대로 붙여 넣으면 됩니다. 이 Apps Script 를 배포한 계정(사장님 계정)이 열 수 있어야 합니다.
+  - 새 분기 파일을 만들면 **같은 Name 으로 한 줄 더** 추가 → 앱에서 모든 파일의 달 탭이 이어서 보입니다.
+  - Team: 확인해야 하는 팀(쉼표로 여러 개, 비우면 전체). Supervisor 는 확인 대상이 아닙니다(작성자).
+- 앱에서 직원이 볼 수 있는 달은 **이번 달과 다음 달**뿐입니다(버튼: October / November). 지난 달은 시트에서만.
+- 시트 모양: 탭 하나 = 한 달(탭 이름 `10`, `09` …). `Monday … Sunday` 줄에서 한 주가 시작하고, 바로 아래 줄이 날짜.
+  색·굵게·병합·숨긴 열이 그대로 보입니다. 두 달에 걸친 주는 어느 탭에서 확인해도 같은 주로 기록됩니다.
+- **확인 요청**: 각 주를 **2주 전 화요일**(예: 11월 16일 주 → 11월 3일)부터 *I have read … and I agree* 체크 + Confirm.
+  그날 09:00 에 푸시 + 메일, 확인할 때까지 매일 09:00 리마인더(주가 시작되면 끝). 그 주가 시트에 아직 없으면 Supervisor 에게 알림.
+- **색 = 사람**: `WorkTime Config` 의 **Schedule Colors** 탭(`setup` 이 만듦)에 `Name | Color`.
+  Color 칸을 스케줄에서 쓰는 **같은 색으로 칠하기만** 하면 됩니다(또는 `#6b1f45` 처럼 글자로). Name 은 Employees 이름과 같게.
+  칸 글자 속 이름(`Chris 23:00`)도 그 사람으로 봅니다. 색이 겹치지 않게 하고, 표 배경색(진한 회색 등)은 사람 색으로 쓰지 마세요.
+- **폰 화면**: 주마다 세 가지 보기 — **My shifts**(내 7일: 날짜·시간·시간대·역할), **By day**(그날 누가 어디서),
+  **Table**(시트 그대로, *Whole week* 로 한 화면에). 마지막에 고른 보기를 기억합니다. 색 표가 없으면 Table 만.
+- **변경**: 확인한 뒤 Supervisor 가 **그 사람의 근무**(칸, 그 시간대의 시작·끝 시간, 칸 글자)를 고치면 → 그 사람만
+  Schedule 버튼에 배지 + 주에
+  *Changed — confirm again* 표시 + 푸시·메일 → 다시 확인해야 합니다(주가 끝날 때까지).
+  다른 사람 칸만 바뀌면 나는 다시 확인할 필요 없음. (색 표에 없는 사람은 그 주의 어떤 변경이든 다시 확인)
+  30분마다 검사하고, 고치는 도중에 여러 번 울리지 않도록 **바뀐 내용이 30분 이상 그대로일 때** 한 번 보냅니다.
+- **직원의 변경 요청**: 각 주의 *Request a change* → Request 로 Supervisor 에게 바로(밤에도) "📅 Schedule change request · 이름".
+  Supervisor 가 시트를 고치면 위의 "변경" 흐름으로 모두 다시 확인합니다.
+- Admin/Supervisor 는 주마다 *Who has agreed* 에서 누가 언제 확인했는지(변경 후 재확인 안 한 사람 포함) 볼 수 있습니다.
+- 기록: `Announcement Records` 의 Confirmations 탭 `Schedule · Kitchen · 2026-11-16 · <내용 지문>`.
+
 ## 공지사항 · 읽음 확인
 
 ```

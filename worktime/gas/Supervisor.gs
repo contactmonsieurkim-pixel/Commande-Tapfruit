@@ -70,12 +70,20 @@ function pushSupervisors_(message) {
 
 // ------------------------------------------------------------------ Request (직원 → Supervisor)
 
-/** 직원이 Supervisor 에게 직접 보내는 요청/고민. 공개되지 않음. 밤에도 바로 알림 + 메일. */
+/**
+ * 직원이 Supervisor 에게 직접 보내는 요청/고민. 공개되지 않음. 밤에도 바로 알림 + 메일.
+ * 스케줄 화면의 'Request a change' 는 topic = 'schedule' (+ 어느 주인지) 로 와서 제목이 달라짐.
+ */
 function request_(req) {
   var name = whoAmI_(req.token);
   var message = String(req.message || '').replace(/\r\n?/g, '\n').trim();
   if (!message) fail_('Please write your request.');
   if (message.length > 3000) fail_('Please keep it under 3000 characters.');
+  var schedule = req.topic === 'schedule';
+  if (schedule) {
+    var about = String(req.about || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+    message = '[Schedule change' + (about ? ' · ' + about : '') + ']\n' + message;
+  }
   var at = nowStamp_();
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -86,14 +94,15 @@ function request_(req) {
   }
   var url = (props_.getProperty('APP_URL') || APP_URL_DEFAULT) + '?view=requests';
   try {
-    pushSupervisors_({ title: '✉️ Request · ' + name,
+    pushSupervisors_({ title: (schedule ? '📅 Schedule change request · ' : '✉️ Request · ') + name,
                        body: message.length > 160 ? message.slice(0, 160) + '…' : message,
                        url: url, tag: 'request-' + Utilities.getUuid() });
   } catch (err) { console.error(err); }
   supervisors_().forEach(function (s) {
     if (!s.email) return;
     try {
-      MailApp.sendEmail({ to: s.email, subject: 'Request from ' + name, name: 'monsieur Kim',
+      MailApp.sendEmail({ to: s.email, subject: (schedule ? 'Schedule change request from ' : 'Request from ') + name,
+        name: 'monsieur Kim',
         htmlBody: '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px">' +
           '<p style="color:#66706b;font-size:13px">' + esc_(at) + '</p>' +
           '<h2 style="font-size:18px;margin:0 0 8px">Request from ' + esc_(name) + '</h2>' +
