@@ -1151,10 +1151,15 @@
       for (const m of modes) {
         const b = el('button', m === mode ? 'on' : null, labels[m]);
         b.type = 'button';
+        // 고른 보기는 모든 주에 함께 적용 (주마다 섞이면 헷갈림). 누른 주는 화면에서 같은 자리에 유지.
         b.addEventListener('click', () => {
-          mode = schedMode = m; store.set('wt_sch_mode', m);
-          seg.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
-          draw();
+          if (m === mode) return;
+          schedMode = m; store.set('wt_sch_mode', m);
+          const card = box.closest('.week'), key = card && card.dataset.monday;
+          const top = card ? card.getBoundingClientRect().top : 0;
+          renderSchedule(schedData, false);
+          const again = key && document.querySelector('.week[data-monday="' + key + '"]');
+          if (again) window.scrollBy(0, again.getBoundingClientRect().top - top);
         });
         seg.append(b);
       }

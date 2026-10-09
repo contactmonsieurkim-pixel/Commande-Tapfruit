@@ -87,7 +87,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 73개)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 76개)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```
@@ -105,6 +105,7 @@ node test_webpush.js                    # 푸시 암호를 Node crypto 와 교�
 - 날짜는 칸에 **보이는 글자**('1/10') 기준 (시트 시간대가 파리와 다르면 날짜 값이 하루 밀려 보일 수 있어서).
 - 근무 칸 규칙(사장님 지정): 칸 안에 **시간이 있으면 그 사람만** 시작·끝 중 가까운 쪽을 바꿈(2개면 둘 다), 그 밖의 글자(이름 등)는 무시·표시 안 함.
   시간대 시간 = 역할(P/F/W)이 없는 줄의 시간. 라벨에 meal/break/pause/repas 가 있는 줄 = 식사 시간(🍽 로 표시). 화면엔 시간대 이름 대신 시간 + 굵은 P/F/W.
+- 역할(P/F/W) = 그 줄의 라벨 열(예: 'Service Role' 열) 또는 월요일 열에 있는 대문자 1~3 글자. 보기(My shifts/By day/Table)는 모든 주에 같이 적용.
 - 화면: 탭 전환 즉시 Loading…(한 번 본 화면은 메모리에서 바로), My shifts 의 오늘 줄 강조 + 떠 있는 Today 버튼.
 - 한계: "Yuna off" 처럼 이름이 들어간 메모 칸도 그 사람 근무로 표시됨.
 - 알림: 2주 전 화요일 09:00 부터 매일 리마인더(공지와 같은 방식). 변경은 30분 검사 + "한 번 더 같게 보일 때" 발송(편집 중 연속 알림 방지), 같은 변경은 1번.
