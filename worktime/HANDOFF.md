@@ -75,6 +75,9 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - **PR 은 요청할 때만** 만든다. 브랜치 `claude/fervent-lovelace-gfcmff`, 병합된 뒤 새 작업은 최신 `main` 으로 fast-forward 후 진행.
 - 서버(.gs)가 바뀌는 변경의 배포 순서: **① Apps Script 파일 교체 → ② 필요하면 `setup` 실행 → ③ 배포 관리 → 수정 → 새 버전 → ④ 그다음 PR 병합**(화면이 새 서버를 부르기 때문).
 - 파일 복사 안내는 raw 링크 + "⌘A → ⌘C" (예전에 앞/뒤가 잘려 붙은 적 있음 → `setup` 의 `checkFiles_` 가 잡아줌).
+- **사장님 요청: .gs 파일을 고칠 때마다 답변 끝에 바뀐 파일 각각의 raw 링크를 항상 붙일 것** (푸시한 작업 브랜치 기준).
+  형식: `https://raw.githubusercontent.com/contactmonsieurkim-pixel/Commande-Tapfruit/<브랜치>/worktime/gas/<파일>.gs`
+  새 파일이면 "새 파일 — Apps Script 에서 ＋ → 스크립트 → 이름" 도 함께. index.html 등 화면 파일은 PR 병합으로 반영되므로 링크 불필요.
 - 큰 기능은 **미리보기(아티팩트)로 먼저 보여주고 합의 후 반영**하길 원함.
 - 병합 후 화면이 안 바뀌면: GitHub Pages 배포(보통 30초~수분) + iPhone 앱 캐시 → 몇 분 뒤 앱 완전 종료 후 재실행.
 
