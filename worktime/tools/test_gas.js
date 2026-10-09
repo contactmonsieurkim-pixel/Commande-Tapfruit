@@ -1118,11 +1118,11 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.deepStrictEqual(r.people, [{ name: 'Yuna', color: '#f09a37' }, { name: 'No Mail', color: '#8b7cf0' },
                                       { name: 'Chris', color: '' }]);
     const w = r.weeks[1]; // 5 Oct
-    const show = (x) => [x.date, x.zone, x.role, x.text, x.names.join('+')];
+    const show = (x) => [x.date, x.role, x.start, x.special, x.names.join('+')];
     assert.deepStrictEqual(w.slots.map(show), [
-      ['2026-10-05', 'Morning', 'P', '09:00', 'Yuna'],
-      ['2026-10-05', 'Morning', 'W', 'Chris 23:00', 'Chris'],
-      ['2026-10-06', 'Morning', 'F', '', 'No Mail'],
+      ['2026-10-05', 'P', '09:00', true, 'Yuna'],
+      ['2026-10-05', 'W', '23:00', true, 'Chris'],
+      ['2026-10-06', 'F', '', false, 'No Mail'],
     ]);
   });
 
@@ -1180,6 +1180,138 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.ok(me.ok); assert.strictEqual(me.schedulePending, 0);
     const r = S.call({ action: 'schedule', token: yu });
     assert.ok(r.ok); assert.ok(r.error);
+  });
+
+  test('schedule: server errors show their cause; checkSchedule runs from the editor', () => {
+    const orig = S.ctx.schedules_;
+    S.ctx.schedules_ = () => { throw new TypeError('boom'); };
+    const r = S.call({ action: 'schedule', token: yu });
+    S.ctx.schedules_ = orig;
+    assert.strictEqual(r.ok, false);
+    assert.match(r.detail, /^boom/);
+    const logs = [];
+    S.ctx.Logger.log = (x) => logs.push(String(x));
+    S.ctx.checkSchedule();
+    assert.ok(logs.some((l) => /^OK   Schedules/.test(l)), logs.join('\n'));
+    assert.ok(logs.some((l) => /^FAIL .*파일 열기/.test(l)), 'the broken file is reported');
+  });
+
+  test('schedule: dates come from what the cell shows (sheet time zone does not shift them)', () => {
+    // 한국 시간 자정 = 파리 전날 17:00 -> 날짜 값만 쓰면 하루 밀림
+    assert.strictEqual(S.ctx.cellDate_(new Date('2026-10-01T00:00:00+09:00'), '1/10'), '2026-10-01');
+    assert.strictEqual(S.ctx.cellDate_(new Date('2026-10-01T00:00:00+09:00'), ''), '2026-10-01');
+  });
+
+  test('schedule: a November week at the bottom of the October tab (no November tab)', () => {
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const F2 = '1ZyXwVuTsRqPoNmLkJiHgFeDcBa9876543210';
+    S.files[F2] = makeScheduleFile(F2, 'Bar', { 10: { grid: [
+      ['', ''].concat(DAYS), ['Date', ''].concat(['26/10', '27/10', '28/10', '29/10', '30/10', '31/10', '1/11']),
+      ['Morning', 'P', { t: '', bg: '#f09a37' }],
+      ['', ''].concat(DAYS), ['Date', ''].concat(['2/11', '3/11', '4/11', '5/11', '6/11', '7/11', '8/11']),
+      ['Morning', 'P', { t: '', bg: '#f09a37' }],
+    ] } });
+    cfg.getSheetByName('Schedules').getRange(3, 1, 1, 3).setValues([['Bar', F2, 'Kitchen']]);
+    at('2026-10-20T12:00:00+02:00');
+    const r = S.call({ action: 'schedule', token: yu, sched: 'Bar' });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.deepStrictEqual(r.weeks.map((w) => [w.monday, w.slots.length]), [['2026-10-26', 1], ['2026-11-02', 1]]);
+    assert.ok(S.call({ action: 'me', token: yu }).ok);
+  });
+
+  test('schedule: special times in a cell, roles, meal break (the restaurant rules)', () => {
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const Y = { bg: '#f09a37' }; // Yuna
+    const rows = [
+      ['', ''].concat(DAYS).map((t) => ({ t })),
+      ['Date', ''].concat(['12/10', '13/10', '14/10', '15/10', '16/10', '17/10', '18/10']).map((t) => ({ t })),
+      [{ t: 'Dinner\nTime zone 1', rs: 6, bg: '#434343' }, { bg: '#434343' }].concat(Array(7).fill({ t: '17:00', bg: '#434343' })),
+      [null, { bg: '#434343' }].concat(Array(7).fill({ t: '22:30', bg: '#434343' })),
+      [null, { t: 'Meal break', bg: '#434343' }, { t: '18:30-19:00' }, { t: '18:30-19:00' }, { t: '18:30-19:00' }],
+      [null, { t: 'P', b: 1, bg: '#434343' }, Object.assign({ t: '23:00' }, Y), Object.assign({ t: '14:30' }, Y),
+       Object.assign({ t: 'Yuna' }, Y), Object.assign({ t: 'note' }, Y), { t: '15:00 23:30', bg: '#f09a37' }],
+      [null, { t: 'F', b: 1, bg: '#434343' }, { t: '' }, { t: 'Yuna' }],
+      [null, { t: 'W', b: 1, bg: '#434343' }],
+    ];
+    const people = { byColor: { '#f09a37': 'Yuna' }, colors: { Yuna: '#f09a37' }, names: ['Yuna'] };
+    const out = JSON.parse(JSON.stringify(S.ctx.weekSlots_(rows, people, '2026-10-12')))
+      .map((x) => [x.date.slice(8), x.role, x.start + '-' + x.end, x.special, x.breaks.join(';'), x.names.join()]);
+    assert.deepStrictEqual(out, [
+      ['12', 'P', '17:00-23:00', true, 'Meal break 18:30-19:00', 'Yuna'],   // 23:00 은 끝(22:30)에 가까움
+      ['13', 'P', '14:30-22:30', true, 'Meal break 18:30-19:00', 'Yuna'],   // 14:30 은 시작(17:00)에 가까움
+      ['14', 'P', '17:00-22:30', false, 'Meal break 18:30-19:00', 'Yuna'],  // 이름만: 원래 시간, 글자 무시
+      ['15', 'P', '17:00-22:30', false, '', 'Yuna'],                        // 다른 글자: 무시
+      ['16', 'P', '15:00-23:30', true, '', 'Yuna'],                         // 시간 2개: 시작·끝
+      ['13', 'F', '17:00-22:30', false, 'Meal break 18:30-19:00', 'Yuna'],  // 색 없이 이름만 적힌 칸
+    ]);
+  });
+
+  test('schedule: the real kitchen layout (screenshot 1/10–4/10)', () => {
+    const D = '#434343', W = '#ffffff';
+    const c = (t, bg, fc) => ({ t, bg, fc });
+    const e = (n) => Array(n).fill({});
+    const dk = (n, t) => Array(n).fill(c(t || '', D, W));
+    const days = (vals) => e(3).concat(vals); // 월~수 비어 있음 (지난달)
+    const C = { o: '#f09a37', g: '#77ff55', p: '#6b1f45', v: '#8b7cf0', y: '#ffff55', s: '#999999' };
+    const rows = [
+      [{}, {}].concat(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((t) => ({ t }))),
+      [{ t: 'Date' }, {}].concat(days(['1/10', '2/10', '3/10', '4/10'].map((t) => ({ t })))),
+      [{ t: 'Morning\nTime zone 1\n(11:00-11:30 Meal Break)', rs: 5 }, {}].concat(days(['09:00', '09:00', '09:00', '09:00'].map((t) => ({ t })))),
+      [null, {}].concat(days(['15:00', '15:00', '15:30', '15:30'].map((t) => ({ t })))),
+      [null, { t: 'P', b: 1 }].concat(days([c('', C.o), c('', C.o), {}, {}])),
+      [null, { t: 'F', b: 1 }].concat(days([{}, {}, {}, {}])),
+      [null, { t: 'W', b: 1 }].concat(days([{}, {}, {}, {}])),
+      [{ t: 'Morning Time zone 2 (11:00-11:30 Meal Break)', rs: 5 }, {}].concat(days(['10:00', '10:00', '10:00', '10:00'].map((t) => ({ t })))),
+      [null, {}].concat(days(['15:00', '15:00', '15:30', '15:30'].map((t) => ({ t })))),
+      [null, { t: 'P', b: 1 }].concat(days([{}, {}, c('', C.g), c('', C.s)])),
+      [null, { t: 'F', b: 1 }].concat(days([c('', C.p), c('', C.v), c('', C.s), c('', C.y)])),
+      [null, { t: 'W', b: 1 }].concat(days([{}, {}, c('', C.y), c('', C.p)])),
+      [c('Dinner\nTime zone 1\n(18:00-18:30 Meal Break)', D, W), c('', D)].concat(e(3), dk(1, '16:30'), dk(1, '16:30'), dk(2, '17:00')),
+      [null, c('', D)].concat(e(3), dk(1, '22:30'), dk(3, '23:00')),
+      [null, c('P', D, W)].concat(e(3), [c('', C.g), c('', C.g), c('', C.g), c('', C.g)]),
+      [null, c('F', D, W)].concat(e(3), [c('', D), c('', D), c('', C.s), c('', C.y)]),
+      [null, c('W', D, W)].concat(e(3), [c('23:00', C.p, W), c('', C.p), c('', C.y), c('', C.s)]),
+    ];
+    rows[12][0].rs = 5;
+    const names = { [C.o]: 'Ana', [C.g]: 'Tom', [C.p]: 'Chris', [C.v]: 'Leo', [C.y]: 'Yuna', [C.s]: 'Sam' };
+    const people = { byColor: names, colors: Object.fromEntries(Object.entries(names).map(([k, v]) => [v, k])),
+                     names: Object.values(names) };
+    const all = JSON.parse(JSON.stringify(S.ctx.weekSlots_(rows, people, '2026-09-28')));
+    const of = (n) => all.filter((x) => x.names.includes(n))
+      .map((x) => [x.date.slice(5), x.role, x.start + '-' + x.end, x.breaks.join(), x.special ? '*' : ''].join(' ')).sort();
+    assert.deepStrictEqual(of('Chris'), [
+      '10-01 F 10:00-15:00 Meal break 11:00 – 11:30 ',
+      '10-01 W 16:30-23:00 Meal break 18:00 – 18:30 *',   // 칸 안의 23:00: 끝(22:30) 쪽
+      '10-02 W 16:30-23:00 Meal break 18:00 – 18:30 ',
+      '10-04 W 10:00-15:30 Meal break 11:00 – 11:30 ',
+    ].sort());
+    assert.deepStrictEqual(of('Yuna'), [
+      '10-03 W 10:00-15:30 Meal break 11:00 – 11:30 ',
+      '10-03 W 17:00-23:00 Meal break 18:00 – 18:30 ',
+      '10-04 F 10:00-15:30 Meal break 11:00 – 11:30 ',
+      '10-04 F 17:00-23:00 Meal break 18:00 – 18:30 ',
+    ]);
+    assert.ok(!all.some((x) => x.names.length === 0), 'dark background cells are not shifts');
+  });
+
+  test('schedule: a week split over two month tabs shows whole (table and shifts)', () => {
+    const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const F3 = '1SplitWeekSplitWeekSplitWeek000000000';
+    const blk = (dates, cells) => [['', ''].concat(DAYS), ['Date', ''].concat(dates), ['Morning', 'P'].concat(cells)];
+    const Y = { t: '', bg: '#f09a37' }; // Yuna
+    S.files[F3] = makeScheduleFile(F3, 'Split', {
+      10: { grid: blk(['', '', '', '1/10', '2/10', '3/10', '4/10'], ['', '', '', Y, '', '', '']) },
+      '09': { grid: blk(['28/9', '29/9', '30/9', '', '', '', ''], [Y, '', Y, '', '', '', '']) },
+    });
+    cfg.getSheetByName('Schedules').getRange(3, 1, 1, 3).setValues([['Split', F3, 'Kitchen']]);
+    at('2026-10-02T12:00:00+02:00');
+    const r = S.call({ action: 'schedule', token: yu, sched: 'Split' });
+    assert.deepStrictEqual(r.tabs.map((t) => t.tab), ['10']);
+    const w = r.weeks[0];
+    assert.deepStrictEqual(w.rows[1].slice(2).map((c) => c && c.t), ['28/9', '29/9', '30/9', '1/10', '2/10', '3/10', '4/10']);
+    assert.deepStrictEqual(w.rows[2].slice(2).map((c) => (c && c.bg) || ''), ['#f09a37', '', '#f09a37', '#f09a37', '', '', '']);
+    assert.deepStrictEqual(w.slots.filter((x) => x.names.includes('Yuna')).map((x) => x.date),
+      ['2026-09-28', '2026-09-30', '2026-10-01']);
   });
 
   test('schedule: records still verify', () => {

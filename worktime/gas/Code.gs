@@ -37,7 +37,7 @@ function setup() {
 function checkFiles_() {
   var last = { 'Code.gs': 'json_', 'Crypto.gs': 'verifySun_', 'WebPush.gs': 'sendWebPush_',
                'Announce.gs': 'morningRun', 'Supervisor.gs': 'recordLogin_', 'Rules.gs': 'announceRule_',
-               'Schedule.gs': 'scheduleMail_' };
+               'Schedule.gs': 'checkSchedule' };
   var missing = Object.keys(last).filter(function (f) { return typeof this[last[f]] !== 'function'; }, this);
   if (typeof props_ === 'undefined' || typeof TZ === 'undefined' || typeof DEFAULT_FOLDER_ID === 'undefined') {
     missing.push('Code.gs (맨 윗부분: var DEFAULT_FOLDER_ID ... var props_)');
@@ -81,6 +81,7 @@ function doPost(e) {
     return json_({ ok: false, error: 'Bad request.' });
   }
   try {
+    schedResetMemo_();
     var handlers = {
       login: login_, tap: tap_, modify: modify_, me: me_,
       pushKey: pushKey_, subscribe: subscribe_, anns: annList_, photo: annPhoto_,
@@ -95,7 +96,8 @@ function doPost(e) {
   } catch (err) {
     if (err && err.userMessage) return json_({ ok: false, error: err.userMessage, code: err.code });
     console.error(err);
-    return json_({ ok: false, error: 'Server error. Please tell your manager.' });
+    // 원인을 화면에서 바로 볼 수 있도록 오류 문구 + 위치(파일:줄)를 함께 돌려줌
+    return json_({ ok: false, error: 'Server error. Please tell your manager.', detail: errDetail_(err) });
   }
 }
 
@@ -269,6 +271,13 @@ function fail_(message, code) {
   e.userMessage = message;
   e.code = code;
   throw e;
+}
+
+/** 'TypeError: … @ Schedule:123' (스택에서 첫 .gs 위치). */
+function errDetail_(err) {
+  var msg = String((err && err.message) || err).slice(0, 200);
+  var at = String((err && err.stack) || '').match(/\(([\w ]+?)(?:\.gs)?:(\d+):\d+\)/);
+  return msg + (at ? ' @ ' + at[1] + ':' + at[2] : '');
 }
 
 function json_(obj) {

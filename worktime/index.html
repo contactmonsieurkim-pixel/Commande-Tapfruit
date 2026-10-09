@@ -174,12 +174,29 @@
     .seg button { flex: 1; margin: 0; padding: 7px 4px; font-size: 14px; border-radius: 8px; background: transparent; color: var(--muted); }
     .seg button.on { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0, 0, 0, .15); }
     .days { display: flex; flex-direction: column; }
-    .day { display: flex; gap: 12px; padding: 9px 2px; border-top: 1px solid var(--line); }
+    .day { display: flex; gap: 12px; padding: 9px 6px; border-top: 1px solid var(--line); scroll-margin: 90px; }
     .day:first-child { border-top: 0; }
-    .day.today .dname { color: var(--brand); }
     .dname { width: 46px; flex: none; text-align: center; color: var(--muted); font-size: 12px; line-height: 1.2; }
     .dname b { display: block; font-size: 20px; color: inherit; }
-    .day.today .dname b { color: var(--brand); }
+    /* 오늘: 스크롤 중에도 눈에 띄게 */
+    .day.today { background: var(--brand); border-radius: 14px; border-top-color: transparent; margin: 4px -6px; padding: 10px 12px; }
+    .day.today + .day { border-top-color: transparent; }
+    .day.today .dname, .day.today .dname b, .day.today .off { color: var(--brand-ink); }
+    .day.today .shift { background: var(--card); }
+    .today-tag { display: block; font-size: 10px; font-weight: 800; letter-spacing: .8px; margin-bottom: 2px; }
+    .rolebig { display: inline-block; min-width: 30px; text-align: center; font-weight: 800; font-size: 17px; line-height: 26px;
+               border-radius: 7px; background: var(--text); color: var(--card); padding: 0 6px; margin-right: 8px; }
+    .special { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 6px; margin-left: 6px;
+               background: var(--warn-bg); color: var(--warn-ink); vertical-align: 2px; }
+    .brk { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .today-fab { position: fixed; right: 16px; bottom: max(20px, env(safe-area-inset-bottom)); width: auto; margin: 0;
+                 padding: 12px 18px; border-radius: 24px; font-size: 15px; box-shadow: 0 3px 10px rgba(0, 0, 0, .25); z-index: 5; }
+    .loading-bar { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; margin: 0 0 8px; }
+    .spinner { width: 16px; height: 16px; border: 2px solid var(--line); border-top-color: var(--brand); border-radius: 50%;
+               animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #v-schedule { padding-bottom: 72px; }
+    #sch-body.stale { opacity: .45; pointer-events: none; transition: opacity .15s; }
     .shifts { flex: 1; display: flex; flex-direction: column; gap: 6px; justify-content: center; }
     .shift { display: flex; align-items: center; gap: 10px; background: var(--bg); border-radius: 10px; padding: 8px 10px;
              border-left: 6px solid var(--c, var(--line)); }
@@ -188,15 +205,17 @@
     .off { color: var(--muted); font-size: 15px; }
     .dot { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--c, #ccc);
            border: 1px solid rgba(0, 0, 0, .25); flex: none; vertical-align: -2px; }
-    .daychips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px; }
-    .daychips .tab { padding: 6px 10px; font-size: 13px; line-height: 1.2; text-align: center; }
+    .daychips { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding-bottom: 6px; }
+    .daychips .tab { padding: 5px 0; font-size: 12px; line-height: 1.15; text-align: center; min-width: 0; }
+    .daychips .tab b { display: block; font-size: 17px; }
+    .daychips .tab.today:not(.on) { border-color: var(--brand); color: var(--brand); }
     .zone { margin-top: 10px; }
     .zone-h { display: flex; justify-content: space-between; font-weight: 700; font-size: 15px; padding: 6px 0;
               border-bottom: 1px solid var(--line); }
     .zone-h span { font-variant-numeric: tabular-nums; }
     .slot { display: flex; align-items: center; gap: 8px; padding: 7px 0; font-size: 16px; }
     .slot.me { font-weight: 700; }
-    .role { min-width: 28px; text-align: center; font-size: 12px; font-weight: 700; color: var(--muted);
+    .role { min-width: 28px; text-align: center; font-size: 15px; font-weight: 800; color: var(--text);
             border: 1px solid var(--line); border-radius: 6px; padding: 1px 4px; }
     .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px; font-size: 13px; color: var(--muted); }
     .pending-box button { width: auto; margin: 6px 6px 0 0; padding: 8px 12px; font-size: 14px; background: #fff; color: var(--err); }
@@ -258,10 +277,12 @@
     <h2 class="feed-title">Schedule</h2>
     <div id="sch-scheds" class="tabs hidden"></div>
     <div id="sch-tabs" class="tabs"></div>
+    <div id="sch-loading" class="loading-bar hidden"><span class="spinner"></span>Loading…</div>
     <div id="sch-pending" class="alert pending-box hidden"></div>
     <div class="sch-bar"><span id="sch-meta" class="meta"></span><button id="b-sch-zoom" class="link" type="button"></button></div>
     <div id="sch-body"><p class="hint">Loading…</p></div>
     <button id="b-sch-back" class="secondary">Back</button>
+    <button id="b-sch-today" class="today-fab" type="button">Today</button>
   </section>
 
   <!-- 직원 -> Supervisor 요청 (공개되지 않음) -->
@@ -461,6 +482,8 @@
   }
 
   const detail = (e) => ' (' + e.message + ')';
+  // 서버가 거절한 경우: 진짜 원인 (+ 서버 오류면 파일:줄)
+  const serverMsg = (r) => r.error + (r.detail ? ' (' + r.detail + ')' : '');
   const token = () => store.get('wt_token');
 
   // 1) 태그로 열렸으면 URL 파라미터를 꺼내고 주소창에서 즉시 지움 (새로고침/복사 방지)
@@ -926,20 +949,73 @@
   const ZOOMS = { fit: 'Zoom in', read: 'Whole week' }; // 버튼 글자 = 누르면 바뀔 모양
   let schedZoom = store.get('wt_sch_zoom') === 'fit' ? 'fit' : 'read';
 
-  async function openSchedule(sel, focus = true) {
+  // 한 번 본 화면은 바로 보여 주고(메모리), 서버에서 새로 받아 바뀐 게 있으면 다시 그림.
+  // 처음 여는 화면은 "Loading…" + 흐리게. 빨리 여러 번 누르면 마지막 것만 반영.
+  const schedCache = {};
+  let schedSeq = 0;
+  const schedKey = (x) => [x.sched || '', x.file || '', x.tab || ''].join('|');
+
+  async function openSchedule(sel, focus = true, after) {
     schedSel = sel || {};
     show('schedule');
-    if (!schedData) $('sch-body').replaceChildren(el('p', 'hint', 'Loading…'));
+    const seq = ++schedSeq, cached = schedCache[schedKey(schedSel)];
+    if (cached) {
+      schedData = cached;
+      renderSchedule(cached, focus);
+      if (after) after();
+    } else if (!schedData) {
+      $('sch-body').replaceChildren(el('p', 'hint', 'Loading…'));
+    } else {
+      $('sch-body').classList.add('stale');
+    }
+    $('sch-loading').classList.remove('hidden');
     try {
       const r = await api(Object.assign({ action: 'schedule', token: token() }, schedSel));
+      if (seq !== schedSeq) return;
       if (r.code === 'AUTH') return logout(r.error);
-      if (!r.ok) throw new Error(r.error);
+      if (!r.ok) return $('sch-body').replaceChildren(el('p', 'err', serverMsg(r)));
+      const fresh = !cached || JSON.stringify(cached) !== JSON.stringify(r);
+      schedCache[schedKey(schedSel)] = r;
+      schedCache[schedKey(r)] = r;
       schedData = r;
-      renderSchedule(r, focus);
+      if (fresh) {
+        const y = window.scrollY;
+        renderSchedule(r, focus && !cached);
+        if (cached) window.scrollTo(0, y);
+        if (after && !cached) after();
+      }
     } catch (e) {
-      $('sch-body').replaceChildren(el('p', 'err', 'Network problem. Please try again. (' + e.message + ')'));
+      if (seq !== schedSeq) return;
+      if (!cached) $('sch-body').replaceChildren(el('p', 'err', 'Network problem. Please try again. (' + e.message + ')'));
+      else toast('Could not refresh. Showing the last loaded schedule.');
+    } finally {
+      if (seq === schedSeq) {
+        $('sch-loading').classList.add('hidden');
+        $('sch-body').classList.remove('stale');
+      }
     }
   }
+
+  // Today: 이번 달 탭에서 오늘이 있는 주로 (My shifts 면 오늘 줄, By day 면 오늘 요일)
+  function goToday() {
+    const r = schedData;
+    if (!r || !r.tabs || !r.tabs.length) return;
+    const today = todayIso(), wd = (new Date(today + 'T12:00:00Z').getUTCDay() + 6) % 7, monday = isoAdd(today, -wd);
+    dayPick[monday] = wd;
+    const jump = () => {
+      const card = document.querySelector('.week[data-monday="' + monday + '"]');
+      if (!card) return toast('Today is not on this schedule.');
+      const target = card.querySelector('.day.today') || card;
+      target.scrollIntoView({ behavior: 'smooth', block: target === card ? 'start' : 'center' });
+    };
+    const cur = r.tabs[0];
+    if (r.file === cur.file && r.tab === cur.tab) {
+      renderSchedule(r, false);
+      return setTimeout(jump, 30);
+    }
+    openSchedule({ sched: r.sched, file: cur.file, tab: cur.tab }, false, () => setTimeout(jump, 30));
+  }
+  $('b-sch-today').addEventListener('click', goToday);
 
   function tabButton(label, on, onClick) {
     const b = el('button', 'tab' + (on ? ' on' : ''), label);
@@ -952,10 +1028,19 @@
     const body = $('sch-body');
     body.replaceChildren();
     $('sch-scheds').classList.toggle('hidden', (r.schedules || []).length < 2);
-    $('sch-scheds').replaceChildren(...(r.schedules || []).map((s) =>
-      tabButton(s.name, s.name === r.sched, () => openSchedule({ sched: s.name }))));
-    $('sch-tabs').replaceChildren(...(r.tabs || []).map((t) =>
-      tabButton(t.label, t.file === r.file && t.tab === r.tab, () => openSchedule({ sched: r.sched, file: t.file, tab: t.tab }))));
+    // 누르는 즉시 버튼이 바뀌고 Loading… 표시 (서버 응답은 몇 초 걸릴 수 있음)
+    const pick = (box, b) => { box.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x === b)); };
+    $('sch-scheds').replaceChildren(...(r.schedules || []).map((s) => {
+      const b = tabButton(s.name, s.name === r.sched, () => { pick($('sch-scheds'), b); openSchedule({ sched: s.name }); });
+      return b;
+    }));
+    $('sch-tabs').replaceChildren(...(r.tabs || []).map((t) => {
+      const b = tabButton(t.label, t.file === r.file && t.tab === r.tab, () => {
+        pick($('sch-tabs'), b);
+        openSchedule({ sched: r.sched, file: t.file, tab: t.tab });
+      });
+      return b;
+    }));
     const pend = r.pending || [];
     setSchedBadge(pend.length);
     $('sch-pending').classList.toggle('hidden', !pend.length);
@@ -980,6 +1065,10 @@
     if (focus) {
       const first = r.weeks.find((w) => w.mustConfirm && (w.changed || w.state !== 'early')) || r.weeks.find((w) => w.mustConfirm);
       if (first) scrollToWeek(first.monday);
+      else setTimeout(() => {
+        const t = document.querySelector('#sch-body .day.today');
+        if (t) t.scrollIntoView({ block: 'center' });
+      }, 50);
     }
   }
 
@@ -1082,6 +1171,8 @@
     return n;
   }
 
+  const roleBadge = (role) => el('span', 'rolebig', role || '·');
+
   function myShifts(w, me) {
     const list = el('div', 'days'), today = todayIso();
     for (let d = 0; d < 7; d++) {
@@ -1094,13 +1185,17 @@
         const s = el('div', 'shift');
         s.style.setProperty('--c', x.color || 'var(--brand)');
         const t = el('div');
-        if (span(x)) t.append(el('div', 'time', span(x)));
-        t.append(el('b', null, [x.zone, x.role].filter(Boolean).join(' · ') || 'Shift'));
-        if (x.text && !/^\s*$/.test(x.text)) t.append(el('div', 'meta', x.text));
+        const line = el('div');
+        line.append(roleBadge(x.role), el('span', 'time', span(x) || '—'));
+        if (x.special) line.append(el('span', 'special', 'Special'));
+        t.append(line);
+        for (const b of x.breaks || []) t.append(el('div', 'brk', '🍽 ' + b));
         s.append(t);
         sh.append(s);
       }
-      row.append(dname(iso, d), sh);
+      const dn = dname(iso, d);
+      if (iso === today) dn.prepend(el('span', 'today-tag', 'TODAY'));
+      row.append(dn, sh);
       list.append(row);
     }
     return list;
@@ -1117,24 +1212,28 @@
       out.replaceChildren();
       const slots = w.slots.filter((x) => x.d === sel);
       if (!slots.length) return out.append(el('p', 'hint', 'Nobody is on the schedule this day.'));
+      // 시간대별로 묶음 (이름은 안 보여 주고 시간만). 특수 시간인 사람은 이름 옆에 그 사람 시간.
       const groups = [];
       for (const x of slots) {
-        const k = x.zone + '|' + span(x);
-        let g = groups.find((y) => y.k === k);
-        if (!g) groups.push(g = { k, zone: x.zone, time: span(x), slots: [] });
+        let g = groups.find((y) => y.zone === x.zone);
+        if (!g) groups.push(g = { zone: x.zone, slots: [], breaks: [] });
         g.slots.push(x);
+        for (const b of x.breaks || []) if (!g.breaks.includes(b)) g.breaks.push(b);
       }
       for (const g of groups) {
+        const base = g.slots.find((x) => !x.special) || g.slots[0];
+        g.time = base.special ? '' : span(base);
         const z = el('div', 'zone'), h = el('div', 'zone-h');
-        h.append(document.createTextNode(g.zone || 'Shift'), el('span', null, g.time));
+        h.append(el('span', null, g.time || 'Shift'));
         z.append(h);
+        for (const b of g.breaks) z.append(el('div', 'brk', '🍽 ' + b));
         for (const x of g.slots) {
           const line = el('div', 'slot' + (x.names.includes(me) ? ' me' : ''));
-          if (x.role) line.append(el('span', 'role', x.role));
+          line.append(el('span', 'role', x.role || '·'));
           const dot = el('span', 'dot');
           dot.style.setProperty('--c', x.color || 'transparent');
           line.append(dot, document.createTextNode(x.names.length ? x.names.join(', ') : 'Unknown colour'));
-          if (x.text && !x.names.some((n) => x.text.trim().toLowerCase() === n.toLowerCase())) line.append(el('span', 'meta', x.text));
+          if (span(x) && span(x) !== g.time) line.append(el('span', 'special', span(x)));
           z.append(line);
         }
         out.append(z);
@@ -1142,8 +1241,10 @@
     };
     for (let d = 0; d < 7; d++) {
       const iso = isoAdd(w.monday, d);
-      const b = tabButton(DAYN[d] + ' ' + +iso.slice(8), false, () => { sel = d; draw(); });
-      if (iso === today) b.style.fontWeight = '800';
+      const b = el('button', 'tab' + (iso === today ? ' today' : ''));
+      b.type = 'button';
+      b.append(document.createTextNode(DAYN[d]), el('b', null, String(+iso.slice(8))));
+      b.addEventListener('click', () => { sel = d; draw(); });
       chips.append(b);
     }
     box.append(chips, out);
@@ -1228,7 +1329,7 @@
           toast(x.error);
           return openSchedule({ sched: r.sched, file: r.file, tab: r.tab });
         }
-        if (!x.ok) throw new Error(x.error);
+        if (!x.ok) throw new Error(serverMsg(x));
         if (x.already) toast('Already confirmed on ' + x.confirmedAt.slice(0, 16) + '.');
         w.confirmedAt = x.confirmedAt; w.mustConfirm = false; w.changed = false;
         r.pending = (r.pending || []).filter((p) => !(p.sched === r.sched && p.monday === w.monday));

@@ -83,22 +83,60 @@ function textHasName_(text, name) {
 }
 
 /**
- * 한 주 블록 -> 근무 칸 목록 [{ d: 0~6, date, zone, role, start, end, text, names: [], color }].
+ * 한 주 블록 -> 근무 칸 목록 [{ d: 0~6, date, zone, role, start, end, special, breaks: [], names: [], color }].
  * 요일 열 = 첫 줄의 요일 이름 칸. 그 왼쪽 열 = 라벨 (첫 열: 시간대 'Morning Time zone 1', 마지막 열: 역할 P/F/W).
  * 사람 = 칸 색(Schedule Colors) 또는 칸 글자 속 이름. 라벨 열에 쓰인 색(예: 진한 회색 배경)은 디자인으로 보고 무시.
- * 시간 = 같은 시간대(라벨 블록) 안, 같은 열의 'HH:MM' 칸들 (첫 번째 = 시작, 두 번째 = 끝).
+ * 시간 = 같은 시간대 안, 역할(P/F/W)이 없는 줄의 같은 열 'HH:MM' 칸들 (첫 번째 = 시작, 두 번째 = 끝).
+ * 특수 시간: 사람 칸 안에 시간이 적혀 있으면 그 사람만 — 시간 2개면 시작·끝, 1개면 시작·끝 중 가까운 쪽을 바꿈
+ *   (17:00-22:30 에 '23:00' -> 17:00-23:00, '14:30' -> 14:30-22:30). 칸의 다른 글자(이름 등)는 표시하지 않음.
+ * 식사 시간(meal / break / pause / repas): 시간대 라벨 안의 그 줄, 또는 라벨이 그런 줄의 같은 열 내용 -> breaks.
  */
+var BREAK_RE_ = /meal|break|pause|repas|식사|휴식/i;
+
+function timesIn_(t) {
+  return (String(t || '').match(/\b\d{1,2}[:h.]\d{2}\b/g) || []).map(function (x) {
+    var m = x.match(/(\d{1,2})[:h.](\d{2})/);
+    return ('0' + m[1]).slice(-2) + ':' + m[2];
+  });
+}
+
+/** 라벨 글자 속 식사 시간들. 시간 범위 옆(앞/뒤)에 meal/break/… 가 있으면 'Meal break 11:00 – 11:30'. */
+function labelBreaks_(text) {
+  var out = [], t = String(text || '');
+  var range = '(\\d{1,2}[:h.]\\d{2})\\s*[-–~à]\\s*(\\d{1,2}[:h.]\\d{2})';
+  var kw = '(?:meal\\s*break|meal|break|pause|repas|식사|휴식)';
+  var re = new RegExp(range + '\\s*' + kw + '|' + kw + '\\s*:?\\s*' + range, 'gi'), m;
+  while ((m = re.exec(t))) {
+    var a = timesIn_(m[1] || m[3])[0], b = timesIn_(m[2] || m[4])[0];
+    out.push('Meal break ' + a + ' – ' + b);
+  }
+  if (!out.length) {
+    t.split('\n').forEach(function (line) { if (BREAK_RE_.test(line)) out.push(line.replace(/[()]/g, '').trim()); });
+  }
+  return out;
+}
+
+function minutes_(hhmm) { var p = hhmm.split(':'); return +p[0] * 60 + +p[1]; }
+
 function weekSlots_(rows, people, monday) {
   if (rows.length < 3) return [];
   var head = rows[0], first = -1, dayOf = head.map(function (c) { return c ? weekdayIndex_(c.t) : -1; });
   for (var j = 0; j < dayOf.length && first < 0; j++) if (dayOf[j] >= 0) first = j;
   if (first < 0) return [];
+  var raw = function (r, k) { return k >= 0 && rows[r][k] && rows[r][k].t ? String(rows[r][k].t) : ''; };
+  var label = function (r, k) { return raw(r, k).replace(/\s*\n\s*/g, ' ').trim(); };
+  var roleOf = function (r) { return first > 1 ? label(r, first - 1) : ''; };
+  var isPerson = function (c) { return !!(c && people.byColor[String(c.bg || '').toLowerCase()]); };
   var isTime = function (t) { return /^\s*\d{1,2}[:h.]\d{2}\s*$/.test(String(t || '')); };
-  // 시간대의 시작·끝 시간 칸 (사람 색으로 칠한 칸은 근무 칸)
-  var zoneTime = function (c) { return c && isTime(c.t) && !people.byColor[String(c.bg || '').toLowerCase()]; };
+  var isBreakRow = function (r) { return BREAK_RE_.test(roleOf(r)) || (r > 2 && BREAK_RE_.test(label(r, 0)) && zoneAt[r] !== r); };
+  // 시간대의 시작·끝 시간 칸: 역할 없는 줄의 시간 (역할 열이 없는 시트는 사람 색이 아닌 시간 칸)
+  var zoneTime = function (c, r) {
+    if (!c || !isTime(c.t) || isPerson(c) || isBreakRow(r)) return false;
+    return first > 1 ? !roleOf(r) : true;
+  };
   var design = {};
-  rows.forEach(function (r) {
-    for (var k = 0; k < first; k++) if (r[k] && r[k].bg) design[r[k].bg.toLowerCase()] = 1;
+  rows.forEach(function (row) {
+    for (var k = 0; k < first; k++) if (row[k] && row[k].bg) design[row[k].bg.toLowerCase()] = 1;
   });
   // 줄마다 시간대(첫 열 라벨) 시작 줄
   var zoneAt = [], cur = 2;
@@ -107,25 +145,44 @@ function weekSlots_(rows, people, monday) {
     zoneAt[r] = cur;
   }
   var zoneEnd = function (z) { for (var x = z + 1; x < rows.length; x++) if (zoneAt[x] !== z) return x - 1; return rows.length - 1; };
-  var label = function (r, k) { return k >= 0 && rows[r][k] && rows[r][k].t ? String(rows[r][k].t).replace(/\s*\n\s*/g, ' ').trim() : ''; };
   var out = [];
   for (r = 2; r < rows.length; r++) {
+    if (isBreakRow(r)) continue;
     for (j = first; j < rows[r].length; j++) {
       var cell = rows[r][j];
-      if (!cell || dayOf[j] < 0 || zoneTime(cell)) continue;
+      if (!cell || dayOf[j] < 0 || zoneTime(cell, r)) continue;
       var bg = String(cell.bg || '').toLowerCase(), names = [];
       if (people.byColor[bg]) names.push(people.byColor[bg]);
       if (cell.t) {
         people.names.forEach(function (n) { if (names.indexOf(n) < 0 && textHasName_(cell.t, n)) names.push(n); });
       }
       if (!names.length && (!bg || design[bg])) continue; // 빈 칸 / 배경색
-      var z = zoneAt[r], times = [];
-      for (var x = z; x <= zoneEnd(z); x++) if (zoneTime(rows[x][j])) times.push(String(rows[x][j].t).trim());
+      var z = zoneAt[r], times = [], breaks = [];
+      // 시간대 라벨 안의 식사 시간: 'Morning Time zone 1 (11:00-11:30 Meal Break)' -> 'Meal break 11:00 – 11:30'
+      breaks = labelBreaks_(raw(z, 0));
+      for (var x = z; x <= zoneEnd(z); x++) {
+        var c = rows[x][j];
+        if (isBreakRow(x)) {
+          var lab = roleOf(x) && BREAK_RE_.test(roleOf(x)) ? roleOf(x) : label(x, 0);
+          if (c && c.t) breaks.push(lab + ' ' + String(c.t).replace(/\s*\n\s*/g, ' ').trim());
+        } else if (zoneTime(c, x)) {
+          times.push(timesIn_(c.t)[0]);
+        }
+      }
+      var start = times[0] || '', end = times[1] || '', own = timesIn_(cell.t), special = own.length > 0;
+      if (own.length >= 2) { start = own[0]; end = own[1]; }
+      else if (own.length === 1) {
+        var t = minutes_(own[0]);
+        var ds = start ? Math.abs(t - minutes_(start)) : Infinity, de = end ? Math.abs(t - minutes_(end)) : Infinity;
+        if (ds === Infinity && de === Infinity) start = own[0];
+        else if (ds < de) start = own[0];
+        else end = own[0];
+      }
       for (var dj = j; dj < j + (cell.cs || 1) && dj < dayOf.length; dj++) {
         if (dayOf[dj] < 0) continue;
         out.push({ d: dayOf[dj], date: addDays_(monday, dayOf[dj]), zone: first > 0 ? label(z, 0) : '',
-                   role: first > 1 ? label(r, first - 1) : '', start: times[0] || '', end: times[1] || '',
-                   text: cell.t || '', names: names, color: bg });
+                   role: roleOf(r), start: start, end: end, special: special, breaks: breaks,
+                   names: names, color: bg });
       }
     }
   }
@@ -214,14 +271,17 @@ function windowMondays_(today) {
 
 /** 셀 -> 'yyyy-MM-dd' (날짜 값이면 그대로, '1/10' 같은 글자면 오늘에 가장 가까운 해). */
 function cellDate_(v, text) {
-  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) {
-    return Utilities.formatDate(v, TZ, 'yyyy-MM-dd');
-  }
+  var isDate = Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime());
   var m = String(text || '').match(/^\s*(\d{1,2})\s*[\/.\-]\s*(\d{1,2})(?:\s*[\/.\-]\s*(\d{2,4}))?\s*$/);
-  if (!m || +m[1] < 1 || +m[1] > 31 || +m[2] < 1 || +m[2] > 12) return null;
+  if (!m || +m[1] < 1 || +m[1] > 31 || +m[2] < 1 || +m[2] > 12) {
+    // 보이는 글자로 못 읽으면 날짜 값 그대로 (정오로 옮겨서 시트·스크립트 시간대 차이로 하루 밀리지 않게)
+    return isDate ? Utilities.formatDate(new Date(v.getTime() + 12 * 3600000), TZ, 'yyyy-MM-dd') : null;
+  }
+  // 보이는 글자('1/10')가 기준 — 날짜 값은 시트 시간대(예: 한국)에 따라 파리 기준 하루 전으로 보일 수 있음
   var pad = function (n) { return ('0' + n).slice(-2); };
   var md = pad(+m[2]) + '-' + pad(+m[1]);
   if (m[3]) return (m[3].length === 2 ? '20' + m[3] : m[3]) + '-' + md;
+  if (isDate) return Utilities.formatDate(new Date(v.getTime() + 12 * 3600000), TZ, 'yyyy') + '-' + md;
   var today = todayIso_(), y = +today.slice(0, 4), best = null;
   [y - 1, y, y + 1].forEach(function (yy) {
     var iso = yy + '-' + md, d = Math.abs(Date.parse(iso) - Date.parse(today));
@@ -287,9 +347,15 @@ function schedTabs_(s) {
  * -> { cols: [폭px…], intro: block|null, weeks: [{ monday, label, rows, … }] }
  * 셀: { t: 글자, bg, fc, b: 굵게, i: 기울임, fs: 크기, al: 정렬, rs, cs } (기본값은 생략), 병합으로 가려진 칸은 null.
  */
+// 한 번의 요청 안에서 같은 탭을 여러 번 읽지 않도록 (doPost·트리거 시작 때 비움)
+var SCHED_MEMO_ = {};
+function schedResetMemo_() { SCHED_MEMO_ = {}; }
+
 function readTab_(fileId, tab) {
-  var key = 'schtab_' + fileId + '_' + tab, hit = cacheGet_(key);
-  if (hit) return hit;
+  var key = 'schtab_' + fileId + '_' + tab;
+  if (SCHED_MEMO_[key]) return SCHED_MEMO_[key];
+  var hit = cacheGet_(key);
+  if (hit) return (SCHED_MEMO_[key] = hit);
   var sh = SpreadsheetApp.openById(fileId).getSheetByName(tab);
   if (!sh) fail_('This month was not found. Please reload.');
   var nr = Math.min(sh.getLastRow(), SCHED_MAX_ROWS), nc = Math.min(sh.getLastColumn(), SCHED_MAX_COLS);
@@ -378,11 +444,13 @@ function readTab_(fileId, tab) {
     out.weeks.push({ monday: monday, label: monday ? weekLabel_(monday) : 'Week ' + (i + 1), rows: block(h, end) });
   });
   cachePut_(key, out);
+  SCHED_MEMO_[key] = out;
   return out;
 }
 
 /**
- * 이 월요일의 주 -> { file, tab, week, fp, slots, fpOf(name) } (없으면 null). 그 주의 월·일요일 달 탭부터 찾음.
+ * 이 월요일의 주 -> { file, tab, week, fp, slots, fpOf(name) } (없으면 null). 그 주의 월·일요일 달 탭부터 찾고,
+ * 거기 없으면 나머지 탭에서.
  * 두 달에 걸친 주는 두 탭의 내용을 합침 (slots 도 합쳐서 -> 월~일이 다 보임).
  * fp = 주 전체 내용(글자·색)의 지문. fpOf(이름) = 그 사람 근무(날짜·시간대·역할·시간·글자)만의 지문
  *   -> 다른 사람 칸이 바뀌어도 내 지문은 그대로. Schedule Colors 에 색이 없는 사람은 주 전체 지문.
@@ -391,15 +459,16 @@ function findWeek_(s, monday, tabs, people) {
   tabs = tabs || schedTabs_(s);
   people = people || { byColor: {}, colors: {}, names: [] };
   var months = [+monday.slice(5, 7), +addDays_(monday, 6).slice(5, 7)];
-  var list = tabs.filter(function (t) { return months.indexOf(t.month) >= 0; })
-    .concat(tabs.filter(function (t) { return !t.month; }));
-  var first = null, parts = [], slots = [], seen = {};
-  list.forEach(function (t) {
+  var named = tabs.filter(function (t) { return months.indexOf(t.month) >= 0; });
+  var others = tabs.filter(function (t) { return named.indexOf(t) < 0; });
+  var first = null, parts = [], slots = [], seen = {}, blocks = [];
+  var scan = function (t) {
     var data;
     try { data = readTab_(t.file, t.tab); } catch (err) { console.error(err); return; }
     data.weeks.forEach(function (w) {
       if (w.monday !== monday) return;
       if (!first) first = { file: t.file, tab: t.tab, week: w };
+      blocks.push({ month: t.month, rows: w.rows });
       parts.push(w.rows.map(function (r) {
         return r.map(function (c) { return c ? [c.t || '', c.bg || '', c.fc || ''].join('|') : '^'; }).join('\t');
       }).join('\n'));
@@ -408,10 +477,14 @@ function findWeek_(s, monday, tabs, people) {
         if (!seen[k]) { seen[k] = 1; slots.push(x); }
       });
     });
-  });
+  };
+  // 그 주의 달 탭부터. 없으면 다른 탭에서 (예: 10월 탭 맨 아래에 11월 첫 주가 있고 11월 탭은 아직 없을 때)
+  named.forEach(scan);
+  if (!first) others.forEach(scan);
   if (!first) return null;
   first.fp = hash10_(parts.join('\n§\n'));
   first.slots = slots.sort(function (x, y) { return x.d - y.d; });
+  first.blocks = blocks;
   first.fpOf = function (name) {
     if (!people.colors[name]) return first.fp;
     return hash10_(slots.filter(function (x) { return x.names.indexOf(name) >= 0; }).map(slotKey_).sort().join('\n'));
@@ -419,7 +492,28 @@ function findWeek_(s, monday, tabs, people) {
   return first;
 }
 
-function slotKey_(x) { return [x.date, x.zone, x.role, x.start, x.end, x.text].join('|'); }
+/**
+ * 두 달에 걸친 주를 표 하나로: 요일 열마다 그 날짜의 달 탭에서 칸을 가져옴
+ * (10월 탭 첫 주의 월~수 = 9월 탭, 금~일이 11월이면 11월 탭). 탭마다 표 모양이 다르면 지금 탭 그대로.
+ */
+function wholeWeekRows_(rows, blocks, monday) {
+  if (!blocks || blocks.length < 2) return rows;
+  var same = function (b) {
+    return b.rows.length === rows.length && b.rows.every(function (r, i) { return r.length === rows[i].length; });
+  };
+  var dayOf = rows[0].map(function (c) { return c ? weekdayIndex_(c.t) : -1; });
+  var out = rows.map(function (r) { return r.slice(); });
+  dayOf.forEach(function (d, j) {
+    if (d < 0) return;
+    var month = +addDays_(monday, d).slice(5, 7);
+    var src = blocks.filter(function (b) { return b.month === month && same(b); })[0];
+    if (!src) return;
+    for (var r = 1; r < rows.length; r++) out[r][j] = src.rows[r][j]; // 요일 이름 줄은 그대로
+  });
+  return out;
+}
+
+function slotKey_(x) { return [x.date, x.zone, x.role, x.start, x.end, (x.breaks || []).join(';')].join('|'); }
 
 /** 확인 기록 ID = 'Schedule · Kitchen · 2026-11-16 · <지문>'. -> { '<스케줄·월요일 키>\n이름': { at, fp } } (가장 최근 확인). */
 function schedConfs_(confs) {
@@ -532,10 +626,11 @@ function scheduleView_(req) {
     }),
     weeks: data.weeks.map(function (w) {
       var out = { monday: w.monday, label: w.label, rows: w.rows };
-      if (!w.monday || addDays_(w.monday, 6) < today && !admin && !isRecip) return out;
+      if (!w.monday) return out;
       var due = schedDue_(w.monday), f = findWeek_(s, w.monday, all, people);
       out.fp = f.fpOf(name);
       out.slots = f.slots;
+      out.rows = wholeWeekRows_(w.rows, f.blocks, w.monday);
       out.dueLabel = weekdayLabel_(due);
       out.state = addDays_(w.monday, 6) < today ? 'ended' : w.monday <= today ? 'started'
         : today < due ? 'early' : today === due ? 'due' : 'overdue';
@@ -602,6 +697,7 @@ function scheduleConfirm_(req) {
  * 확인을 요청하는 주가 아직 시트에 없으면 Supervisor 에게 알림.
  */
 function notifySchedules_() {
+  schedResetMemo_();
   var list = schedules_();
   if (!list.length) return 0;
   var today = todayIso_(), confs = confirmations_(), missing = [], watch = schedWatch_(), sent = 0;
@@ -634,6 +730,7 @@ function notifySchedules_() {
  * 같은 변경으로는 한 번만 (확인할 때까지는 09:00 리마인더가 이어짐).
  */
 function checkScheduleChanges() {
+  schedResetMemo_();
   if (isQuiet_() || !props_.getProperty('ANN_SHEET_ID')) return 0;
   var list = schedules_();
   if (!list.length) return 0;
@@ -732,4 +829,66 @@ function scheduleMail_(title, weeks, url) {
     '"I have read and agree". To ask for a change, use "Request a change" under the week. ' +
     'You will get a reminder every day until you confirm.</p>' +
     '<p style="color:#9aa49f;font-size:11px">Ref ' + esc_(ref) + '</p></div>';
+}
+
+/**
+ * 편집기에서 실행: 스케줄을 단계별로 읽어 보고 결과를 실행 로그(아래 "Journal d'exécution")에 씀.
+ * 앱에서 Schedule 이 안 열릴 때 원인 찾기용. 아무것도 바꾸지 않음.
+ */
+function checkSchedule() {
+  var step = function (label, fn) {
+    try {
+      var r = fn();
+      Logger.log('OK   ' + label + (r !== undefined ? ' → ' + r : ''));
+      return true;
+    } catch (err) {
+      Logger.log('FAIL ' + label + ' → ' + errDetail_(err));
+      Logger.log(String(err && err.stack || ''));
+      return false;
+    }
+  };
+  var list, people, today = todayIso_();
+  if (!step('Schedules 탭', function () {
+    list = schedules_();
+    return list.map(function (s) { return s.name + ' (' + s.files.length + ' file, team: ' + (s.teams.join(', ') || 'all') + ')'; }).join(' | ') || '(비어 있음)';
+  })) return;
+  step('Schedule Colors 탭', function () {
+    people = schedPeople_();
+    return people.names.map(function (n) { return n + ' ' + (people.colors[n] || '(색 없음)'); }).join(', ') || '(비어 있음)';
+  });
+  people = people || { byColor: {}, colors: {}, names: [] };
+  list.forEach(function (s) {
+    var tabs;
+    if (!step(s.name + ': 파일 열기', function () {
+      tabs = schedTabs_(s);
+      if (tabs.errors.length) throw new Error('열 수 없는 파일: ' + tabs.errors.join(', '));
+      return tabs.map(function (t) { return t.tab + '→' + (t.month || '?'); }).join(', ');
+    })) return;
+    var cur = +today.slice(5, 7);
+    tabs.filter(function (t) { return t.month === cur || t.month === cur % 12 + 1; }).forEach(function (t) {
+      var data;
+      if (!step(s.name + ' / ' + t.tab + ': 읽기', function () {
+        CacheService.getScriptCache().remove('schtab_' + t.file + '_' + t.tab);
+        data = readTab_(t.file, t.tab);
+        return data.weeks.length + '주: ' + data.weeks.map(function (w) { return w.monday || '?'; }).join(', ') +
+          ' (캐시 ' + JSON.stringify(data).length + ' bytes)';
+      })) return;
+      data.weeks.forEach(function (w) {
+        if (!w.monday) return;
+        step(s.name + ' / ' + t.tab + ' / ' + w.monday + ': 근무 칸', function () {
+          var f = findWeek_(s, w.monday, tabs, people);
+          return f.slots.length + '칸, 예: ' + f.slots.slice(0, 3).map(function (x) {
+            return x.date + ' ' + x.role + ' ' + x.start + '-' + x.end + (x.special ? '*' : '') +
+              (x.breaks.length ? ' [' + x.breaks.join('; ') + ']' : '') + ' ' + (x.names.join('+') || '색?');
+          }).join(' / ');
+        });
+      });
+    });
+    schedRecipients_(s).forEach(function (e) {
+      step(s.name + ': ' + e.name + ' 확인할 주', function () {
+        return pendingWeeks_(e.name, list).map(function (p) { return p.monday + (p.changed ? '(changed)' : ''); }).join(', ') || '없음';
+      });
+    });
+  });
+  Logger.log('끝.');
 }
