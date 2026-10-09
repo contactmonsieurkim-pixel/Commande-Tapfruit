@@ -125,15 +125,21 @@ function weekSlots_(rows, people, monday) {
   if (first < 0) return [];
   var raw = function (r, k) { return k >= 0 && rows[r][k] && rows[r][k].t ? String(rows[r][k].t) : ''; };
   var label = function (r, k) { return raw(r, k).replace(/\s*\n\s*/g, ' ').trim(); };
-  var roleOf = function (r) { return first > 1 ? label(r, first - 1) : ''; };
+  // 역할(P/F/W…): 그 줄의 라벨 열 또는 월요일 열에 적힌 대문자 1~3 글자 (시트마다 위치가 다름)
+  var ROLE_RE = /^[A-Z][A-Z0-9]{0,2}$/;
+  var roleOf = function (r) {
+    for (var k = 0; k <= first; k++) if (ROLE_RE.test(label(r, k))) return label(r, k);
+    return '';
+  };
+  var labelBreak = function (r) {
+    for (var k = 0; k < first; k++) if ((k > 0 || zoneAt[r] !== r) && BREAK_RE_.test(label(r, k))) return label(r, k);
+    return '';
+  };
   var isPerson = function (c) { return !!(c && people.byColor[String(c.bg || '').toLowerCase()]); };
   var isTime = function (t) { return /^\s*\d{1,2}[:h.]\d{2}\s*$/.test(String(t || '')); };
-  var isBreakRow = function (r) { return BREAK_RE_.test(roleOf(r)) || (r > 2 && BREAK_RE_.test(label(r, 0)) && zoneAt[r] !== r); };
-  // 시간대의 시작·끝 시간 칸: 역할 없는 줄의 시간 (역할 열이 없는 시트는 사람 색이 아닌 시간 칸)
-  var zoneTime = function (c, r) {
-    if (!c || !isTime(c.t) || isPerson(c) || isBreakRow(r)) return false;
-    return first > 1 ? !roleOf(r) : true;
-  };
+  var isBreakRow = function (r) { return !!labelBreak(r); };
+  // 시간대의 시작·끝 시간 칸: 역할(P/F/W) 없는 줄의, 사람 색이 아닌 시간 칸
+  var zoneTime = function (c, r) { return !!c && isTime(c.t) && !isPerson(c) && !isBreakRow(r) && !roleOf(r); };
   var design = {};
   rows.forEach(function (row) {
     for (var k = 0; k < first; k++) if (row[k] && row[k].bg) design[row[k].bg.toLowerCase()] = 1;
@@ -163,8 +169,7 @@ function weekSlots_(rows, people, monday) {
       for (var x = z; x <= zoneEnd(z); x++) {
         var c = rows[x][j];
         if (isBreakRow(x)) {
-          var lab = roleOf(x) && BREAK_RE_.test(roleOf(x)) ? roleOf(x) : label(x, 0);
-          if (c && c.t) breaks.push(lab + ' ' + String(c.t).replace(/\s*\n\s*/g, ' ').trim());
+          if (c && c.t) breaks.push(labelBreak(x) + ' ' + String(c.t).replace(/\s*\n\s*/g, ' ').trim());
         } else if (zoneTime(c, x)) {
           times.push(timesIn_(c.t)[0]);
         }

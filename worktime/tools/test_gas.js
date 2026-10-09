@@ -1314,6 +1314,35 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
       ['2026-09-28', '2026-09-30', '2026-10-01']);
   });
 
+  test('schedule: P/F/W written inside the Monday column (real sheet layout)', () => {
+    const D = '#434343', Wt = '#ffffff', G = '#77ff55', P = '#6b1f45';
+    const t3 = (t, x) => [Object.assign({ t }, x), Object.assign({ t }, x), Object.assign({ t }, x)];
+    const rows = [
+      [{}].concat(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((t) => ({ t }))),
+      [{ t: 'Date' }].concat(['5/10', '6/10', '7/10', '8/10', '9/10', '10/10', '11/10'].map((t) => ({ t }))),
+      [{ t: 'Morning\nTime zone 1\n(11:00-11:30 Meal Break)', rs: 5 }].concat(t3('08:30')),
+      [null].concat(t3('16:30')),
+      [null, { t: 'P', b: 1, bg: G }, { bg: G }, {}],          // 월요일 칸 = 'P' 글자 + Tom 색
+      [null, { t: 'F', b: 1 }, {}, { bg: P }],
+      [null, { t: 'W', b: 1 }, {}, {}],
+      [{ t: 'Dinner\nTime zone 1\n(18:00-18:30 Meal Break)', rs: 5, bg: D, fc: Wt }].concat(t3('16:30', { bg: D })),
+      [null].concat(t3('22:30', { bg: D })),
+      [null, { t: 'P', bg: D, fc: Wt }, { bg: D }, { bg: D }],
+      [null, { t: 'F', bg: D, fc: Wt }, { bg: D }, { bg: D }],
+      [null, { t: 'W', bg: P, fc: Wt }, { t: '23:00', bg: P, fc: Wt }, { bg: D }],
+    ];
+    const people = { byColor: { [G]: 'Tom', [P]: 'Chris' }, colors: { Tom: G, Chris: P }, names: ['Tom', 'Chris'] };
+    const out = JSON.parse(JSON.stringify(S.ctx.weekSlots_(rows, people, '2026-10-05')))
+      .map((x) => [x.date.slice(8), x.role, x.start + '-' + x.end, x.special ? '*' : '-', x.names.join()].join(' ')).sort();
+    assert.deepStrictEqual(out, [
+      '05 P 08:30-16:30 - Tom',     // 월요일: 'P' 가 적힌 칸 자체가 Tom 의 근무
+      '05 W 16:30-22:30 - Chris',   // 월요일 W 칸이 Chris 색
+      '06 P 08:30-16:30 - Tom',     // 화요일 P 줄
+      '06 W 16:30-23:00 * Chris',   // 칸 안의 23:00
+      '07 F 08:30-16:30 - Chris',
+    ]);
+  });
+
   test('schedule: records still verify', () => {
     assert.ok(S.ctx.verifyRecords().every((x) => x.ok));
   });
