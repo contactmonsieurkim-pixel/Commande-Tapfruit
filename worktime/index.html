@@ -35,7 +35,9 @@
     .brand {
       width: 52px; height: 52px; border-radius: 50%; background: #fff; display: flex;
       align-items: center; justify-content: center; box-shadow: 0 1px 4px rgba(0, 0, 0, .12);
+      margin: 0; padding: 0; border: 0; cursor: pointer; flex: none;
     }
+    .brand:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
     .brand img { height: 34px; width: auto; display: block; }
     .who { display: flex; align-items: center; gap: 4px; }
     .bell {
@@ -148,7 +150,7 @@
 <body>
 <main>
   <header>
-    <span class="brand"><img src="logo-mark.png" alt="monsieur Kim"></span>
+    <button id="b-logo" class="brand" type="button" aria-label="monsieur Kim — home"><img src="logo-mark.png" alt=""></button>
     <span class="who">
       <span id="who"></span>
       <button id="b-bell" class="bell hidden" aria-label="Notifications" title="Notifications">
@@ -1079,6 +1081,13 @@
     } finally {
       btn.disabled = false;
     }
+  });
+
+  // 상단 로고 = 메인 화면 (로그인 전에는 아무 동작 안 함)
+  $('b-logo').addEventListener('click', () => {
+    if (!token() || currentView === 'login') return;
+    if (editingRule) stopEditRule();
+    goHome();
   });
 
   // 앱을 다시 열면(백그라운드에서 돌아오면) 서버에서 최신 상태를 다시 받아옴.
