@@ -1,5 +1,7 @@
 # Work Time Log with NFC (NTAG 424 DNA)
 
+> 개발을 이어서 할 때는 먼저 [`HANDOFF.md`](HANDOFF.md) (구조 · 결정한 이유 · 작업 방식 · 남은 일)를 읽으세요.
+
 직원이 자기 폰으로 START / END NFC 태그를 찍으면, 파리 시간 기준으로
 Google Drive `Work Time Log with NFC` 폴더의 월별 시트(`2026-10`)에 직원 이름별 탭으로 기록됩니다.
 
