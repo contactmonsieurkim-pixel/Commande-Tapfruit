@@ -89,8 +89,8 @@ function doPost(e) {
       pushKey: pushKey_, subscribe: subscribe_, anns: annList_, photo: annPhoto_,
       confirm: confirm_, post: post_, status: annStatus_, staff: staff_,
       rules: rulesList_, ruleConfirm: ruleConfirm_, rulePhoto: rulePhoto_, ruleEdit: ruleEdit_,
-      request: request_, requests: requestsList_,
-      schedule: scheduleView_, scheduleConfirm: scheduleConfirm_,
+      request: request_, requests: requestsList_, annDelete: annDelete_,
+      schedule: scheduleView_, scheduleConfirm: scheduleConfirm_, team: teamClock_,
       receipt: receiptMine_, receiptUpload: receiptUpload_, receiptDelete: receiptDelete_, receiptFile: receiptFile_,
       receiptStatus: receiptStatus_, receiptSend: receiptSend_,
     };
@@ -127,7 +127,8 @@ function me_(req) {
   var me = findEmployee_(name);
   return { ok: true, name: name, admin: isAdmin_(name), supervisor: !!(me && me.supervisor),
            unread: unreadCount_(name), unreadRules: unreadRulesFor_(name).length, tips: tips_(name),
-           schedulePending: schedulePendingCount_(name), receipt: safeReceiptDue_(name) };
+           schedulePending: schedulePendingCount_(name), clock: myClock_(name), today: todayStamp_(),
+           receipt: safeReceiptDue_(name) };
 }
 
 /** 메인 화면 영수증 버튼 색 (문제가 생겨도 메인 화면을 막지 않도록). */
@@ -174,6 +175,8 @@ function tap_(req) {
   } finally {
     lock.releaseLock();
   }
+  var clock = { info: a, date: month.slice(0, 4) + '-' + date, time: time, change: '' };
+  putClock_(name, clock);
 
   try {
     notifyClock_(name, a, date, time); // 출퇴근 알림은 조용한 시간에도 바로 보냄
@@ -184,8 +187,8 @@ function tap_(req) {
   var editToken = Utilities.getUuid();
   CacheService.getScriptCache().put('edit_' + editToken,
     JSON.stringify({ ssId: ss.getId(), sheet: name, row: row, name: name }), EDIT_WINDOW_SEC);
-  return { ok: true, name: name, date: date, time: time, info: a, editToken: editToken,
-           unread: unreadCount_(name), unreadRules: unreadRulesFor_(name).length, tips: tips_(name) };
+  return { ok: true, name: name, date: date, time: time, info: a, editToken: editToken, clock: clock,
+           today: todayStamp_(), unread: unreadCount_(name), unreadRules: unreadRulesFor_(name).length, tips: tips_(name) };
 }
 
 function modify_(req) {
@@ -198,6 +201,7 @@ function modify_(req) {
   if (edit.name !== name) fail_('You can only change your own record.');
   var sheet = SpreadsheetApp.openById(edit.ssId).getSheetByName(edit.sheet);
   sheet.getRange(edit.row, 4).setNumberFormat('@').setValue(time).setBackground('#fff3cd');
+  putClock_(name, readClock_(name, clockBooks_()));
   return { ok: true, time: time };
 }
 
@@ -247,15 +251,81 @@ function folder_() {
 }
 
 function monthSpreadsheet_(month) {
-  var folder = folder_();
-  var files = folder.getFilesByName(month);
+  var ss = findMonthSpreadsheet_(month);
+  if (ss) return ss;
+  ss = SpreadsheetApp.create(month);
+  DriveApp.getFileById(ss.getId()).moveTo(folder_());
+  return ss;
+}
+
+/** 월별 기록 파일 (없으면 null, 새로 만들지 않음). */
+function findMonthSpreadsheet_(month) {
+  var files = folder_().getFilesByName(month);
   while (files.hasNext()) {
     var f = files.next();
     if (f.getMimeType() === MimeType.GOOGLE_SHEETS) return SpreadsheetApp.open(f);
   }
-  var ss = SpreadsheetApp.create(month);
-  DriveApp.getFileById(ss.getId()).moveTo(folder);
-  return ss;
+  return null;
+}
+
+// ------------------------------------------------------------------ 현재 상태 (마지막 출퇴근 기록)
+// 앱 오른쪽 위 상태 표시 + Supervisor 의 Team status 화면.
+// 시트가 기준. 직원 화면은 10분 캐시(태그·시간 변경 때 바로 갱신), Team status 는 매번 시트에서 새로 읽음.
+var CLOCK_CACHE_SEC = 10 * 60;
+
+function todayStamp_() {
+  return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
+}
+
+/** 이번 달 + 지난달 기록 파일 (한 번 연 파일은 다시 찾지 않음). */
+function clockBooks_() {
+  var cur = Utilities.formatDate(new Date(), TZ, 'yyyy-MM');
+  var y = +cur.slice(0, 4), m = +cur.slice(5, 7) - 1;
+  if (m === 0) { y--; m = 12; }
+  var prev = y + '-' + (m < 10 ? '0' : '') + m, opened = {};
+  return {
+    months: [cur, prev],
+    open: function (month) {
+      if (!(month in opened)) opened[month] = findMonthSpreadsheet_(month);
+      return opened[month];
+    },
+  };
+}
+
+/** { info: START|END, date: 'yyyy-MM-dd', time: 'HH:mm', change: 요청한 시간 또는 '' } 또는 null. */
+function readClock_(name, books) {
+  for (var i = 0; i < books.months.length; i++) {
+    var month = books.months[i], ss = books.open(month);
+    var sheet = ss && ss.getSheetByName(name);
+    var last = sheet ? sheet.getLastRow() : 0;
+    if (last < 2) continue;
+    var n = Math.min(last - 1, 20); // 손으로 적은 메모 줄이 끝에 있어도 찾도록 마지막 20줄
+    var rows = sheet.getRange(last - n + 1, 1, n, 4).getDisplayValues();
+    for (var j = rows.length - 1; j >= 0; j--) {
+      var info = String(rows[j][2]).trim().toUpperCase();
+      if (info !== 'START' && info !== 'END') continue;
+      return { info: info, date: month.slice(0, 4) + '-' + String(rows[j][0]).trim(),
+               time: String(rows[j][1]).trim(), change: String(rows[j][3]).trim() };
+    }
+  }
+  return null;
+}
+
+function putClock_(name, clock) {
+  CacheService.getScriptCache().put('clk_' + name, JSON.stringify(clock), CLOCK_CACHE_SEC);
+}
+
+function myClock_(name) {
+  try {
+    var hit = CacheService.getScriptCache().get('clk_' + name);
+    if (hit) return JSON.parse(hit);
+    var clock = readClock_(name, clockBooks_());
+    putClock_(name, clock);
+    return clock;
+  } catch (err) {
+    console.error(err); // 상태 표시 실패가 앱을 막지 않도록
+    return undefined;
+  }
 }
 
 function employeeSheet_(ss, name) {

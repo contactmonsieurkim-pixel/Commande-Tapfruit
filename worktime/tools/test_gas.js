@@ -350,7 +350,7 @@ const recRows = (name) => {
 test('setup: protected record sheets, daily trigger, VAPID keys', () => {
   const ss = env.files[env.props.ANN_SHEET_ID];
   assert.deepStrictEqual(ss.sheets.map((x) => x.name),
-    ['Announcements', 'Confirmations', 'Notifications', 'Logins', 'Our Rules', 'Requests', 'Receipts', 'Receipt Mails']);
+    ['Announcements', 'Confirmations', 'Notifications', 'Logins', 'Our Rules', 'Requests', 'Deleted', 'Receipts', 'Receipt Mails']);
   assert.ok(ss.sheets.every((x) => x.protected));
   assert.deepStrictEqual(env.triggers.map((t) => [t.getHandlerFunction(), t.hour || t.minutes]),
     [['scheduleMorning', 7], ['checkScheduleChanges', 30]]);
@@ -462,11 +462,14 @@ test('confirm records name + time once', () => {
   assert.deepStrictEqual(rows[0].slice(0, 4), [annId, 'Kitchen rules', 'Yuna', confirmedAt]);
 });
 
-test('employee hired after posting does not get the old announcement', () => {
+test('employee hired after posting can read old announcements but is not asked to confirm', () => {
   const config = env.files[env.props.CONFIG_SHEET_ID];
   config.sheets[0].getRange(6, 1, 1, 5).setValues([['Late Hire', '5555', 'TRUE', 'late@example.com', '']]);
   const late = env.call({ action: 'login', name: 'Late Hire', pin: '5555' }).token;
-  assert.strictEqual(env.call({ action: 'anns', token: late }).announcements.length, 0);
+  const list = env.call({ action: 'anns', token: late }).announcements;
+  assert.strictEqual(list.length, 1);
+  assert.strictEqual(list[0].mustConfirm, false);
+  assert.strictEqual(env.call({ action: 'me', token: late }).unread, 0);
   assert.strictEqual(env.call({ action: 'confirm', token: late, id: annId }).ok, false);
 });
 
@@ -652,6 +655,38 @@ test('a failing push never blocks clock-in or login', () => {
   assert.ok(env.call(Object.assign({ action: 'tap', token: yuna }, t)).ok);
   assert.ok(env.call({ action: 'login', name: 'Yuna', pin: '2222' }).ok);
   env.ctx.UrlFetchApp.fetch = orig;
+});
+
+test('status: my last clock-in/out on me (header icon)', () => {
+  const r = env.call({ action: 'me', token });
+  assert.ok(r.ok);
+  assert.strictEqual(r.clock.info, 'END');
+  assert.match(r.clock.date, /^2026-10-\d\d$/); assert.match(r.clock.time, /^\d\d:\d\d$/);
+  assert.match(r.today, /^2026-10-09 \d\d:\d\d$/);
+  const y = env.call({ action: 'me', token: yuna });
+  assert.strictEqual(y.clock.info, 'START', 'latest tap wins (cache updated by the tap)');
+  const nm = env.call({ action: 'login', name: 'No Mail', pin: '3333' });
+  assert.strictEqual(env.call({ action: 'me', token: nm.token }).clock, null);
+});
+
+test('status: team view for the supervisor only, read fresh from the sheet', () => {
+  assert.strictEqual(env.call({ action: 'team', token: yuna }).ok, false);
+  // 관리자가 시트에서 직접 퇴근 기록을 넣어도 Team status 에는 바로 보임 (지난달 기록도 찾음)
+  const ss = Object.values(env.files).find((s) => s.title === '2026-10');
+  const sh = ss.getSheetByName('Yuna');
+  sh.getRange(sh.getLastRow() + 1, 1, 1, 4).setValues([['10-09', '23:10', 'END', '22:50']]);
+  sh.getRange(sh.getLastRow() + 1, 1, 1, 4).setValues([['', '', 'note: forgot tag', '']]);
+  const sep = env.ctx.SpreadsheetApp.create('2026-09');
+  sep.sheets[0].setName('No Mail');
+  sep.sheets[0].getRange(1, 1, 2, 4).setValues([['DATE', 'TIME', 'Info', 'Modify'], ['09-30', '18:05', 'START', '']]);
+  const r = env.call({ action: 'team', token });
+  assert.ok(r.ok, JSON.stringify(r));
+  const by = Object.fromEntries(r.staff.map((x) => [x.name, x]));
+  assert.ok(!by['Old Staff'], 'inactive staff hidden');
+  assert.deepStrictEqual(by.Yuna.clock, { info: 'END', date: '2026-10-09', time: '23:10', change: '22:50' });
+  assert.strictEqual(by.Yuna.team, 'Kitchen');
+  assert.deepStrictEqual(by['No Mail'].clock, { info: 'START', date: '2026-09-30', time: '18:05', change: '' });
+  assert.strictEqual(env.call({ action: 'me', token: yuna }).clock.info, 'END', 'team view refreshes the cache');
 });
 
 test('supervisor can be changed/added in the sheet; supervisor has manager rights', () => {
@@ -904,6 +939,53 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.deepStrictEqual(r.requests.map((x) => x.from), ['Yuna']);
     assert.strictEqual(R.call({ action: 'me', token: boss }).supervisor, true);
     assert.strictEqual(R.call({ action: 'me', token: yu }).supervisor, false);
+  });
+
+  test('new employee: must confirm every existing rule, but old announcements are read-only', () => {
+    at('2026-10-14T12:00:00+02:00');
+    const kitchenAnn = R.call({ action: 'post', token: boss, title: 'Kitchen only', content: 'Knives.',
+                                audience: { teams: ['Kitchen'] } });
+    assert.ok(kitchenAnn.ok, JSON.stringify(kitchenAnn));
+    const config = R.files[R.props.CONFIG_SHEET_ID];
+    config.sheets[0].getRange(9, 1, 1, 6).setValues([['New Cook', '9999', 'TRUE', 'cook@example.com', '', 'Kitchen']]);
+    const cook = R.call({ action: 'login', name: 'New Cook', pin: '9999' }).token;
+    const me = R.call({ action: 'me', token: cook });
+    const rules = R.call({ action: 'rules', token: cook }).rules;
+    assert.ok(rules.length > 0);
+    assert.ok(rules.every((x) => x.mustConfirm && !x.confirmedAt));
+    assert.strictEqual(me.unreadRules, rules.length);
+    assert.strictEqual(me.unread, 0, 'old announcements need no confirmation');
+    const anns = R.call({ action: 'anns', token: cook }).announcements;
+    assert.ok(anns.some((x) => x.title === 'Kitchen only'), 'team announcement visible to a later team member');
+    assert.ok(anns.every((x) => !x.mustConfirm));
+    assert.deepStrictEqual(anns.map((x) => x.posted), anns.map((x) => x.posted).slice().sort().reverse(), 'newest first');
+    const c = R.call({ action: 'ruleConfirm', token: cook, id: rules[0].id });
+    assert.ok(c.ok); assert.strictEqual(c.unreadRules, rules.length - 1);
+    const st = R.call({ action: 'status', token: boss }).announcements.find((x) => x.id === rules[1].id + ' v' + rules[1].version);
+    assert.ok(st.pending.includes('New Cook'), 'manager sees the new employee as pending');
+    // 09:00 리마인더에 포함
+    at('2026-10-15T09:00:00+02:00');
+    const n0 = R.sent.mail.length;
+    R.ctx.morningRun();
+    assert.ok(R.sent.mail.slice(n0).some((m) => m.to === 'cook@example.com'));
+  });
+
+  test('delete announcement: supervisor only; gone from lists, counts and status; records kept', () => {
+    at('2026-10-15T12:00:00+02:00');
+    const id = R.call({ action: 'post', token: boss, title: 'Wrong one', content: 'Oops.' }).id;
+    assert.strictEqual(R.call({ action: 'me', token: yu }).unread > 0, true);
+    const before = R.call({ action: 'me', token: yu }).unread;
+    assert.strictEqual(R.call({ action: 'annDelete', token: yu, id }).ok, false);
+    assert.strictEqual(R.call({ action: 'anns', token: yu }).canDelete, false);
+    assert.strictEqual(R.call({ action: 'anns', token: boss }).canDelete, true);
+    assert.ok(R.call({ action: 'annDelete', token: boss, id }).ok);
+    assert.strictEqual(R.call({ action: 'annDelete', token: boss, id }).ok, false, 'already deleted');
+    assert.ok(!R.call({ action: 'anns', token: yu }).announcements.some((x) => x.id === id));
+    assert.strictEqual(R.call({ action: 'me', token: yu }).unread, before - 1);
+    assert.ok(!R.call({ action: 'status', token: boss }).announcements.some((x) => x.id === id));
+    assert.strictEqual(R.call({ action: 'confirm', token: yu, id }).ok, false);
+    const sh = R.files[R.props.ANN_SHEET_ID].getSheetByName('Announcements');
+    assert.ok(Object.values(sh.cells).includes('Wrong one'), 'original row stays in the records');
   });
 
   test('rules + requests: records still verify', () => {

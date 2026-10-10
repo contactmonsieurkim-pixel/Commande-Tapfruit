@@ -121,6 +121,19 @@ function requestsList_(req) {
   return { ok: true, requests: list.reverse().slice(0, 300) };
 }
 
+/** Supervisor 전용: 모든 직원의 현재 상태(마지막 출퇴근 기록). 매번 시트에서 새로 읽음. */
+function teamClock_(req) {
+  var me = findEmployee_(whoAmI_(req.token));
+  if (!me || !me.supervisor) fail_('Only the supervisor can see the team status.');
+  var books = clockBooks_();
+  var staff = employees_().map(function (e) {
+    var clock = readClock_(e.name, books);
+    putClock_(e.name, clock);
+    return { name: e.name, team: e.team, clock: clock };
+  });
+  return { ok: true, today: todayStamp_(), staff: staff };
+}
+
 /** 이 직원 이름으로 로그인되어 있는 기기(브라우저) 수. */
 function deviceCount_(name) {
   var all = props_.getProperties(), n = 0;

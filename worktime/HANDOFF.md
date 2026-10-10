@@ -16,7 +16,7 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 데이터는 모두 Drive 폴더 **Work Time Log with NFC** 안:
 - `yyyy-MM` 월별 시트 → 직원 이름 탭 → `DATE | TIME | Info(START/END) | Modify`
 - **WorkTime Config** → `Employees` 탭: `Name | PIN | Active | Email | Admin | Team | Supervisor | Transport receipt` (A~H, H 빈칸=대상, FALSE=제외)
-- **Announcement Records** (보호 + HMAC 체인): `Announcements`, `Confirmations`, `Notifications`, `Logins`, `Our Rules`, `Requests`, `Receipts`, `Receipt Mails`
+- **Announcement Records** (보호 + HMAC 체인): `Announcements`, `Confirmations`, `Notifications`, `Logins`, `Our Rules`, `Requests`, `Deleted`, `Receipts`, `Receipt Mails`
 - `Transport Receipts` 폴더 (영수증 `이름 yyyy-MM.jpg`, 회계사에게 보내면 휴지통으로)
 - `Announcement Photos` 폴더 (비공개, 앱에는 API 로 base64 전달)
 
@@ -33,7 +33,7 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 | `Schedule.gs` | 스케줄 시트 읽기(주 단위), 주별 읽고 동의(내용 지문), 2주 전 화요일 알림, 변경 감지 | `checkSchedule` |
 | `Receipts.gs` | 교통카드 영수증: 업로드·삭제·보기, 1~5일 알림, Supervisor 현황, 회계사 메일(미리보기 → Confirm) | `notifyReceipts_` |
 
-API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend`
+API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend`
 
 스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID RECEIPT_FOLDER_ID ACCOUNTANT_EMAIL RECEIPT_NOTIFIED LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
 
@@ -55,9 +55,13 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 **공지 · Our Rules**
 - 공지와 룰은 **알림·화면·기록이 분리**. 룰은 `Rule-001` 번호, 수정 시 새 버전 행 추가(덮어쓰기 없음), 대상자 **재확인 필요**, 이전 내용은 작게 표시.
 - 확인 화면: 미확인만 하나씩(집중 모드) → 다 확인해야 지난 목록. 앱을 열면 **메인 화면 먼저**(공지 창 자동 진입은 압박감 때문에 제거). 알림·메일 링크로 들어온 경우만 바로 해당 화면.
+- 공지·Our Rules 목록(다 확인한 뒤)은 **제목만, 눌러서 펼침**(사진은 펼칠 때 받음, 앱 복귀로 다시 그려도 펼친 것 유지) + 왼쪽 아래 떠 있는 **← Back** = 메인 화면.
 - 확인은 사람당 1회 기록(브라우저든 앱이든). 앱은 다시 열릴 때 서버에서 새로고침.
 - 업로더 이름은 **앱·메일에서 숨김**, 기록 시트에는 남김(감사용).
-- 게시 시점의 대상자만 확인 대상(신규 입사자는 예전 공지 안 받음). 단 팀 대상 룰 팁은 나중에 들어온 팀원에게도 보임.
+- **공지**: 게시 시점의 대상자만 확인 대상. 나중에 온 직원도 지금 대상(전체/팀/개인)에 해당하면 지난 공지를 **읽을 수는 있음**(확인 요청 없음, `mustConfirm: false`). Supervisor 는 모든 공지를 봄.
+- **룰**: 확인 대상 = 저장된 받는 사람 + 지금 대상에 해당하는 재직자(`ruleTargets_`) → **새로 온 직원도 모든 룰을 확인**해야 함(09:00 리마인더·관리자 현황에도 포함). 로그인 직후 확인 안 한 룰이 있으면 홈 대신 바로 Our Rules.
+- 순서: 룰은 번호순(기록), 공지는 최신이 위(현장성).
+- 공지 삭제 = Supervisor 전용(펼친 공지 아래 *Delete announcement*). 기록 시트 행은 그대로 두고 **Deleted** 탭(HMAC 체인)에 한 줄 추가 → 앱·알림·현황에서 사라짐.
 - 관리자도 대상자면 자기 글을 확인해야 함(그대로 둠, 사장님이 바꾸길 원하면 "작성자 자동 확인" 추가).
 - 메일: 버튼 **Go to Confirm 하나만 맨 위**, 끝에 메일마다 다른 `Ref` 줄 → Gmail 이 반복으로 접는 것 방지.
 
@@ -70,6 +74,14 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 **기록 무결성**
 - 기록 시트는 보호 + 행마다 직전 행과 이어지는 HMAC. 소유자 편집은 Google 이 막을 수 없으므로 "막기"가 아니라 "드러나게". 관리자 화면 경고 / 편집기에서 `verifyRecords`.
 - 시트 구조를 바꿀 때 **기존 행·열을 건드리지 말 것**(체인이 깨짐). 예: 수신 대상은 새 열 대신 Type 칸에 ` · Teams: …` 로 덧붙임.
+
+**현재 상태 (오른쪽 위 아이콘 · Team status)**
+- 오른쪽 위 = 마지막 출퇴근 기록: START → 초록 시계(바늘 회전) *Now working* + `In 09:02`, END → 회색 달 *Off duty* + `Out 18:31`, 기록 없음 → 점선 원. 오늘이 아니면 `yesterday`/`Thu 8 Oct` 를 붙임. 누르면 상세(시간 변경 요청 포함).
+- START 뒤 16시간이 지나도 END 가 없으면 주황 `!` *No clock-out?* (퇴근 태그 잊음).
+- 기준은 시트(이번 달, 없으면 지난달; 마지막 20줄 중 START/END 인 마지막 줄). 시간은 **기록된 시간**, Modify 열 값은 "Change requested" 로 따로 표시.
+- 직원 화면은 `me` 에 실려 오고 10분 캐시(`clk_<이름>`, 태그·시간 변경 때 즉시 갱신). 폰에도 `wt_clock` 저장 → 앱을 열자마자 표시.
+- Supervisor(G열) 전용 홈 버튼 **Team status** (`team` 액션): 매번 시트에서 새로 읽음. Working / No clock-out? / Off duty / No record yet 순, 근무 중엔 경과 시간.
+- 시트를 손으로 고친 것은 Team status 에는 바로, 직원 본인 화면에는 최대 10분 뒤 반영.
 
 ## 4. 작업 방식 (사장님과 합의된 흐름)
 
@@ -89,7 +101,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 77개)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 81개)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```

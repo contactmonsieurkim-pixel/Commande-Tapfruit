@@ -1,6 +1,7 @@
 // Our Rules — 번호(Rule-001…)가 붙는 규칙. 공지와 따로 관리·알림.
 //   - 기록: "Announcement Records" 의 Our Rules 탭. 수정할 때마다 새 버전 행을 추가 (예전 내용은 그대로 남음)
 //   - 확인: Confirmations 탭에 'Rule-001 v2' 처럼 버전별로 기록. 수정되면 대상자는 다시 확인해야 함
+//   - 확인 대상 = 그 버전의 받는 사람 + 지금 대상(전체/팀/개인)에 해당하는 재직자 -> 새로 온 직원도 모든 룰을 확인해야 함
 //   - 예전에 공지로 올린 Rule 은 처음 한 번 자동으로 Rule-001… 로 옮김 (그 공지를 확인한 사람은 v1 확인으로 인정)
 
 function ruleId_(n) { return 'Rule-' + ('00' + n).slice(-3); }
@@ -26,13 +27,13 @@ function migrateLegacyRules_() {
   }
 }
 
-/** 모든 룰 (번호순). 각 룰은 versions[] (오래된 → 최신). */
+/** 모든 룰 (번호순). 각 룰은 versions[] (오래된 → 최신), staff = 지금 재직자 (확인 대상 계산용). */
 function rules_() {
   if (!props_.getProperty('ANN_SHEET_ID')) return [];
   migrateLegacyRules_();
-  var map = {}, order = [];
+  var map = {}, order = [], staff = activeEmployees_();
   readRecords_('Our Rules').forEach(function (r) {
-    if (!map[r[0]]) { map[r[0]] = { id: r[0], legacy: r[9], versions: [] }; order.push(r[0]); }
+    if (!map[r[0]]) { map[r[0]] = { id: r[0], legacy: r[9], versions: [], staff: staff }; order.push(r[0]); }
     map[r[0]].versions.push({
       version: Number(r[1]), at: r[2], title: r[4], content: r[5],
       photos: (r[6].match(/\/d\/[\w-]+/g) || []).map(function (s) { return s.slice(3); }),
@@ -48,10 +49,22 @@ function ruleItem_(rule) {
   var cur = rule.versions[rule.versions.length - 1];
   return {
     kind: 'rule', key: rule.id + ' v' + cur.version, id: rule.id, version: cur.version,
-    title: cur.title, content: cur.content, photos: cur.photos, recipients: cur.recipients,
+    title: cur.title, content: cur.content, photos: cur.photos, recipients: ruleTargets_(cur, rule.staff),
     audience: cur.audience, posted: cur.at, created: rule.versions[0].at,
     legacy: cur.version === 1 ? rule.legacy : '',
   };
+}
+
+/** 확인 대상: 저장된 받는 사람 + 지금 대상에 해당하는 재직자 (나중에 입사·팀 이동한 사람). */
+function ruleTargets_(v, staff) {
+  var out = v.recipients.slice();
+  (staff || []).forEach(function (e) {
+    if (out.indexOf(e.name) >= 0) return;
+    if (!v.audience || v.audience.people.indexOf(e.name) >= 0 || (e.team && v.audience.teams.indexOf(e.team) >= 0)) {
+      out.push(e.name);
+    }
+  });
+  return out;
 }
 
 /** 이 사람에게 해당하는 룰: 전체 대상, 받는 사람에 포함, 또는 지정 팀·개인 (나중에 들어온 팀원 포함). */
