@@ -130,7 +130,7 @@ function me_(req) {
            schedulePending: schedulePendingCount_(name), receipt: safeReceiptDue_(name) };
 }
 
-/** 영수증 알림 정보 (문제가 생겨도 출근 도장·메인 화면을 막지 않도록). */
+/** 메인 화면 영수증 버튼 색 (문제가 생겨도 메인 화면을 막지 않도록). */
 function safeReceiptDue_(name) {
   try {
     return receiptDue_(name);
@@ -185,8 +185,7 @@ function tap_(req) {
   CacheService.getScriptCache().put('edit_' + editToken,
     JSON.stringify({ ssId: ss.getId(), sheet: name, row: row, name: name }), EDIT_WINDOW_SEC);
   return { ok: true, name: name, date: date, time: time, info: a, editToken: editToken,
-           unread: unreadCount_(name), unreadRules: unreadRulesFor_(name).length, tips: tips_(name),
-           receipt: safeReceiptDue_(name) };
+           unread: unreadCount_(name), unreadRules: unreadRulesFor_(name).length, tips: tips_(name) };
 }
 
 function modify_(req) {

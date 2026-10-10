@@ -1,10 +1,12 @@
-// 교통카드 결제 영수증 (Transport receipts) — 직원이 매월 올리고, Supervisor 가 회계사에게 메일로 보냄
+// 교통카드 정기권(TCL) 결제 영수증 — 직원이 매월 올리고, Supervisor 가 회계사에게 메일로 보냄
+//   (정기권 비용의 50% 가 월급에 포함되어 지원됨. 안 올리면 본인 손해일 뿐이라 알림은 가볍게.)
 //
 //   - 대상: Employees 탭 H열(Transport receipt)이 FALSE 가 아닌 직원 (빈칸 = 대상)
-//   - 기간: 그달 1일 ~ RECEIPT_DUE_DAY 일 (파리). 그 뒤에 올린 것은 'late' 로 기록, 기본으로 메일에 안 붙음
-//   - 알림: 1일 09:00 메일 + 푸시 1번. 1~5일 출근 도장 화면·메인 화면에는 올릴 때까지 매번 표시
+//   - 기간: 그달 1일 ~ RECEIPT_DUE_DAY 일 (파리), 그달 정기권 영수증. 그 뒤에 올린 것은 'late' 로 기록, 기본으로 메일에 안 붙음
+//   - 알림: 1일 09:00 메일 1통만. 1~5일 아직 안 올렸으면 메인 화면 버튼에 파란 색 (출근 도장 화면·푸시 없음)
 //   - 파일: Drive 'Transport Receipts' 폴더에 '이름 yyyy-MM.jpg' (두 번째부터 ' (2)')
-//   - 회계사 메일: Supervisor 가 화면에서 주소·내용을 확인하고 Confirm → 표(본문) + 첨부.
+//   - 회계사 메일: Supervisor 가 화면에서 주소·내용을 확인하고 Confirm → 제출 여부 표(본문) + 첨부.
+//     보내는 주소는 누가 눌러도 항상 SENDER_EMAIL (Apps Script 소유자 계정이어야 함).
 //     보낸 파일은 Gmail '보낸편지함'에 남으므로 Drive 에서는 휴지통으로 옮김.
 //
 // 기록 ("Announcement Records", 해시 체인):
@@ -16,7 +18,8 @@ var RECEIPT_MAX_FILES = 6;              // 한 번에 올릴 수 있는 파일 �
 var RECEIPT_MAX_PER_MONTH = 12;         // 한 사람이 한 달에 올려 둘 수 있는 파일 수
 var RECEIPT_MAX_BYTES = 10 * 1024 * 1024;  // 파일 하나 (PDF 포함)
 var RECEIPT_MAIL_MAX_BYTES = 23 * 1024 * 1024; // Gmail 첨부 한도(25MB) 아래로
-var RECEIPT_PUSH_TITLE = '🧾 Transport receipt: please upload';
+var RECEIPT_MAIL_TITLE = '🧾 Upload your TCL pass receipt';
+var SENDER_EMAIL = 'contact.monsieurkim@gmail.com'; // 회계사 메일의 보내는 사람 (항상)
 
 function receiptFolder_() {
   var id = props_.getProperty('RECEIPT_FOLDER_ID');
@@ -74,7 +77,7 @@ function filesOf_(state, name) {
 }
 
 /**
- * 출근 도장·메인 화면용: 1~5일이고, 대상이고, 이번 달에 아직 안 올렸으면 알림 정보. 아니면 null.
+ * 메인 화면 버튼 색: 1~5일이고, 대상이고, 이번 달에 아직 안 올렸으면 알림 정보. 아니면 null.
  */
 function receiptDue_(name) {
   if (!props_.getProperty('ANN_SHEET_ID')) return null;
@@ -219,46 +222,40 @@ function receiptStatus_(req) {
   };
 }
 
-/** 이번에 보낼 파일 + 메일 본문(표). 미리보기와 실제 발송이 같은 함수를 씀. */
-function receiptMail_(month, includeLate, by) {
+/** 이번에 보낼 파일 + 메일 본문(사람마다 제출 여부만). 미리보기와 실제 발송이 같은 함수를 씀. */
+function receiptMail_(month, includeLate) {
   var state = receiptState_(month), people = receiptPeople_(state);
-  var attach = [], rows = [], missing = [];
+  var attach = [], rows = [], yes = 0;
   people.forEach(function (p) {
     var send = p.files.filter(function (f) { return !f.sentAt && (!f.late || includeLate); });
-    var earlier = p.files.filter(function (f) { return f.sentAt; });
-    var lateLeft = p.files.filter(function (f) { return !f.sentAt && f.late && !includeLate; });
-    var status, color;
-    if (send.length) {
-      status = send.some(function (f) { return f.late; }) ? 'Received (late)' : 'Received';
-      color = '#1f8a4c';
-    } else if (earlier.length) {
-      status = 'Sent earlier (' + earlier[earlier.length - 1].sentAt.slice(0, 10) + ')'; color = '#66706b';
-    } else if (lateLeft.length) {
-      status = 'Late — not attached'; color = '#b26a00';
-    } else {
-      status = 'Missing'; color = '#c0392b'; missing.push(p.name);
-    }
+    var submitted = send.length > 0 || p.files.some(function (f) { return f.sentAt; });
+    if (submitted) yes++;
     send.forEach(function (f) { attach.push(f); });
-    rows.push('<tr><td style="padding:6px 10px;border:1px solid #dfe4e1">' + esc_(p.name) + '</td>' +
-      '<td style="padding:6px 10px;border:1px solid #dfe4e1;color:' + color + ';font-weight:600">' + esc_(status) + '</td>' +
-      '<td style="padding:6px 10px;border:1px solid #dfe4e1">' +
-      send.map(function (f) { return esc_(f.fileName); }).join('<br>') + '</td>' +
-      '<td style="padding:6px 10px;border:1px solid #dfe4e1;color:#66706b">' +
-      send.map(function (f) { return esc_(f.at.slice(0, 16)); }).join('<br>') + '</td></tr>');
+    var td = 'padding:6px 14px;border:1px solid #dfe4e1';
+    rows.push('<tr><td style="' + td + '">' + esc_(p.name) + '</td>' +
+      '<td style="' + td + ';font-weight:600;color:' + (submitted ? '#1f8a4c' : '#c0392b') + '">' +
+      (submitted ? 'Yes' : 'No') + '</td></tr>');
   });
-  var withFiles = attach.map(function (f) { return f.name; }).filter(function (n, i, a) { return a.indexOf(n) === i; });
-  var summary = attach.length + ' file' + (attach.length === 1 ? '' : 's') + ' from ' + withFiles.length +
-    (withFiles.length === 1 ? ' person' : ' people') + (missing.length ? ' · missing: ' + missing.join(', ') : '');
-  var th = function (t) { return '<th style="padding:6px 10px;border:1px solid #dfe4e1;background:#f3f5f4;text-align:left">' + t + '</th>'; };
+  var summary = yes + ' of ' + people.length + ' submitted · ' + attach.length + ' file' +
+    (attach.length === 1 ? '' : 's') + ' attached';
+  var th = function (t) { return '<th style="padding:6px 14px;border:1px solid #dfe4e1;background:#f3f5f4;text-align:left">' + t + '</th>'; };
   var html = '<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:640px;color:#1d2420">' +
-    '<p>Hello,</p><p>Please find attached the transport card receipts of our staff for <b>' + esc_(monthLabel_(month)) +
-    '</b>.</p>' +
-    '<table style="border-collapse:collapse;font-size:14px">' +
-    '<tr>' + th('Name') + th('Status') + th('Attached file') + th('Uploaded') + '</tr>' + rows.join('') + '</table>' +
-    '<p style="color:#66706b;font-size:13px">' + esc_(summary) + '</p>' +
-    '<p>Best regards,<br>' + esc_(by) + '<br>monsieur Kim</p></div>';
+    '<p>Hello,</p><p>Please find attached the transport pass (TCL) receipts of our staff for <b>' +
+    esc_(monthLabel_(month)) + '</b>.</p>' +
+    '<table style="border-collapse:collapse;font-size:14px"><tr>' + th('Name') + th('Receipt submitted') + '</tr>' +
+    rows.join('') + '</table>' +
+    '<p>Best regards,<br>monsieur Kim</p></div>';
   return { attach: attach, html: html, summary: summary,
-           subject: 'Transport receipts · ' + monthLabel_(month) + ' · monsieur Kim' };
+           subject: 'Transport pass receipts · ' + monthLabel_(month) + ' · monsieur Kim' };
+}
+
+/** 메일은 Apps Script 소유자 계정으로 나감 → 그 계정이 SENDER_EMAIL 이 아니면 보내지 않음. */
+function checkSender_() {
+  var me = String(Session.getEffectiveUser().getEmail() || '').toLowerCase();
+  if (me !== SENDER_EMAIL.toLowerCase()) {
+    fail_('Emails must be sent from ' + SENDER_EMAIL + ', but the system runs as ' + (me || 'an unknown account') +
+      '. Please deploy the Apps Script with ' + SENDER_EMAIL + '.');
+  }
 }
 
 /**
@@ -275,11 +272,12 @@ function receiptSend_(req) {
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
-    var mail = receiptMail_(month, includeLate, me.name);
+    checkSender_();
+    var mail = receiptMail_(month, includeLate);
     if (!mail.attach.length) fail_('There is no new receipt to send for ' + monthLabel_(month) + '.');
     var ids = mail.attach.map(function (f) { return f.id; });
     if (!req.confirm) {
-      return { ok: true, preview: true, to: to, subject: mail.subject, html: mail.html, summary: mail.summary,
+      return { ok: true, preview: true, from: SENDER_EMAIL, to: to, subject: mail.subject, html: mail.html, summary: mail.summary,
                files: mail.attach.map(function (f) { return f.fileName; }), expect: ids };
     }
     if ((req.expect || []).slice().sort().join() !== ids.slice().sort().join()) {
@@ -292,7 +290,7 @@ function receiptSend_(req) {
     });
     if (total > RECEIPT_MAIL_MAX_BYTES) fail_('The files are too large for one email (over 23 MB).');
     var msg = { to: to, subject: mail.subject, htmlBody: mail.html, attachments: blobs, name: 'monsieur Kim' };
-    if (me.email) msg.replyTo = me.email;
+    msg.replyTo = SENDER_EMAIL;
     MailApp.sendEmail(msg);
     var at = nowStamp_();
     appendRecord_('Receipt Mails', [at, month, me.name, to, mail.summary, ids.join('\n')]);
@@ -309,7 +307,7 @@ function receiptSend_(req) {
 
 // ------------------------------------------------------------------ 1일 09:00 알림 (morningRun 에서)
 
-/** 매월 1일: 대상자 중 아직 안 올린 사람에게 메일 + 푸시 (한 번). 다른 날은 아무것도 안 함. */
+/** 매월 1일: 대상자 중 아직 안 올린 사람에게 메일 1통 (푸시 없음). 다른 날은 아무것도 안 함. */
 function notifyReceipts_() {
   if (!props_.getProperty('ANN_SHEET_ID')) return 0;
   var now = receiptNow_();
@@ -321,38 +319,26 @@ function notifyReceipts_() {
   var url = (props_.getProperty('APP_URL') || APP_URL_DEFAULT) + '?view=receipt';
   var label = monthLabel_(now.month), deadline = receiptDeadline_(now.month);
   activeEmployees_().forEach(function (e) {
-    if (!e.transport || filesOf_(state, e.name).length) return;
-    var results = [];
-    pushSubscriptions_(e.name).forEach(function (s) {
-      var code;
-      try {
-        code = sendWebPush_(s.sub, { title: RECEIPT_PUSH_TITLE, body: label + ' · by ' + deadline, url: url,
-                                      tag: 'receipt-' + now.month });
-      } catch (err) { code = 'error: ' + err.message; }
-      if (code === 404 || code === 410) props_.deleteProperty(s.key);
-      results.push(['push', String(code)]);
-    });
-    if (e.email) {
-      try {
-        MailApp.sendEmail({ to: e.email, subject: RECEIPT_PUSH_TITLE + ' (' + label + ')', name: 'monsieur Kim',
-          htmlBody: '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px">' +
-            '<h1 style="font-size:20px;margin:0 0 8px">Transport receipt · ' + esc_(label) + '</h1>' +
-            '<p>Please upload the payment receipt of your transport card (Navigo etc.) for <b>' + esc_(label) +
-            '</b> by <b>' + esc_(deadline) + '</b>. We send it to the accountant every month.</p>' +
-            '<p style="margin:16px 0"><a href="' + esc_(url) + '" style="display:inline-block;background:#1f6f54;' +
-            'color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px">' +
-            'Upload receipt</a></p>' +
-            '<p style="color:#66706b;font-size:13px">Receipts uploaded after ' + esc_(deadline) +
-            ' are not included for ' + esc_(label) + '.</p></div>' });
-        results.push(['email', 'sent']);
-      } catch (err2) { results.push(['email', 'error: ' + err2.message]); }
-    }
+    if (!e.transport || !e.email || filesOf_(state, e.name).length) return;
+    var result;
+    try {
+      MailApp.sendEmail({ to: e.email, subject: RECEIPT_MAIL_TITLE + ' (' + label + ')', name: 'monsieur Kim',
+        htmlBody: '<div style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px">' +
+          '<h1 style="font-size:20px;margin:0 0 8px">Transport pass receipt · ' + esc_(label) + '</h1>' +
+          '<p>50% of your monthly transport pass (TCL) is paid back with your salary. To get it, upload the ' +
+          'payment receipt of your <b>' + esc_(label) + '</b> pass in the app between the 1st and <b>' +
+          esc_(deadline) + '</b>.</p>' +
+          '<p style="margin:16px 0"><a href="' + esc_(url) + '" style="display:inline-block;background:#2b6cb0;' +
+          'color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px">' +
+          'Upload receipt</a></p>' +
+          '<p style="color:#66706b;font-size:13px">Receipts uploaded after ' + esc_(deadline) +
+          ' cannot be included for ' + esc_(label) + '.</p></div>' });
+      result = 'sent';
+    } catch (err) { result = 'error: ' + err.message; }
     var lock = LockService.getScriptLock();
     lock.waitLock(20000);
     try {
-      results.forEach(function (r) {
-        appendRecord_('Notifications', [nowStamp_(), 'Receipt ' + now.month, e.name, 'receipt ' + r[0], r[1]]);
-      });
+      appendRecord_('Notifications', [nowStamp_(), 'Receipt ' + now.month, e.name, 'receipt email', result]);
     } finally {
       lock.releaseLock();
     }

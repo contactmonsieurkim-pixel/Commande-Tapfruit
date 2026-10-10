@@ -241,9 +241,12 @@
     #sch-body { overflow-anchor: none; }
     .pending-box button { width: auto; margin: 6px 6px 0 0; padding: 8px 12px; font-size: 14px; background: #fff; color: var(--err); }
     /* 교통카드 영수증 */
-    .tip.receipt-tip { border-left-color: var(--err); margin-top: 0; margin-bottom: 12px; }
-    .tip.receipt-tip .tip-label { color: var(--err); }
-    .tip.receipt-tip button { margin-top: 12px; }
+    /* 1~5일 아직 안 올렸으면 파란 버튼 (의무 느낌의 빨강 대신) */
+    :root { --blue: #2b6cb0; --blue-ink: #ffffff; --blue-bg: #e8f1fb; --blue-text: #1d4f86; }
+    @media (prefers-color-scheme: dark) { :root { --blue: #5a9be0; --blue-ink: #0b1520; --blue-bg: #16263a; --blue-text: #a9cdf5; } }
+    #b-receipt.due { background: var(--blue); color: var(--blue-ink); border: 1px solid var(--blue); }
+    #b-receipt small { display: block; font-size: 13px; font-weight: 500; opacity: .9; }
+    .info { background: var(--blue-bg); color: var(--blue-text); border-radius: 10px; padding: 12px; font-size: 15px; margin: 10px 0 0; }
     .pick { display: block; text-align: center; font-size: 17px; font-weight: 600; padding: 14px; margin-top: 12px;
             border-radius: 12px; background: var(--brand); color: var(--brand-ink); cursor: pointer; }
     .pick.secondary { background: transparent; color: var(--brand); border: 1px solid var(--brand); }
@@ -311,10 +314,10 @@
     <button id="b-anns" class="secondary">Announcements<span id="badge" class="badge hidden"></span></button>
     <button id="b-rules" class="secondary">Our Rules<span id="badge-rules" class="badge hidden"></span></button>
     <button id="b-sched" class="secondary">Schedule<span id="badge-sched" class="badge hidden"></span></button>
-    <button id="b-receipt" class="secondary">Transport receipt<span id="badge-receipt" class="badge hidden">!</span></button>
+    <button id="b-receipt" class="secondary">Transport pass receipt<small id="receipt-due" class="hidden"></small></button>
     <button id="b-request" class="secondary">Request</button>
     <button id="b-inbox" class="secondary hidden">Requests inbox</button>
-    <button id="b-receipts" class="secondary hidden">Transport receipts · accountant</button>
+    <button id="b-receipts" class="secondary hidden">Transport pass receipts · accountant</button>
     <button id="b-admin" class="secondary hidden">Manager</button>
   </section>
 
@@ -345,10 +348,12 @@
 
   <!-- 교통카드 결제 영수증 올리기 (매월 1~5일) -->
   <section id="v-receipt" class="hidden">
-    <h2 class="feed-title">Transport receipt</h2>
-    <div id="rc-alert" class="alert hidden"></div>
+    <h2 class="feed-title">Transport pass receipt</h2>
+    <div id="rc-alert" class="notice hidden" style="margin-bottom:12px"></div>
     <div class="card">
       <h3 id="rc-month">…</h3>
+      <p class="info">💶 <b>50% of your monthly transport pass (TCL) is paid back with your salary.</b>
+        To get it, upload the payment receipt of this month's pass between the 1st and the 5th.</p>
       <p id="rc-due" class="meta"></p>
       <div id="rc-files"></div>
       <label class="pick">📷 Take a photo<input id="rc-camera" type="file" accept="image/*" capture="environment"></label>
@@ -362,7 +367,7 @@
 
   <!-- Supervisor 전용: 영수증 현황 + 회계사에게 보내기 -->
   <section id="v-receipts" class="hidden">
-    <h2 class="feed-title">Transport receipts</h2>
+    <h2 class="feed-title">Transport pass receipts</h2>
     <div id="rs-months" class="tabs"></div>
     <div class="card">
       <h3 id="rs-title">…</h3>
@@ -381,7 +386,7 @@
       <div id="rs-confirm" class="hidden">
         <p class="notice" style="margin:12px 0 0">Please check the address, the table and the attachments, then confirm.</p>
         <div class="mailbox">
-          <div class="mhead"><div><b>To:</b> <span id="rs-c-to"></span></div><div><b>Subject:</b> <span id="rs-c-subject"></span></div>
+          <div class="mhead"><div><b>From:</b> <span id="rs-c-from"></span></div><div><b>To:</b> <span id="rs-c-to"></span></div><div><b>Subject:</b> <span id="rs-c-subject"></span></div>
             <div><b>Attachments (<span id="rs-c-n"></span>):</b> <span id="rs-c-files"></span></div></div>
           <iframe id="rs-c-body" sandbox title="Email preview"></iframe>
         </div>
@@ -465,12 +470,6 @@
       <div><div id="r-action" class="s-action"></div><div id="r-stamp" class="stamp"></div></div>
     </div>
     <p id="r-msg"></p>
-    <div id="r-receipt" class="tip receipt-tip hidden">
-      <div class="tip-label">🧾 Transport receipt</div>
-      <h2 id="r-receipt-title"></h2>
-      <div id="r-receipt-text" class="content"></div>
-      <button id="b-r-receipt" type="button" class="secondary">Upload now</button>
-    </div>
     <div id="r-ann" class="hidden">
       <div class="alert">I have an unread announcement !</div>
       <div id="r-ann-card"></div>
@@ -724,7 +723,6 @@
   async function submitTap(tap) {
     $('b-modify').classList.add('hidden');
     $('r-ann').classList.add('hidden');
-    $('r-receipt').classList.add('hidden');
     annQueue = [];
     currentTip = pickTip();
     result('⏳', 'Saving…', '', '');
@@ -756,7 +754,6 @@
     $('b-modify').classList.remove('hidden');
     setBadge(r.unread);
     setRuleBadge(r.unreadRules);
-    setReceiptDue(r.receipt);
     if (r.unread > 0 || r.unreadRules > 0) {
       setMain(null, 'Loading…');
       try {
@@ -1617,19 +1614,15 @@
   $('b-sch-back').addEventListener('click', () => goHome());
 
 
-  // ---------------------------------------------------------------- 교통카드 영수증 (직원)
-  // 매월 1~5일: 아직 안 올렸으면 메인 화면 버튼에 '!' + 출근 도장 화면에 알림 카드. 5일이 지나면 경고만.
+  // ---------------------------------------------------------------- 교통카드 정기권 영수증 (직원)
+  // 매월 1~5일 아직 안 올렸으면 메인 화면 버튼만 파란색 (출근 도장 화면·푸시 알림 없음 — 안 올리면 본인 손해일 뿐)
   let rcReturn = 'home', rcNew = [], rcInfo = null;
 
   function setReceiptDue(due) {
-    $('badge-receipt').classList.toggle('hidden', !due);
+    $('b-receipt').classList.toggle('due', !!due);
     $('b-receipt').classList.toggle('secondary', !due);
-    $('r-receipt').classList.toggle('hidden', !due || currentView !== 'result');
-    if (!due) return;
-    $('r-receipt-title').textContent = 'Upload your receipt for ' + due.label;
-    $('r-receipt-text').textContent = 'Please upload the payment receipt of your transport card by ' + due.deadline +
-      (due.daysLeft === 0 ? ' (today).' : due.daysLeft === 1 ? ' (tomorrow).' : '.') +
-      ' After that, it will not be included for ' + due.label + '.';
+    $('receipt-due').classList.toggle('hidden', !due);
+    if (due) $('receipt-due').textContent = 'Upload by ' + due.deadline;
   }
 
   const kb = (n) => (n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
@@ -1666,14 +1659,14 @@
 
   function renderReceipt(r) {
     rcInfo = r;
-    $('rc-month').textContent = 'Receipt for ' + r.label;
+    $('rc-month').textContent = 'TCL pass · ' + r.label;
     const done = r.files.length > 0;
-    $('rc-alert').textContent = '⚠ The deadline (' + r.deadline + ') has passed. A receipt uploaded now will not be included for ' +
+    $('rc-alert').textContent = 'The upload period (1–' + r.deadline + ') is over. A receipt uploaded now cannot be included for ' +
       r.label + '.';
     $('rc-alert').classList.toggle('hidden', !r.late);
     $('rc-due').textContent = (r.required ? '' : 'You are not on the transport receipt list — upload only if your manager asked. ') +
-      'Upload the payment receipt of your transport card (Navigo etc.) by ' + r.deadline +
-      '. A photo or a screenshot is fine. It is sent to the accountant every month.';
+      'Upload period: 1–' + r.deadline + '. A photo of the receipt or a screenshot / PDF from the TCL app is fine. ' +
+      'It is sent to the accountant with your name.';
     const box = $('rc-files');
     box.replaceChildren();
     if (done) {
@@ -1787,12 +1780,9 @@
   });
 
   $('b-receipt').addEventListener('click', () => openReceipt('home'));
-  $('b-r-receipt').addEventListener('click', () => openReceipt('result'));
   $('b-rc-back').addEventListener('click', () => {
     if (rcNew.length && !confirm('Your photo is not uploaded yet. Leave anyway?')) return;
     rcNew = []; renderNew();
-    if (rcReturn === 'result') { show('result'); return setReceiptDue(rcInfo && !rcInfo.files.length && !rcInfo.late && rcInfo.required
-      ? { label: rcInfo.label, deadline: rcInfo.deadline, daysLeft: 5 - rcInfo.day } : null); }
     goHome();
   });
 
@@ -1832,7 +1822,7 @@
       b.addEventListener('click', () => openReceipts(m.month));
       return b;
     }));
-    $('rs-title').textContent = r.label;
+    $('rs-title').textContent = 'TCL pass · ' + r.label;
     $('rs-meta').textContent = 'Deadline: ' + r.deadline + (r.open ? ' · upload period is open' : '') +
       ' · tap a name to see the files';
     const st = r.people.map(personStatus), count = (k) => st.filter((x) => x[0] === k).length;
@@ -1891,6 +1881,7 @@
       if (!r.ok) { $('rs-msg').className = 'err'; $('rs-msg').textContent = serverMsg(r); return; }
       rsPreview = r;
       $('rs-msg').textContent = '';
+      $('rs-c-from').textContent = r.from;
       $('rs-c-to').textContent = r.to;
       $('rs-c-subject').textContent = r.subject;
       $('rs-c-n').textContent = r.files.length;

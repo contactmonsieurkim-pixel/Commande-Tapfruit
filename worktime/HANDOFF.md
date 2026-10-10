@@ -119,11 +119,12 @@ node test_webpush.js                    # 푸시 암호를 Node crypto 와 교�
 - 알림: 2주 전 화요일 09:00 부터 매일 리마인더(공지와 같은 방식). 변경은 30분 검사 + "한 번 더 같게 보일 때" 발송(편집 중 연속 알림 방지), 같은 변경은 1번.
 - 직원의 변경 요청 = Request(`topic: 'schedule'`), 별도 기록 시트 없음.
 
-**교통카드 영수증 (Transport receipt)**
-- 영수증 달 = 올리는 날의 달(10월 1~5일에 올리면 'October 2026'). 마감 `RECEIPT_DUE_DAY = 5`(파리). 이후 업로드는 받되 `late` 기록 + 경고, 메일엔 기본 제외(Supervisor 가 체크하면 첨부).
-- 알림: 1일 09:00 `morningRun` 에서 메일+푸시 1번(`RECEIPT_NOTIFIED` 로 중복 방지). 1~5일은 `me`/`tap` 응답의 `receipt` 로 출근 화면 카드 + 메인 버튼 `!`. 이미 올렸으면 표시 안 함.
-- 회계사 메일: `receiptSend` 를 confirm 없이 부르면 미리보기(실제 메일과 같은 HTML), confirm 때 미리보기의 파일 목록(`expect`)과 다르면 거절(`CHANGED`). 보낸 파일은 Drive 휴지통, 다시 보내면 아직 안 보낸 것만.
-- 메일은 MailApp(스크립트 소유자 계정)으로 → 보낸편지함에 남음. replyTo = 보낸 Supervisor 메일.
+**교통카드 정기권 영수증 (TCL)** — 사장님 결정: "안 올리면 그 사람 손해, 회사엔 차이 없음" → 알림은 가볍게
+- 그달 1~5일(`RECEIPT_DUE_DAY`)에 **그달** 정기권 영수증(지난달 영수증은 갖고 있는 사람이 드물어서). 이후 업로드는 받되 `late` + 안내, 메일엔 기본 제외(Supervisor 가 체크하면 첨부).
+- 알림: 1일 09:00 `morningRun` 에서 **메일만** 1통(`RECEIPT_NOTIFIED` 중복 방지). 앱에서는 1~5일 미제출이면 메인 버튼 **파란색**(빨강은 의무 느낌이라 X). 출근 도장 화면 카드·푸시 없음.
+- 업로드 화면에 "정기권 50% 가 월급에 포함되어 지원" 설명.
+- 회계사 메일: 표는 이름 + 제출 여부(Yes/No)만, 영수증 첨부. 보내는 사람 고정 `SENDER_EMAIL = contact.monsieurkim@gmail.com` — MailApp 은 배포한 계정으로 나가므로 `checkSender_` 가 다르면 거절. replyTo 도 같은 주소.
+  `receiptSend` 를 confirm 없이 부르면 미리보기, confirm 때 `expect` 가 다르면 `CHANGED`. 보낸 파일은 Drive 휴지통(Gmail 보낸편지함에 남음), 다시 보내면 안 보낸 것만.
 
 ## 6. 남은 일
 

@@ -1366,6 +1366,7 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
   const cfg = R.files[R.props.CONFIG_SHEET_ID].sheets[0];
   cfg.getRange(4, 8).setValue('');        // Yuna: 빈칸 = 대상
   cfg.getRange(5, 8).setValue('FALSE');   // No Mail: 제외
+  R.ctx.Session = { getEffectiveUser: () => ({ getEmail: () => 'contact.monsieurkim@gmail.com' }) };
   const sup = R.call({ action: 'login', name: 'Nam KIM', pin: '4321' }).token;
   const yu = R.call({ action: 'login', name: 'Yuna', pin: '2222' }).token;
   const nm = R.call({ action: 'login', name: 'No Mail', pin: '3333' }).token;
@@ -1376,20 +1377,21 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     return Array.from({ length: sh.getLastRow() - 1 }, (_, i) => sh.getRange(i + 2, 1, 1, 6).getValues()[0]);
   };
 
-  test('receipts: day 1 at 09:00 -> one email + push to those who must upload (not to exempt staff)', () => {
+  test('receipts: day 1 at 09:00 -> one email (no push) to those who must upload (not to exempt staff)', () => {
     at('2026-10-01T09:00:00+02:00');
     R.call({ action: 'subscribe', token: yu, sub: { endpoint: 'https://push.example/yuna-r', keys: {
       p256dh: ua.getPublicKey().toString('base64url'), auth: uaAuth.toString('base64url') } } });
     const m0 = R.sent.mail.length, p0 = R.sent.push.length;
     R.ctx.morningRun();
-    const mails = R.sent.mail.slice(m0).filter((m) => /Transport receipt/.test(m.subject));
+    const mails = R.sent.mail.slice(m0).filter((m) => /TCL pass receipt/.test(m.subject));
     assert.deepStrictEqual(mails.map((m) => m.to).sort(), ['nam@example.com', 'yuna@example.com']);
-    assert.match(mails[0].subject, /October 2026/);
-    assert.match(mails[0].htmlBody, /by <b>5 October<\/b>/);
+    assert.match(mails[0].subject, /TCL pass receipt \(October 2026\)/);
+    assert.match(mails[0].htmlBody, /<b>5 October<\/b>/);
+    assert.match(mails[0].htmlBody, /50% of your monthly transport pass/);
     assert.match(mails[0].htmlBody, /\?view=receipt/);
-    assert.ok(R.sent.push.slice(p0).some((x) => x.url.includes('yuna-r')));
+    assert.ok(!R.sent.push.slice(p0).some((x) => x.url.includes('yuna-r')), 'no push');
     R.ctx.morningRun(); // 두 번 실행돼도 한 번만
-    assert.strictEqual(R.sent.mail.slice(m0).filter((m) => /Transport receipt/.test(m.subject)).length, 2);
+    assert.strictEqual(R.sent.mail.slice(m0).filter((m) => /TCL pass receipt/.test(m.subject)).length, 2);
   });
 
   test('receipts: no email on other days', () => {
@@ -1399,7 +1401,7 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.strictEqual(R.sent.mail.length, m0);
   });
 
-  test('receipts: reminder on home + clock-in from day 1 to 5 until uploaded, never for exempt staff', () => {
+  test('receipts: home button hint from day 1 to 5 until uploaded, nothing at clock-in, never for exempt staff', () => {
     at('2026-10-03T10:00:00+02:00');
     const me = R.call({ action: 'me', token: yu });
     assert.deepStrictEqual([me.receipt.month, me.receipt.label, me.receipt.deadline, me.receipt.daysLeft],
@@ -1407,7 +1409,7 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.strictEqual(R.call({ action: 'me', token: nm }).receipt, null);
     const [t] = tagUrls(keys, 'START', 1);
     const tap = R.call(Object.assign({ action: 'tap', token: yu }, t));
-    assert.ok(tap.ok); assert.strictEqual(tap.receipt.month, '2026-10');
+    assert.ok(tap.ok); assert.strictEqual(tap.receipt, undefined);
   });
 
   test('receipts: upload photo + PDF -> "Name yyyy-MM" files, reminder stops', () => {
@@ -1469,8 +1471,12 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     preview = R.call({ action: 'receiptSend', token: sup, month: '2026-10', to: 'acc@example.com' });
     assert.ok(preview.preview);
     assert.deepStrictEqual(preview.files, ['Yuna 2026-10.jpg', 'Yuna 2026-10 (2).pdf']); // late 파일은 기본 제외
-    assert.match(preview.html, /Late — not attached/);
-    assert.match(preview.subject, /Transport receipts · October 2026/);
+    assert.strictEqual(preview.from, 'contact.monsieurkim@gmail.com');
+    // 표에는 사람마다 제출 여부만 (late 만 있는 Nam KIM 은 No)
+    const cells = [...preview.html.matchAll(/<tr><td[^>]*>([^<]+)<\/td><td[^>]*>(Yes|No)<\/td><\/tr>/g)].map((m) => m[1] + ':' + m[2]);
+    assert.deepStrictEqual(cells, ['Nam KIM:No', 'Yuna:Yes']);
+    assert.ok(!/Uploaded|\.jpg|\.pdf/.test(preview.html));
+    assert.match(preview.subject, /Transport pass receipts · October 2026/);
     assert.strictEqual(R.sent.mail.length, m0);
   });
 
@@ -1490,9 +1496,9 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     const mail = R.sent.mail.slice(m0);
     assert.strictEqual(mail.length, 1);
     assert.strictEqual(mail[0].to, 'acc@example.com');
-    assert.strictEqual(mail[0].replyTo, 'nam@example.com');
+    assert.strictEqual(mail[0].replyTo, 'contact.monsieurkim@gmail.com');
     assert.deepStrictEqual(Array.from(mail[0].attachments, (b) => b.getName()), ['Yuna 2026-10.jpg', 'Yuna 2026-10 (2).pdf']);
-    assert.match(mail[0].htmlBody, /<td[^>]*>Yuna<\/td><td[^>]*>Received<\/td>/);
+    assert.match(mail[0].htmlBody, /<td[^>]*>Yuna<\/td><td[^>]*>Yes<\/td>/);
     assert.ok(preview.expect.every((id) => R.files[id].trashed));
     const st = R.call({ action: 'receiptStatus', token: sup });
     assert.strictEqual(st.accountant, 'acc@example.com');
@@ -1505,7 +1511,16 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.strictEqual(R.call({ action: 'receiptSend', token: sup, month: '2026-10', to: 'acc@example.com' }).ok, false);
     const p = R.call({ action: 'receiptSend', token: sup, month: '2026-10', to: 'acc@example.com', includeLate: true });
     assert.deepStrictEqual(p.files, ['Nam KIM 2026-10.jpg']);
-    assert.match(p.html, /Sent earlier \(2026-10-06\)/);
+    assert.match(p.html, /<td[^>]*>Yuna<\/td><td[^>]*>Yes<\/td>/); // 앞서 보낸 사람도 제출 Yes
+  });
+
+  test('receipts: refused when the system does not run as contact.monsieurkim@gmail.com', () => {
+    const orig = R.ctx.Session;
+    R.ctx.Session = { getEffectiveUser: () => ({ getEmail: () => 'someone.else@gmail.com' }) };
+    const r = R.call({ action: 'receiptSend', token: sup, month: '2026-10', to: 'acc@example.com', includeLate: true });
+    R.ctx.Session = orig;
+    assert.strictEqual(r.ok, false);
+    assert.match(r.error, /contact\.monsieurkim@gmail\.com/);
   });
 
   test('receipts: records still verify', () => {

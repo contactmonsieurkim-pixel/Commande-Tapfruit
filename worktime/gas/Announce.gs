@@ -512,7 +512,7 @@ function dailyReminder() {
  *  한 사람에게는 1)+2)를 합쳐 메일 1통·푸시 1번만 보냄.
  *  3) 밤사이 Supervisor 알림(출퇴근·로그인)을 한 번에 요약해서 보냄.
  *  4) 스케줄 확인 요청 (Schedule.gs)
- *  5) 매월 1일: 교통카드 영수증 업로드 요청 메일 + 푸시 (Receipts.gs)
+ *  5) 매월 1일: 교통카드 정기권 영수증 업로드 요청 메일 (Receipts.gs)
  */
 function morningRun() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
