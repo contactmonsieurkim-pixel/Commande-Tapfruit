@@ -652,6 +652,38 @@ test('a failing push never blocks clock-in or login', () => {
   env.ctx.UrlFetchApp.fetch = orig;
 });
 
+test('status: my last clock-in/out on me (header icon)', () => {
+  const r = env.call({ action: 'me', token });
+  assert.ok(r.ok);
+  assert.strictEqual(r.clock.info, 'END');
+  assert.match(r.clock.date, /^2026-10-\d\d$/); assert.match(r.clock.time, /^\d\d:\d\d$/);
+  assert.match(r.today, /^2026-10-09 \d\d:\d\d$/);
+  const y = env.call({ action: 'me', token: yuna });
+  assert.strictEqual(y.clock.info, 'START', 'latest tap wins (cache updated by the tap)');
+  const nm = env.call({ action: 'login', name: 'No Mail', pin: '3333' });
+  assert.strictEqual(env.call({ action: 'me', token: nm.token }).clock, null);
+});
+
+test('status: team view for the supervisor only, read fresh from the sheet', () => {
+  assert.strictEqual(env.call({ action: 'team', token: yuna }).ok, false);
+  // 관리자가 시트에서 직접 퇴근 기록을 넣어도 Team status 에는 바로 보임 (지난달 기록도 찾음)
+  const ss = Object.values(env.files).find((s) => s.title === '2026-10');
+  const sh = ss.getSheetByName('Yuna');
+  sh.getRange(sh.getLastRow() + 1, 1, 1, 4).setValues([['10-09', '23:10', 'END', '22:50']]);
+  sh.getRange(sh.getLastRow() + 1, 1, 1, 4).setValues([['', '', 'note: forgot tag', '']]);
+  const sep = env.ctx.SpreadsheetApp.create('2026-09');
+  sep.sheets[0].setName('No Mail');
+  sep.sheets[0].getRange(1, 1, 2, 4).setValues([['DATE', 'TIME', 'Info', 'Modify'], ['09-30', '18:05', 'START', '']]);
+  const r = env.call({ action: 'team', token });
+  assert.ok(r.ok, JSON.stringify(r));
+  const by = Object.fromEntries(r.staff.map((x) => [x.name, x]));
+  assert.ok(!by['Old Staff'], 'inactive staff hidden');
+  assert.deepStrictEqual(by.Yuna.clock, { info: 'END', date: '2026-10-09', time: '23:10', change: '22:50' });
+  assert.strictEqual(by.Yuna.team, 'Kitchen');
+  assert.deepStrictEqual(by['No Mail'].clock, { info: 'START', date: '2026-09-30', time: '18:05', change: '' });
+  assert.strictEqual(env.call({ action: 'me', token: yuna }).clock.info, 'END', 'team view refreshes the cache');
+});
+
 test('supervisor can be changed/added in the sheet; supervisor has manager rights', () => {
   const config = env.files[env.props.CONFIG_SHEET_ID];
   config.sheets[0].getRange(8, 1, 1, 7).setValues([['Second Boss', '8888', 'TRUE', '', '', '', 'TRUE']]);
