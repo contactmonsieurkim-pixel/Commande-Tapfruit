@@ -414,6 +414,69 @@
     .new-pill { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 74px);
                 width: auto; margin: 0; padding: 8px 16px; border-radius: 18px; font-size: 14px; z-index: 6;
                 box-shadow: 0 2px 8px rgba(0, 0, 0, .2); }
+    /* Our Team: 조직도 (위에서 아래로 박스 + 꺾인 선, 화면 폭에 맞춰 축소) */
+    :root { --wire: #9aa6a0; --brand-soft: #e3efe9; --t1: #2c4c8c; --t2: #b5562a; --t3: #6b4fa3; --t4: #2f7d8c; --t5: #8a6d1f; }
+    @media (prefers-color-scheme: dark) {
+      :root { --wire: #56635c; --brand-soft: #1d3329; --t1: #7f9fe0; --t2: #e58c62; --t3: #b29be6; --t4: #6cc3d1; --t5: #d9b75a; }
+    }
+    #v-org { padding-bottom: 72px; }
+    .ic-org { background: linear-gradient(160deg, #5f7f96, #3d5a70); }
+    .oc-frame { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: auto; margin-top: 10px; }
+    .oc-zoom { position: sticky; top: 0; left: 0; display: flex; justify-content: flex-end; gap: 6px; padding: 8px 8px 0; z-index: 2; }
+    .oc-zoom button { width: auto; margin: 0; font-size: 13px; color: var(--text); background: var(--bg); border: 1px solid var(--line);
+                      border-radius: 10px; padding: 4px 10px; }
+    .oc-zoom button[aria-pressed="true"] { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+    .oc-stage { padding: 8px 12px 18px; }
+    .oc-scaler { transform-origin: top left; width: max-content; }
+    .oc, .oc ul { list-style: none; margin: 0; padding: 0; display: flex; justify-content: center; }
+    .oc ul { padding-top: 18px; position: relative; }
+    .oc li { position: relative; padding: 18px 5px 0; display: flex; flex-direction: column; align-items: center; }
+    .oc > li { padding-top: 0; }
+    .oc ul > li::before, .oc ul > li::after { content: ""; position: absolute; top: 0; height: 18px; border-top: 2px solid var(--wire); width: 50%; }
+    .oc ul > li::before { right: 50%; }
+    .oc ul > li::after { left: 50%; border-left: 2px solid var(--wire); margin-left: -1px; }
+    .oc ul > li:first-child::before, .oc ul > li:last-child::after { border-top-color: transparent; }
+    .oc ul > li:only-child::before { display: none; }
+    .oc ul > li:only-child::after { border-top: 0; }
+    .oc ul::before { content: ""; position: absolute; top: 0; left: 50%; height: 18px; border-left: 2px solid var(--wire); margin-left: -1px; }
+    /* 아래가 전부 말단이고 3개 이상이면 세로로 쌓음 (폭 절약) */
+    .oc li.has-stack { align-items: flex-start; }
+    .oc ul.stack { flex-direction: column; align-items: flex-start; padding: 0 0 0 16px; margin-left: 55px; }
+    .oc ul.stack::before { display: none; }
+    .oc ul.stack > li { padding: 10px 0 0; align-items: flex-start; }
+    .oc ul.stack > li::before { display: block; left: -16px; right: auto; top: 38px; width: 16px; height: 0; border-top: 2px solid var(--wire) !important; }
+    .oc ul.stack > li::after { display: block; left: -16px; top: 0; width: 0; height: 100%; border-top: 0; border-left: 2px solid var(--wire); margin-left: -1px; }
+    .oc ul.stack > li:last-child::after { height: 39px; }
+    .oc-box { display: grid; gap: 1px; justify-items: center; text-align: center; width: 112px; margin: 0; font: inherit; font-size: 16px;
+              color: var(--text); background: var(--card); border: 1.5px solid var(--text); border-radius: 4px; padding: 7px 6px 6px; position: relative; }
+    .oc-box::before { content: ""; position: absolute; left: -1.5px; right: -1.5px; top: -1.5px; height: 4px; background: var(--tc, var(--text)); border-radius: 4px 4px 0 0; }
+    .oc-box:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+    .oc-box.root { width: 132px; background: var(--text); color: var(--bg); }
+    .oc-box.root .oc-pos, .oc-box.root .oc-team { color: var(--bg); opacity: .8; }
+    .oc-box.me { background: var(--brand-soft); color: var(--text); border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand); }
+    .oc-box.me .oc-pos { color: var(--muted); opacity: 1; }
+    .oc-box.me .oc-team { opacity: 1; color: var(--tc, var(--muted)); }
+    .oc-box.open { border-style: dashed; border-color: var(--muted); }
+    .oc-box.open::before { display: none; }
+    .oc-pos { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); line-height: 1.2; }
+    .oc-name { font-weight: 650; font-size: 13.5px; line-height: 1.25; overflow-wrap: anywhere; }
+    .oc-name.mine { text-decoration: underline 2px var(--brand); text-underline-offset: 3px; }
+    .open .oc-name { color: var(--muted); font-weight: 500; font-style: italic; }
+    .oc-team { font-size: 10.5px; font-weight: 600; color: var(--tc, var(--muted)); }
+    .oc-you { font-size: 9.5px; font-weight: 800; background: var(--brand); color: var(--brand-ink); border-radius: 8px; padding: 0 6px; letter-spacing: .04em; }
+    .oc-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); margin-top: 10px; }
+    .oc-legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .oc-legend i { width: 14px; height: 4px; border-radius: 2px; background: var(--tc); display: inline-block; }
+    .oc-legend i.dash { height: 10px; border: 1.5px dashed var(--muted); background: none; }
+    .oc-scrim { position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, .35); display: flex; align-items: flex-end; justify-content: center; animation: fade .15s; }
+    .oc-sheet { width: 100%; max-width: 440px; background: var(--card); border-radius: 20px 20px 0 0;
+                padding: 22px 20px max(24px, env(safe-area-inset-bottom)); display: grid; gap: 12px; }
+    .oc-sheet h2 { margin: 0; font-size: 22px; overflow-wrap: anywhere; }
+    .oc-sheet .oc-pos { font-size: 12px; }
+    .oc-facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; font-size: 15px; }
+    .oc-facts dt { color: var(--muted); }
+    .oc-facts dd { margin: 0; overflow-wrap: anywhere; }
+    .oc-sheet button { margin: 4px 0 0; }
   </style>
 </head>
 <body>
@@ -461,6 +524,7 @@
       <button id="b-chat" class="app" type="button"><span class="app-ic ic-chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg><span id="badge-chat" class="badge hidden"></span></span><span class="app-name">Chat</span></button>
       <button id="b-receipt" class="app" type="button"><span class="app-ic ic-receipt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4z"/><path d="M14 5v2M14 11v2M14 17v2"/></svg><span class="badge dot hidden"></span></span><span class="app-name">Pass receipt</span><small id="receipt-due" class="app-sub hidden"></small></button>
       <button id="b-request" class="app" type="button"><span class="app-ic ic-request"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg></span><span class="app-name">Request</span></button>
+      <button id="b-org" class="app" type="button"><span class="app-ic ic-org"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v5M5 17v-3h14v3"/></svg></span><span class="app-name">Our Team</span></button>
       <button id="b-folder" class="app hidden" type="button" aria-haspopup="dialog"><span id="folder-ic" class="app-ic folder-ic"></span><span class="app-name">Manager</span></button>
     </div>
   </section>
@@ -602,6 +666,23 @@
     </div>
     <button id="b-request-back" class="back-fab" type="button">← Back</button>
   </section>
+
+  <!-- 조직도 (Our Team): WorkTime Config 'Org Chart' 탭 -->
+  <section id="v-org" class="hidden">
+    <h2 class="feed-title">Our Team</h2>
+    <div class="sch-bar"><span id="org-meta" class="meta"></span></div>
+    <div id="org-msg"></div>
+    <div id="org-frame" class="oc-frame hidden">
+      <div class="oc-zoom">
+        <button type="button" id="b-org-fit" aria-pressed="true">Fit</button>
+        <button type="button" id="b-org-full" aria-pressed="false">100%</button>
+      </div>
+      <div class="oc-stage"><div id="org-scaler" class="oc-scaler"><ul id="org-tree" class="oc"></ul></div></div>
+    </div>
+    <div id="org-legend" class="oc-legend"></div>
+    <button id="b-org-back" class="back-fab" type="button">← Back</button>
+  </section>
+  <div id="org-scrim" class="oc-scrim hidden"></div>
 
   <!-- Supervisor 전용: 받은 요청 -->
   <section id="v-inbox" class="hidden">
@@ -754,7 +835,7 @@
     }
   }
   const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed', 'request', 'inbox', 'schedule', 'team',
-                 'receipt', 'receipts', 'chat'];
+                 'receipt', 'receipts', 'chat', 'org'];
   let lastTap = null;
   let annReturn = 'home';
 
@@ -768,6 +849,7 @@
     $('b-me').classList.toggle('hidden', !name || view === 'login');
     $('b-bell').classList.toggle('hidden', !name || view === 'login');
     closeFolder();
+    closeOrgSheet();
     syncManager();
     renderMe();
     if (view !== 'chat') stopChatPoll();
@@ -2952,6 +3034,152 @@
   $('folder').addEventListener('click', (e) => { if (e.target === e.currentTarget || e.target.classList.contains('folder-box')) closeFolder(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeFolder(); });
 
+  // ------------------------------------------------------------------ Our Team (조직도)
+  // 서버는 'Org Chart' 탭 행([Position, Reports to, Person, Team])만 주고, 트리는 여기서 만듦.
+  // - Position + Reports to 가 같은 행 = 한 박스(공동 책임자, 예: Kitchen Manager 2명 → 아래 직원은 둘 다의 부하)
+  // - Person 은 쉼표로 여러 명, 빈칸 = 공석 / Reports to = 위 직책 이름 또는 사람 이름
+  const ORG_STORE = 'wt_org_v1';
+  let orgFit = true;
+  const orgNorm = (s) => String(s || '').trim().toLowerCase();
+  const orgNames = (v) => String(v || '').split(/[,\n]/).map((x) => x.trim()).filter(Boolean);
+
+  function buildOrg(rows) {
+    const nodes = [], byKey = {};
+    rows.forEach((r, i) => {
+      const position = String(r[0] || '').trim();
+      if (!position) return;
+      const reportsTo = String(r[1] || '').trim(), team = String(r[3] || '').trim();
+      const key = orgNorm(position) + '|' + orgNorm(reportsTo);
+      let n = byKey[key];
+      if (!n) { n = byKey[key] = { i, position, reportsTo, people: [], team, children: [] }; nodes.push(n); }
+      for (const x of orgNames(r[2])) if (!n.people.some((y) => orgNorm(y) === orgNorm(x))) n.people.push(x);
+      if (!n.team) n.team = team;
+    });
+    const byPos = {}, byPerson = {};
+    for (const n of nodes) {
+      if (!(orgNorm(n.position) in byPos)) byPos[orgNorm(n.position)] = n;
+      for (const x of n.people) if (!(orgNorm(x) in byPerson)) byPerson[orgNorm(x)] = n;
+    }
+    const find = (name) => byPos[orgNorm(name)] || byPerson[orgNorm(name)];
+    const roots = [], issues = [];
+    for (const n of nodes) {
+      if (!n.reportsTo) { roots.push(n); continue; }
+      const p = find(n.reportsTo);
+      if (!p) { issues.push(`“${n.position}” reports to “${n.reportsTo}”, which is not a position or person in the list.`); roots.push(n); continue; }
+      let up = p, loop = false;
+      for (let k = 0; up && k <= nodes.length; k++) { if (up === n) { loop = true; break; } up = up.reportsTo ? find(up.reportsTo) : null; }
+      if (loop) { issues.push(`“${n.position}” and “${n.reportsTo}” report to each other.`); roots.push(n); continue; }
+      n.parent = p; p.children.push(n);
+    }
+    return { nodes, roots, issues };
+  }
+
+  function renderOrg(rows) {
+    const me = orgNorm(store.get('wt_name'));
+    const isMe = (n) => n.people.some((x) => orgNorm(x) === me);
+    const colors = {};
+    const colorFor = (team) => team ? (colors[team] ||= `var(--t${(Object.keys(colors).length % 5) + 1})`) : 'var(--text)';
+    const box = (n) => {
+      const b = el('button', 'oc-box' + (n.parent ? '' : ' root') + (n.people.length ? '' : ' open') + (isMe(n) ? ' me' : ''));
+      b.type = 'button';
+      b.style.setProperty('--tc', colorFor(n.team));
+      b.append(el('span', 'oc-pos', n.position));
+      if (!n.people.length) b.append(el('span', 'oc-name', 'Open position'));
+      for (const x of n.people) b.append(el('span', 'oc-name' + (n.people.length > 1 && orgNorm(x) === me ? ' mine' : ''), x));
+      if (n.team) b.append(el('span', 'oc-team', n.team));
+      if (isMe(n)) b.append(el('span', 'oc-you', 'YOU'));
+      b.addEventListener('click', () => openOrgSheet(n));
+      return b;
+    };
+    const item = (n) => {
+      const li = el('li');
+      li.append(box(n));
+      if (n.children.length) {
+        const ul = el('ul');
+        if (n.children.length >= 3 && n.children.every((c) => !c.children.length)) { ul.className = 'stack'; li.className = 'has-stack'; }
+        n.children.forEach((c) => ul.append(item(c)));
+        li.append(ul);
+      }
+      return li;
+    };
+    const { nodes, roots, issues } = buildOrg(rows);
+    $('org-frame').classList.toggle('hidden', !nodes.length);
+    $('org-tree').replaceChildren(...roots.map(item));
+    const msg = [];
+    if (!nodes.length) msg.push(el('p', 'hint', 'The team chart is not ready yet.'));
+    if (issues.length) {
+      const n = el('div', 'notice'), ul = el('ul', 'names');
+      issues.forEach((t) => ul.append(el('li', null, t)));
+      n.append('Please tell your manager to check the Org Chart tab:', ul);
+      msg.push(n);
+    }
+    $('org-msg').replaceChildren(...msg);
+    const people = new Set(nodes.flatMap((n) => n.people).map(orgNorm));
+    const open = nodes.filter((n) => !n.people.length).length;
+    $('org-meta').textContent = nodes.length ? `${people.size} people · ${nodes.length} positions` + (open ? ` · ${open} open` : '') : '';
+    const lg = Object.entries(colors).map(([t, c]) => { const s = el('span'), i = el('i'); i.style.setProperty('--tc', c); s.append(i, t); return s; });
+    if (open) { const s = el('span'); s.append(el('i', 'dash'), 'Open position'); lg.push(s); }
+    $('org-legend').replaceChildren(...lg);
+    orgZoom();
+  }
+
+  function orgZoom() {
+    const s = $('org-scaler');
+    s.style.transform = ''; s.style.height = ''; s.style.marginInline = '';
+    $('b-org-fit').setAttribute('aria-pressed', orgFit); $('b-org-full').setAttribute('aria-pressed', !orgFit);
+    if (currentView !== 'org') return;
+    const avail = $('org-frame').clientWidth - 24, w = s.scrollWidth, h = s.scrollHeight;
+    if (orgFit && w > avail) { const k = avail / w; s.style.transform = `scale(${k})`; s.style.height = h * k + 'px'; }
+    else if (w < avail) s.style.marginInline = 'auto';
+  }
+
+  function openOrgSheet(n) {
+    const sheet = el('div', 'oc-sheet');
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    const head = el('div');
+    head.append(el('div', 'oc-pos', n.position), el('h2', null, n.people.length ? n.people.join(', ') : 'Open position'));
+    const dl = el('dl', 'oc-facts');
+    const add = (k, v) => dl.append(el('dt', null, k), el('dd', null, v));
+    if (n.team) add('Team', n.team);
+    add('Reports to', n.parent ? `${n.parent.position} · ${n.parent.people.length ? n.parent.people.join(', ') : 'open'}` : '—');
+    if (n.children.length) add('Team below', n.children.map((c) => c.people.length ? c.people.join(', ') : c.position + ' (open)').join(', '));
+    sheet.append(head, dl);
+    if (!n.people.length) sheet.append(el('p', 'meta', 'Nobody is in this position yet.'));
+    const done = el('button', null, 'Close'); done.type = 'button';
+    sheet.append(done);
+    const scrim = $('org-scrim');
+    scrim.replaceChildren(sheet); scrim.classList.remove('hidden'); done.focus();
+    done.onclick = closeOrgSheet;
+    scrim.onclick = (e) => { if (e.target === scrim) closeOrgSheet(); };
+  }
+  function closeOrgSheet() { $('org-scrim').classList.add('hidden'); $('org-scrim').replaceChildren(); }
+
+  // 폰에 저장한 것을 먼저 보여 주고 뒤에서 새로 받음
+  async function openOrg() {
+    let saved = null;
+    try { saved = JSON.parse(store.get(ORG_STORE) || 'null'); } catch (e) {}
+    if (currentView !== 'org') {
+      show('org');
+      if (saved) renderOrg(saved);
+      else { $('org-frame').classList.add('hidden'); $('org-legend').replaceChildren(); $('org-msg').replaceChildren(el('p', 'hint', 'Loading…')); }
+    }
+    try {
+      const r = await api({ action: 'org', token: token() });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) { if (!saved) $('org-msg').replaceChildren(el('p', 'err', serverMsg(r))); return; }
+      store.set(ORG_STORE, JSON.stringify(r.rows));
+      if (currentView === 'org' && JSON.stringify(r.rows) !== JSON.stringify(saved)) renderOrg(r.rows);
+    } catch (e) {
+      if (!saved) $('org-msg').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
+    }
+  }
+  $('b-org').addEventListener('click', () => openOrg());
+  $('b-org-back').addEventListener('click', () => { closeOrgSheet(); goHome(); });
+  $('b-org-fit').addEventListener('click', () => { orgFit = true; orgZoom(); });
+  $('b-org-full').addEventListener('click', () => { orgFit = false; orgZoom(); });
+  window.addEventListener('resize', () => { if (currentView === 'org') orgZoom(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('org-scrim').classList.contains('hidden')) closeOrgSheet(); });
+
   // 상단 로고 = 메인 화면 (로그인 전에는 아무 동작 안 함)
   $('b-logo').addEventListener('click', () => {
     if (!token() || currentView === 'login') return;
@@ -2970,6 +3198,7 @@
       if (currentView === 'ann') return openFeed(feed, annReturn);
       if (currentView === 'inbox') return openInbox();
       if (currentView === 'team') return openTeam();
+      if (currentView === 'org') return openOrg();
       if (currentView === 'chat') return chatRefresh();
       if (currentView === 'receipt' && !rcNew.length) return openReceipt(rcReturn);
       if (currentView === 'schedule') {
