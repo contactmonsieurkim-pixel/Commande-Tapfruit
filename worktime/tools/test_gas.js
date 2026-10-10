@@ -40,7 +40,7 @@ function makeEnv(propsInit) {
       getDataRange: () => ({
         getDisplayValues: () => {
           const out = [];
-          for (let r = 1; r <= sheet.getLastRow(); r++) out.push([1, 2, 3, 4, 5, 6, 7].map((c) => cells[r + ',' + c] || ''));
+          for (let r = 1; r <= sheet.getLastRow(); r++) out.push([1, 2, 3, 4, 5, 6, 7, 8].map((c) => cells[r + ',' + c] || ''));
           return out;
         },
       }),
@@ -91,10 +91,12 @@ function makeEnv(propsInit) {
   const blob = (bytes, type, name) => ({
     bytes, type, name,
     getBytes: () => bytes, getContentType: () => type, getName: () => name,
+    setName(n) { return blob(bytes, type, n); },
   });
   const fileObj = (f) => ({
     getMimeType: () => (f.kind === 'sheet' ? 'sheets' : f.type), getId: () => f.getId(),
     moveTo: () => {}, getBlob: () => f.blob,
+    setTrashed: (v) => { f.trashed = v; },
   });
   const folder = (fid) => ({
     getId: () => fid,
@@ -186,7 +188,7 @@ function makeEnv(propsInit) {
     },
   };
   vm.createContext(ctx);
-  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs', 'Rules.gs', 'Schedule.gs']) {
+  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs', 'Rules.gs', 'Schedule.gs', 'Receipts.gs']) {
     vm.runInContext(fs.readFileSync(path.join(GAS, f), 'utf8'), ctx, { filename: f });
   }
   ctx.setup();
@@ -348,13 +350,13 @@ const recRows = (name) => {
 test('setup: protected record sheets, daily trigger, VAPID keys', () => {
   const ss = env.files[env.props.ANN_SHEET_ID];
   assert.deepStrictEqual(ss.sheets.map((x) => x.name),
-    ['Announcements', 'Confirmations', 'Notifications', 'Logins', 'Our Rules', 'Requests']);
+    ['Announcements', 'Confirmations', 'Notifications', 'Logins', 'Our Rules', 'Requests', 'Receipts', 'Receipt Mails']);
   assert.ok(ss.sheets.every((x) => x.protected));
   assert.deepStrictEqual(env.triggers.map((t) => [t.getHandlerFunction(), t.hour || t.minutes]),
     [['scheduleMorning', 7], ['checkScheduleChanges', 30]]);
   const head = env.files[env.props.CONFIG_SHEET_ID].sheets[0];
-  assert.deepStrictEqual([1, 2, 3, 4, 5, 6, 7].map((c) => head.cells['1,' + c]),
-    ['Name', 'PIN', 'Active', 'Email', 'Admin', 'Team', 'Supervisor']);
+  assert.deepStrictEqual([1, 2, 3, 4, 5, 6, 7, 8].map((c) => head.cells['1,' + c]),
+    ['Name', 'PIN', 'Active', 'Email', 'Admin', 'Team', 'Supervisor', 'Transport receipt']);
   env.ctx.setup(); // 다시 실행해도 중복 생성 없음
   assert.strictEqual(env.triggers.length, 2);
   assert.strictEqual(Buffer.from(env.call({ action: 'pushKey' }).publicKey, 'base64url').length, 65);
@@ -1354,6 +1356,160 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
 
   test('schedule: records still verify', () => {
     assert.ok(S.ctx.verifyRecords().every((x) => x.ok));
+  });
+}
+
+// ------------------------------------------------------------------ 교통카드 영수증
+{
+  const R = makeEnv({ SDM_META_KEY: keys.K1_SDM_META, SDM_FILE_KEY: keys.K2_SDM_FILE });
+  const at = (iso) => { R.clock.fixed = iso; };
+  const cfg = R.files[R.props.CONFIG_SHEET_ID].sheets[0];
+  cfg.getRange(4, 8).setValue('');        // Yuna: 빈칸 = 대상
+  cfg.getRange(5, 8).setValue('FALSE');   // No Mail: 제외
+  const sup = R.call({ action: 'login', name: 'Nam KIM', pin: '4321' }).token;
+  const yu = R.call({ action: 'login', name: 'Yuna', pin: '2222' }).token;
+  const nm = R.call({ action: 'login', name: 'No Mail', pin: '3333' }).token;
+  const JPG = 'data:image/jpeg;base64,' + Buffer.from('fake-jpeg').toString('base64');
+  const PDF = 'data:application/pdf;base64,' + Buffer.from('%PDF-1.4 fake').toString('base64');
+  const receiptRows = () => {
+    const sh = R.files[R.props.ANN_SHEET_ID].getSheetByName('Receipts');
+    return Array.from({ length: sh.getLastRow() - 1 }, (_, i) => sh.getRange(i + 2, 1, 1, 6).getValues()[0]);
+  };
+
+  test('receipts: day 1 at 09:00 -> one email + push to those who must upload (not to exempt staff)', () => {
+    at('2026-10-01T09:00:00+02:00');
+    R.call({ action: 'subscribe', token: yu, sub: { endpoint: 'https://push.example/yuna-r', keys: {
+      p256dh: ua.getPublicKey().toString('base64url'), auth: uaAuth.toString('base64url') } } });
+    const m0 = R.sent.mail.length, p0 = R.sent.push.length;
+    R.ctx.morningRun();
+    const mails = R.sent.mail.slice(m0).filter((m) => /Transport receipt/.test(m.subject));
+    assert.deepStrictEqual(mails.map((m) => m.to).sort(), ['nam@example.com', 'yuna@example.com']);
+    assert.match(mails[0].subject, /October 2026/);
+    assert.match(mails[0].htmlBody, /by <b>5 October<\/b>/);
+    assert.match(mails[0].htmlBody, /\?view=receipt/);
+    assert.ok(R.sent.push.slice(p0).some((x) => x.url.includes('yuna-r')));
+    R.ctx.morningRun(); // 두 번 실행돼도 한 번만
+    assert.strictEqual(R.sent.mail.slice(m0).filter((m) => /Transport receipt/.test(m.subject)).length, 2);
+  });
+
+  test('receipts: no email on other days', () => {
+    at('2026-10-02T09:00:00+02:00');
+    const m0 = R.sent.mail.length;
+    R.ctx.notifyReceipts_();
+    assert.strictEqual(R.sent.mail.length, m0);
+  });
+
+  test('receipts: reminder on home + clock-in from day 1 to 5 until uploaded, never for exempt staff', () => {
+    at('2026-10-03T10:00:00+02:00');
+    const me = R.call({ action: 'me', token: yu });
+    assert.deepStrictEqual([me.receipt.month, me.receipt.label, me.receipt.deadline, me.receipt.daysLeft],
+      ['2026-10', 'October 2026', '5 October', 2]);
+    assert.strictEqual(R.call({ action: 'me', token: nm }).receipt, null);
+    const [t] = tagUrls(keys, 'START', 1);
+    const tap = R.call(Object.assign({ action: 'tap', token: yu }, t));
+    assert.ok(tap.ok); assert.strictEqual(tap.receipt.month, '2026-10');
+  });
+
+  test('receipts: upload photo + PDF -> "Name yyyy-MM" files, reminder stops', () => {
+    at('2026-10-04T10:00:00+02:00');
+    const r = R.call({ action: 'receiptUpload', token: yu, files: [JPG, PDF] });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.deepStrictEqual(r.files.map((f) => [f.fileName, f.late, f.sent]),
+      [['Yuna 2026-10.jpg', false, false], ['Yuna 2026-10 (2).pdf', false, false]]);
+    const f = R.files[r.files[0].id];
+    assert.strictEqual(f.title, 'Yuna 2026-10.jpg');
+    assert.strictEqual(R.call({ action: 'me', token: yu }).receipt, null);
+    assert.deepStrictEqual(receiptRows().map((x) => [x[1], x[2], x[3], x[5]]),
+      [['Yuna', '2026-10', 'Yuna 2026-10.jpg', 'on time'], ['Yuna', '2026-10', 'Yuna 2026-10 (2).pdf', 'on time']]);
+  });
+
+  test('receipts: only photos/PDF are accepted', () => {
+    assert.strictEqual(R.call({ action: 'receiptUpload', token: yu, files: ['data:text/html;base64,PGI+'] }).ok, false);
+    assert.strictEqual(R.call({ action: 'receiptUpload', token: yu, files: [] }).ok, false);
+  });
+
+  test('receipts: own file can be deleted (name is reused), others cannot see or delete it', () => {
+    const mine = R.call({ action: 'receipt', token: yu });
+    const pdf = mine.files[1];
+    assert.strictEqual(R.call({ action: 'receiptDelete', token: nm, id: pdf.id }).ok, false);
+    assert.strictEqual(R.call({ action: 'receiptFile', token: nm, id: pdf.id }).ok, false);
+    assert.match(R.call({ action: 'receiptFile', token: yu, id: pdf.id }).dataUrl, /^data:application\/pdf;base64,/);
+    assert.match(R.call({ action: 'receiptFile', token: sup, id: pdf.id }).dataUrl, /^data:application\/pdf;base64,/);
+    const r = R.call({ action: 'receiptDelete', token: yu, id: pdf.id });
+    assert.deepStrictEqual(r.files.map((f) => f.fileName), ['Yuna 2026-10.jpg']);
+    assert.ok(R.files[pdf.id].trashed);
+    const again = R.call({ action: 'receiptUpload', token: yu, files: [PDF] });
+    assert.deepStrictEqual(again.files.map((f) => f.fileName), ['Yuna 2026-10.jpg', 'Yuna 2026-10 (2).pdf']);
+  });
+
+  test('receipts: after the 5th the upload is marked late, no reminder', () => {
+    at('2026-10-06T10:00:00+02:00');
+    assert.strictEqual(R.call({ action: 'me', token: sup }).receipt, null);
+    const mine = R.call({ action: 'receipt', token: sup });
+    assert.strictEqual(mine.late, true);
+    const r = R.call({ action: 'receiptUpload', token: sup, files: [JPG] });
+    assert.deepStrictEqual(r.files.map((f) => [f.fileName, f.late]), [['Nam KIM 2026-10.jpg', true]]);
+  });
+
+  test('receipts: status page is for the supervisor only', () => {
+    assert.strictEqual(R.call({ action: 'receiptStatus', token: yu }).ok, false);
+    const r = R.call({ action: 'receiptStatus', token: sup });
+    assert.ok(r.ok);
+    assert.deepStrictEqual(r.months.map((m) => m.month), ['2026-10', '2026-09', '2026-08']);
+    assert.deepStrictEqual(r.people.map((p) => [p.name, p.files.length, p.files.some((f) => f.late)]),
+      [['Nam KIM', 1, true], ['Yuna', 2, false]]); // No Mail 은 제외 대상
+    assert.strictEqual(r.accountant, '');
+  });
+
+  let preview;
+  test('receipts: preview shows address, table and attachments; nothing is sent yet', () => {
+    const m0 = R.sent.mail.length;
+    assert.strictEqual(R.call({ action: 'receiptSend', token: sup, month: '2026-10', to: 'not-an-email' }).ok, false);
+    assert.strictEqual(R.call({ action: 'receiptSend', token: yu, month: '2026-10', to: 'acc@example.com' }).ok, false);
+    preview = R.call({ action: 'receiptSend', token: sup, month: '2026-10', to: 'acc@example.com' });
+    assert.ok(preview.preview);
+    assert.deepStrictEqual(preview.files, ['Yuna 2026-10.jpg', 'Yuna 2026-10 (2).pdf']); // late 파일은 기본 제외
+    assert.match(preview.html, /Late — not attached/);
+    assert.match(preview.subject, /Transport receipts · October 2026/);
+    assert.strictEqual(R.sent.mail.length, m0);
+  });
+
+  test('receipts: confirm is refused if something changed since the preview', () => {
+    const late = R.call({ action: 'receiptSend', token: sup, month: '2026-10', to: 'acc@example.com', includeLate: true });
+    assert.strictEqual(late.files.length, 3);
+    const r = R.call({ action: 'receiptSend', token: sup, month: '2026-10', to: 'acc@example.com', confirm: true,
+                       includeLate: true, expect: preview.expect });
+    assert.strictEqual(r.code, 'CHANGED');
+  });
+
+  test('receipts: confirm -> one email with table + attachments, files leave Drive, address remembered', () => {
+    const m0 = R.sent.mail.length;
+    const r = R.call({ action: 'receiptSend', token: sup, month: '2026-10', to: 'acc@example.com', confirm: true,
+                       expect: preview.expect });
+    assert.ok(r.ok, JSON.stringify(r));
+    const mail = R.sent.mail.slice(m0);
+    assert.strictEqual(mail.length, 1);
+    assert.strictEqual(mail[0].to, 'acc@example.com');
+    assert.strictEqual(mail[0].replyTo, 'nam@example.com');
+    assert.deepStrictEqual(Array.from(mail[0].attachments, (b) => b.getName()), ['Yuna 2026-10.jpg', 'Yuna 2026-10 (2).pdf']);
+    assert.match(mail[0].htmlBody, /<td[^>]*>Yuna<\/td><td[^>]*>Received<\/td>/);
+    assert.ok(preview.expect.every((id) => R.files[id].trashed));
+    const st = R.call({ action: 'receiptStatus', token: sup });
+    assert.strictEqual(st.accountant, 'acc@example.com');
+    assert.strictEqual(st.mails.length, 1);
+    assert.ok(st.people.find((p) => p.name === 'Yuna').files.every((f) => f.sentAt));
+    assert.strictEqual(R.call({ action: 'receiptDelete', token: yu, id: preview.expect[0] }).ok, false);
+  });
+
+  test('receipts: a second send only has what was not sent yet (late file when chosen)', () => {
+    assert.strictEqual(R.call({ action: 'receiptSend', token: sup, month: '2026-10', to: 'acc@example.com' }).ok, false);
+    const p = R.call({ action: 'receiptSend', token: sup, month: '2026-10', to: 'acc@example.com', includeLate: true });
+    assert.deepStrictEqual(p.files, ['Nam KIM 2026-10.jpg']);
+    assert.match(p.html, /Sent earlier \(2026-10-06\)/);
+  });
+
+  test('receipts: records still verify', () => {
+    assert.ok(R.ctx.verifyRecords().every((x) => x.ok));
   });
 }
 

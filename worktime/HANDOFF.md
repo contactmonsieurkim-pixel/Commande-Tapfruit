@@ -15,11 +15,12 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 
 데이터는 모두 Drive 폴더 **Work Time Log with NFC** 안:
 - `yyyy-MM` 월별 시트 → 직원 이름 탭 → `DATE | TIME | Info(START/END) | Modify`
-- **WorkTime Config** → `Employees` 탭: `Name | PIN | Active | Email | Admin | Team | Supervisor` (A~G)
-- **Announcement Records** (보호 + HMAC 체인): `Announcements`, `Confirmations`, `Notifications`, `Logins`, `Our Rules`, `Requests`
+- **WorkTime Config** → `Employees` 탭: `Name | PIN | Active | Email | Admin | Team | Supervisor | Transport receipt` (A~H, H 빈칸=대상, FALSE=제외)
+- **Announcement Records** (보호 + HMAC 체인): `Announcements`, `Confirmations`, `Notifications`, `Logins`, `Our Rules`, `Requests`, `Receipts`, `Receipt Mails`
+- `Transport Receipts` 폴더 (영수증 `이름 yyyy-MM.jpg`, 회계사에게 보내면 휴지통으로)
 - `Announcement Photos` 폴더 (비공개, 앱에는 API 로 base64 전달)
 
-## 2. 서버 파일 (Apps Script 에 같은 이름으로 7개 + appsscript.json)
+## 2. 서버 파일 (Apps Script 에 같은 이름으로 8개 + appsscript.json)
 
 | 파일 | 내용 | `setup` 잘림 검사 표식(파일 마지막 함수) |
 |---|---|---|
@@ -30,10 +31,11 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 | `Supervisor.gs` | Supervisor 알림(출퇴근 즉시 / 로그인은 밤에 보류), 로그인 기록, Request | `recordLogin_` |
 | `Rules.gs` | Our Rules (번호, 버전, 이관, 확인, 수정) | `announceRule_` |
 | `Schedule.gs` | 스케줄 시트 읽기(주 단위), 주별 읽고 동의(내용 지문), 2주 전 화요일 알림, 변경 감지 | `checkSchedule` |
+| `Receipts.gs` | 교통카드 영수증: 업로드·삭제·보기, 1~5일 알림, Supervisor 현황, 회계사 메일(미리보기 → Confirm) | `notifyReceipts_` |
 
-API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm`
+API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend`
 
-스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
+스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID RECEIPT_FOLDER_ID ACCOUNTANT_EMAIL RECEIPT_NOTIFIED LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
 
 트리거: `scheduleMorning`(매일 07시대) → 그날 09:00 정각 1회용 `morningRun` 예약. `checkScheduleChanges`(30분마다, 조용한 시간엔 건너뜀).
 
@@ -116,6 +118,12 @@ node test_webpush.js                    # 푸시 암호를 Node crypto 와 교�
 - 한계: "Yuna off" 처럼 이름이 들어간 메모 칸도 그 사람 근무로 표시됨.
 - 알림: 2주 전 화요일 09:00 부터 매일 리마인더(공지와 같은 방식). 변경은 30분 검사 + "한 번 더 같게 보일 때" 발송(편집 중 연속 알림 방지), 같은 변경은 1번.
 - 직원의 변경 요청 = Request(`topic: 'schedule'`), 별도 기록 시트 없음.
+
+**교통카드 영수증 (Transport receipt)**
+- 영수증 달 = 올리는 날의 달(10월 1~5일에 올리면 'October 2026'). 마감 `RECEIPT_DUE_DAY = 5`(파리). 이후 업로드는 받되 `late` 기록 + 경고, 메일엔 기본 제외(Supervisor 가 체크하면 첨부).
+- 알림: 1일 09:00 `morningRun` 에서 메일+푸시 1번(`RECEIPT_NOTIFIED` 로 중복 방지). 1~5일은 `me`/`tap` 응답의 `receipt` 로 출근 화면 카드 + 메인 버튼 `!`. 이미 올렸으면 표시 안 함.
+- 회계사 메일: `receiptSend` 를 confirm 없이 부르면 미리보기(실제 메일과 같은 HTML), confirm 때 미리보기의 파일 목록(`expect`)과 다르면 거절(`CHANGED`). 보낸 파일은 Drive 휴지통, 다시 보내면 아직 안 보낸 것만.
+- 메일은 MailApp(스크립트 소유자 계정)으로 → 보낸편지함에 남음. replyTo = 보낸 Supervisor 메일.
 
 ## 6. 남은 일
 

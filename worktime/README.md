@@ -120,6 +120,15 @@ URL 기록 → SDM(SUN) 켜기 → NDEF 쓰기 잠금 → Key1/Key2 교체 → �
 - 예전에 공지에서 "Rule" 체크로 올린 것은 처음 한 번 자동으로 Rule-001… 로 옮겨지고, 그때 확인한 사람은 확인한 것으로 인정됩니다.
 - 앱과 메일에는 올린 사람 이름이 표시되지 않습니다. (기록 시트에는 감사용으로 남음)
 
+## 교통카드 영수증 (Transport receipt)
+
+- 직원: 메인 화면 **Transport receipt** → 카메라로 찍기 또는 사진/PDF 선택 → Upload. 파일은 Drive `Transport Receipts` 폴더에 `이름 yyyy-MM.jpg` 로 저장.
+- 대상: Employees 탭 **H열 `Transport receipt`** — 빈칸 = 대상, `FALSE` = 제외.
+- 알림: 매월 **1일 09:00 메일 + 푸시 1번**. 1~5일에는 안 올린 사람에게 출근 도장 화면·메인 화면 버튼(!)에 매번 표시. 5일이 지나면 올릴 때 "반영 안 됨" 경고, `late` 로 기록.
+- Supervisor: 메인 화면 **Transport receipts · accountant** → 사람별 현황(Received / Late / Missing) → 회계사 주소 입력 → **Check the email**(받는 사람·제목·표·첨부 미리보기) → **Confirm and send**.
+  보낸 파일은 Gmail 보낸편지함에 남으므로 Drive 에서는 휴지통으로 옮겨짐. 회계사 주소는 기억됨(스크립트 속성 `ACCOUNTANT_EMAIL`).
+- 기록: Receipts, Receipt Mails 탭.
+
 ## Request (직원 → Supervisor)
 
 - 모든 직원이 앱의 **Request** 로 Supervisor 에게 직접 요청·고민을 보낼 수 있습니다. 공개되지 않습니다.

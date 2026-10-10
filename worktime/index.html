@@ -240,6 +240,41 @@
     .zone.pm .role { color: #ffffff; border-color: #6b736f; }
     #sch-body { overflow-anchor: none; }
     .pending-box button { width: auto; margin: 6px 6px 0 0; padding: 8px 12px; font-size: 14px; background: #fff; color: var(--err); }
+    /* 교통카드 영수증 */
+    .tip.receipt-tip { border-left-color: var(--err); margin-top: 0; margin-bottom: 12px; }
+    .tip.receipt-tip .tip-label { color: var(--err); }
+    .tip.receipt-tip button { margin-top: 12px; }
+    .pick { display: block; text-align: center; font-size: 17px; font-weight: 600; padding: 14px; margin-top: 12px;
+            border-radius: 12px; background: var(--brand); color: var(--brand-ink); cursor: pointer; }
+    .pick.secondary { background: transparent; color: var(--brand); border: 1px solid var(--brand); }
+    .pick input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    .rc-new { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .rc-new .item { position: relative; }
+    .rc-new img, .rc-new .pdf { width: 84px; height: 84px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); display: block; }
+    .rc-new .pdf { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 11px;
+                   padding: 4px; overflow: hidden; overflow-wrap: anywhere; background: var(--bg); }
+    .rc-new .x { position: absolute; top: -8px; right: -8px; width: 26px; height: 26px; margin: 0; padding: 0; border-radius: 50%;
+                 font-size: 15px; line-height: 26px; background: var(--text); color: var(--card); }
+    .rc-file { border-top: 1px solid var(--line); padding: 10px 0; }
+    .rc-file:first-child { border-top: 0; }
+    .rc-file .fname { font-weight: 600; overflow-wrap: anywhere; }
+    .rc-file .acts { display: flex; gap: 14px; margin-top: 2px; }
+    .rc-file .acts button { color: var(--brand); }
+    .rc-file .acts button.del { color: var(--err); }
+    .rc-file img { width: 100%; border-radius: 8px; margin-top: 8px; display: block; }
+    .tag { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 8px; padding: 1px 8px; margin-left: 4px; }
+    .tag.ok { background: var(--ok); color: #fff; } .tag.late { background: var(--warn-bg); color: var(--warn-ink); }
+    .tag.miss { background: var(--err); color: #fff; } .tag.sent { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+    table.rtable { width: 100%; border-collapse: collapse; font-size: 15px; }
+    table.rtable th { text-align: left; font-size: 13px; color: var(--muted); font-weight: 600; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+    table.rtable td { padding: 9px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    table.rtable tr.person { cursor: pointer; }
+    table.rtable td.when { color: var(--muted); font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    table.rtable tr.files td { background: var(--bg); padding: 4px 10px 10px; }
+    .counts { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
+    .mailbox { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-top: 10px; background: #fff; }
+    .mailbox .mhead { background: var(--bg); color: var(--text); font-size: 14px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+    .mailbox iframe { width: 100%; height: 340px; border: 0; display: block; background: #fff; }
   </style>
 </head>
 <body>
@@ -276,8 +311,10 @@
     <button id="b-anns" class="secondary">Announcements<span id="badge" class="badge hidden"></span></button>
     <button id="b-rules" class="secondary">Our Rules<span id="badge-rules" class="badge hidden"></span></button>
     <button id="b-sched" class="secondary">Schedule<span id="badge-sched" class="badge hidden"></span></button>
+    <button id="b-receipt" class="secondary">Transport receipt<span id="badge-receipt" class="badge hidden">!</span></button>
     <button id="b-request" class="secondary">Request</button>
     <button id="b-inbox" class="secondary hidden">Requests inbox</button>
+    <button id="b-receipts" class="secondary hidden">Transport receipts · accountant</button>
     <button id="b-admin" class="secondary hidden">Manager</button>
   </section>
 
@@ -304,6 +341,57 @@
     <div id="sch-body"><p class="hint">Loading…</p></div>
     <button id="b-sch-back" class="secondary">Back</button>
     <button id="b-sch-today" class="today-fab" type="button">Today</button>
+  </section>
+
+  <!-- 교통카드 결제 영수증 올리기 (매월 1~5일) -->
+  <section id="v-receipt" class="hidden">
+    <h2 class="feed-title">Transport receipt</h2>
+    <div id="rc-alert" class="alert hidden"></div>
+    <div class="card">
+      <h3 id="rc-month">…</h3>
+      <p id="rc-due" class="meta"></p>
+      <div id="rc-files"></div>
+      <label class="pick">📷 Take a photo<input id="rc-camera" type="file" accept="image/*" capture="environment"></label>
+      <label class="pick secondary">🖼 Choose photo or PDF<input id="rc-pick" type="file" accept="image/*,application/pdf" multiple></label>
+      <div id="rc-new" class="rc-new"></div>
+      <button id="b-rc-upload" class="hidden">Upload</button>
+      <p id="rc-msg"></p>
+    </div>
+    <button id="b-rc-back" class="secondary">Back</button>
+  </section>
+
+  <!-- Supervisor 전용: 영수증 현황 + 회계사에게 보내기 -->
+  <section id="v-receipts" class="hidden">
+    <h2 class="feed-title">Transport receipts</h2>
+    <div id="rs-months" class="tabs"></div>
+    <div class="card">
+      <h3 id="rs-title">…</h3>
+      <p id="rs-meta" class="meta"></p>
+      <div id="rs-counts" class="counts"></div>
+      <div id="rs-table"><p class="hint">Loading…</p></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h3>Send to the accountant</h3>
+      <div id="rs-form">
+        <label for="rs-to">Accountant's email</label>
+        <input id="rs-to" type="email" autocomplete="off" placeholder="accountant@example.com">
+        <label class="check" id="rs-late-box"><input type="checkbox" id="rs-late"> <span id="rs-late-label">Also attach late uploads</span></label>
+        <button id="b-rs-review" type="button">Check the email</button>
+      </div>
+      <div id="rs-confirm" class="hidden">
+        <p class="notice" style="margin:12px 0 0">Please check the address, the table and the attachments, then confirm.</p>
+        <div class="mailbox">
+          <div class="mhead"><div><b>To:</b> <span id="rs-c-to"></span></div><div><b>Subject:</b> <span id="rs-c-subject"></span></div>
+            <div><b>Attachments (<span id="rs-c-n"></span>):</b> <span id="rs-c-files"></span></div></div>
+          <iframe id="rs-c-body" sandbox title="Email preview"></iframe>
+        </div>
+        <button id="b-rs-send" type="button">Confirm and send</button>
+        <button id="b-rs-cancel" type="button" class="secondary">Change</button>
+      </div>
+      <p id="rs-msg"></p>
+      <div id="rs-history"></div>
+    </div>
+    <button id="b-rs-back" class="secondary">Back</button>
   </section>
 
   <!-- 직원 -> Supervisor 요청 (공개되지 않음) -->
@@ -377,6 +465,12 @@
       <div><div id="r-action" class="s-action"></div><div id="r-stamp" class="stamp"></div></div>
     </div>
     <p id="r-msg"></p>
+    <div id="r-receipt" class="tip receipt-tip hidden">
+      <div class="tip-label">🧾 Transport receipt</div>
+      <h2 id="r-receipt-title"></h2>
+      <div id="r-receipt-text" class="content"></div>
+      <button id="b-r-receipt" type="button" class="secondary">Upload now</button>
+    </div>
     <div id="r-ann" class="hidden">
       <div class="alert">I have an unread announcement !</div>
       <div id="r-ann-card"></div>
@@ -464,7 +558,8 @@
       if (v != null) { try { localStorage.setItem(k, v); } catch (e) {} }
     }
   }
-  const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed', 'request', 'inbox', 'schedule'];
+  const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed', 'request', 'inbox', 'schedule',
+                 'receipt', 'receipts'];
   let lastTap = null;
   let annReturn = 'home';
 
@@ -478,6 +573,7 @@
     $('b-bell').classList.toggle('hidden', !name || view === 'login');
     $('b-admin').classList.toggle('hidden', store.get('wt_admin') !== '1');
     $('b-inbox').classList.toggle('hidden', store.get('wt_sup') !== '1');
+    $('b-receipts').classList.toggle('hidden', store.get('wt_sup') !== '1');
     window.scrollTo(0, 0);
   }
 
@@ -513,7 +609,7 @@
     if (q.has('p') && q.has('a') && q.has('c')) {
       sessionStorage.setItem('wt_pending', JSON.stringify({ a: q.get('a'), p: q.get('p'), c: q.get('c') }));
     }
-    if (['ann', 'rules', 'requests', 'schedule'].includes(q.get('view'))) sessionStorage.setItem('wt_view', q.get('view'));
+    if (['ann', 'rules', 'requests', 'schedule', 'receipt', 'receipts'].includes(q.get('view'))) sessionStorage.setItem('wt_view', q.get('view'));
     if (location.search) history.replaceState(null, '', location.pathname);
     const raw = sessionStorage.getItem('wt_pending');
     return raw ? JSON.parse(raw) : null;
@@ -628,6 +724,7 @@
   async function submitTap(tap) {
     $('b-modify').classList.add('hidden');
     $('r-ann').classList.add('hidden');
+    $('r-receipt').classList.add('hidden');
     annQueue = [];
     currentTip = pickTip();
     result('⏳', 'Saving…', '', '');
@@ -659,6 +756,7 @@
     $('b-modify').classList.remove('hidden');
     setBadge(r.unread);
     setRuleBadge(r.unreadRules);
+    setReceiptDue(r.receipt);
     if (r.unread > 0 || r.unreadRules > 0) {
       setMain(null, 'Loading…');
       try {
@@ -691,6 +789,8 @@
         setSchedBadge(r.schedulePending || 0);
         store.set('wt_sup', r.supervisor ? '1' : '0');
         $('b-inbox').classList.toggle('hidden', !r.supervisor);
+        $('b-receipts').classList.toggle('hidden', !r.supervisor);
+        setReceiptDue(r.receipt);
         saveTips(r.tips);
       }
     } catch (e) { /* 오프라인이어도 홈 화면은 유지 */ }
@@ -1516,6 +1616,327 @@
   $('b-sched').addEventListener('click', () => { schedData = null; openSchedule(); });
   $('b-sch-back').addEventListener('click', () => goHome());
 
+
+  // ---------------------------------------------------------------- 교통카드 영수증 (직원)
+  // 매월 1~5일: 아직 안 올렸으면 메인 화면 버튼에 '!' + 출근 도장 화면에 알림 카드. 5일이 지나면 경고만.
+  let rcReturn = 'home', rcNew = [], rcInfo = null;
+
+  function setReceiptDue(due) {
+    $('badge-receipt').classList.toggle('hidden', !due);
+    $('b-receipt').classList.toggle('secondary', !due);
+    $('r-receipt').classList.toggle('hidden', !due || currentView !== 'result');
+    if (!due) return;
+    $('r-receipt-title').textContent = 'Upload your receipt for ' + due.label;
+    $('r-receipt-text').textContent = 'Please upload the payment receipt of your transport card by ' + due.deadline +
+      (due.daysLeft === 0 ? ' (today).' : due.daysLeft === 1 ? ' (tomorrow).' : '.') +
+      ' After that, it will not be included for ' + due.label + '.';
+  }
+
+  const kb = (n) => (n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
+
+  function readAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(fr.result);
+      fr.onerror = () => reject(new Error('Cannot read ' + file.name));
+      fr.readAsDataURL(file);
+    });
+  }
+
+  async function openReceipt(returnTo) {
+    rcReturn = returnTo || 'home';
+    rcNew = [];
+    renderNew();
+    $('rc-msg').textContent = '';
+    if (!rcInfo) {
+      $('rc-month').textContent = 'Loading…';
+      $('rc-due').textContent = '';
+      $('rc-files').replaceChildren();
+    }
+    show('receipt');
+    try {
+      const r = await api({ action: 'receipt', token: token() });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) { $('rc-msg').className = 'err'; $('rc-msg').textContent = serverMsg(r); return; }
+      renderReceipt(r);
+    } catch (e) {
+      $('rc-msg').className = 'err'; $('rc-msg').textContent = 'Network problem.' + detail(e);
+    }
+  }
+
+  function renderReceipt(r) {
+    rcInfo = r;
+    $('rc-month').textContent = 'Receipt for ' + r.label;
+    const done = r.files.length > 0;
+    $('rc-alert').textContent = '⚠ The deadline (' + r.deadline + ') has passed. A receipt uploaded now will not be included for ' +
+      r.label + '.';
+    $('rc-alert').classList.toggle('hidden', !r.late);
+    $('rc-due').textContent = (r.required ? '' : 'You are not on the transport receipt list — upload only if your manager asked. ') +
+      'Upload the payment receipt of your transport card (Navigo etc.) by ' + r.deadline +
+      '. A photo or a screenshot is fine. It is sent to the accountant every month.';
+    const box = $('rc-files');
+    box.replaceChildren();
+    if (done) {
+      box.append(el('div', 'saved', '✓ Uploaded — thank you!'));
+      for (const f of r.files) box.append(receiptFileRow(f, false));
+    }
+    setReceiptDue(!r.late && r.required && !done ? { label: r.label, deadline: r.deadline, daysLeft: 5 - r.day } : null);
+  }
+
+  /** 내 파일 / Supervisor 화면의 파일 한 줄: 이름, 시각, 보기, (보내기 전) 지우기. */
+  function receiptFileRow(f, forSup, month) {
+    const row = el('div', 'rc-file');
+    const name = el('div', 'fname', f.fileName);
+    if (f.late) name.append(el('span', 'tag late', 'late'));
+    if (f.sent || f.sentAt) name.append(el('span', 'tag sent', 'sent' + (f.sentAt ? ' ' + f.sentAt.slice(5, 10) : '')));
+    row.append(name, el('div', 'meta', 'Uploaded ' + f.at.slice(0, 16)));
+    const acts = el('div', 'acts');
+    if (!f.sent && !f.sentAt) {
+      const view = el('button', 'link', 'View');
+      view.type = 'button';
+      view.addEventListener('click', async () => {
+        if (row.querySelector('img, .err')) return row.querySelectorAll('img, .err').forEach((n) => n.remove());
+        view.disabled = true;
+        try {
+          const r = await api({ action: 'receiptFile', token: token(), id: f.id, month });
+          if (!r.ok) return row.append(el('p', 'err', r.error));
+          if (r.dataUrl.startsWith('data:application/pdf')) {
+            const bytes = b64ToBytes(r.dataUrl.split(',')[1].replace(/\+/g, '-').replace(/\//g, '_'));
+            window.open(URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' })), '_blank');
+          } else {
+            const img = el('img'); img.src = r.dataUrl; img.alt = f.fileName; row.append(img);
+          }
+        } catch (e) { row.append(el('p', 'err', 'Network problem.' + detail(e))); } finally { view.disabled = false; }
+      });
+      acts.append(view);
+      if (!forSup) {
+        const del = el('button', 'link del', 'Delete');
+        del.type = 'button';
+        del.addEventListener('click', async () => {
+          if (!confirm('Delete ' + f.fileName + '?')) return;
+          del.disabled = true;
+          try {
+            const r = await api({ action: 'receiptDelete', token: token(), id: f.id });
+            if (!r.ok) { del.disabled = false; return alert(r.error); }
+            renderReceipt(r);
+          } catch (e) { del.disabled = false; alert('Network problem.' + detail(e)); }
+        });
+        acts.append(del);
+      }
+    }
+    if (acts.childNodes.length) row.append(acts);
+    return row;
+  }
+
+  function renderNew() {
+    $('rc-new').replaceChildren(...rcNew.map((x, i) => {
+      const item = el('div', 'item');
+      if (x.pdf) item.append(el('div', 'pdf', '📄 ' + x.name));
+      else { const img = el('img'); img.src = x.url; img.alt = x.name; item.append(img); }
+      const rm = el('button', 'x', '×');
+      rm.type = 'button'; rm.setAttribute('aria-label', 'Remove');
+      rm.addEventListener('click', () => { rcNew.splice(i, 1); renderNew(); });
+      item.append(rm);
+      return item;
+    }));
+    $('b-rc-upload').classList.toggle('hidden', !rcNew.length);
+    $('b-rc-upload').textContent = rcNew.length > 1 ? 'Upload ' + rcNew.length + ' files' : 'Upload';
+  }
+
+  async function addReceiptFiles(ev) {
+    const files = Array.from(ev.target.files || []);
+    ev.target.value = ''; // 같은 파일을 다시 골라도 change 가 오도록
+    $('rc-msg').textContent = '';
+    for (const f of files) {
+      if (rcNew.length >= 6) { $('rc-msg').className = 'err'; $('rc-msg').textContent = 'Up to 6 files at a time.'; break; }
+      try {
+        if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) {
+          if (f.size > 10 * 1048576) throw new Error(f.name + ' is too large (max 10 MB).');
+          const url = (await readAsDataUrl(f)).replace(/^data:[^;]*;/, 'data:application/pdf;');
+          rcNew.push({ url, pdf: true, name: f.name });
+        } else {
+          // 영수증 글자가 읽히도록 사진은 조금 크게 (긴 변 2000px)
+          rcNew.push({ url: await resizeImage(f, 2000, 0.85), name: f.name });
+        }
+      } catch (e) { $('rc-msg').className = 'err'; $('rc-msg').textContent = e.message; }
+    }
+    renderNew();
+  }
+  $('rc-camera').addEventListener('change', addReceiptFiles);
+  $('rc-pick').addEventListener('change', addReceiptFiles);
+
+  $('b-rc-upload').addEventListener('click', async () => {
+    if (!rcNew.length) return;
+    if (rcInfo && rcInfo.late && !confirm('The deadline (' + rcInfo.deadline + ') has passed.\n' +
+      'This receipt will NOT be included for ' + rcInfo.label + '. Upload anyway?')) return;
+    const btn = $('b-rc-upload'); btn.disabled = true;
+    $('rc-msg').className = ''; $('rc-msg').textContent = 'Uploading…';
+    try {
+      const r = await api({ action: 'receiptUpload', token: token(), files: rcNew.map((x) => x.url) });
+      if (!r.ok) { $('rc-msg').className = 'err'; $('rc-msg').textContent = serverMsg(r); return; }
+      rcNew = []; renderNew();
+      renderReceipt(r);
+      $('rc-msg').className = r.late ? 'err' : 'ok';
+      $('rc-msg').textContent = r.late ? 'Uploaded, but after the deadline — not included for ' + r.label + '.'
+        : 'Uploaded. Thank you!';
+    } catch (e) {
+      $('rc-msg').className = 'err'; $('rc-msg').textContent = 'Network problem. Please try again.' + detail(e);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $('b-receipt').addEventListener('click', () => openReceipt('home'));
+  $('b-r-receipt').addEventListener('click', () => openReceipt('result'));
+  $('b-rc-back').addEventListener('click', () => {
+    if (rcNew.length && !confirm('Your photo is not uploaded yet. Leave anyway?')) return;
+    rcNew = []; renderNew();
+    if (rcReturn === 'result') { show('result'); return setReceiptDue(rcInfo && !rcInfo.files.length && !rcInfo.late && rcInfo.required
+      ? { label: rcInfo.label, deadline: rcInfo.deadline, daysLeft: 5 - rcInfo.day } : null); }
+    goHome();
+  });
+
+  // ---------------------------------------------------------------- 교통카드 영수증 (Supervisor: 현황 + 회계사에게)
+  let rsData = null, rsPreview = null;
+
+  async function openReceipts(month) {
+    show('receipts');
+    rsPreview = null;
+    $('rs-confirm').classList.add('hidden');
+    $('rs-form').classList.remove('hidden');
+    $('rs-msg').textContent = '';
+    if (!rsData || (month && rsData.month !== month)) $('rs-table').replaceChildren(el('p', 'hint', 'Loading…'));
+    try {
+      const r = await api({ action: 'receiptStatus', token: token(), month });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) return $('rs-table').replaceChildren(el('p', 'err', serverMsg(r)));
+      renderReceipts(r);
+    } catch (e) {
+      $('rs-table').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
+    }
+  }
+
+  function personStatus(p) {
+    const left = p.files.filter((f) => !f.sentAt);
+    if (left.some((f) => !f.late)) return ['ok', 'Received'];
+    if (left.length) return ['late', 'Late'];
+    if (p.files.length) return ['sent', 'Sent'];
+    return p.required ? ['miss', 'Missing'] : ['sent', '—'];
+  }
+
+  function renderReceipts(r) {
+    rsData = r;
+    $('rs-months').replaceChildren(...r.months.map((m) => {
+      const b = el('button', 'tab' + (m.month === r.month ? ' on' : ''), m.label);
+      b.type = 'button';
+      b.addEventListener('click', () => openReceipts(m.month));
+      return b;
+    }));
+    $('rs-title').textContent = r.label;
+    $('rs-meta').textContent = 'Deadline: ' + r.deadline + (r.open ? ' · upload period is open' : '') +
+      ' · tap a name to see the files';
+    const st = r.people.map(personStatus), count = (k) => st.filter((x) => x[0] === k).length;
+    const need = r.people.filter((p) => p.required);
+    $('rs-counts').replaceChildren(
+      el('span', 'tag ok', '✓ ' + need.filter((p) => p.files.some((f) => !f.late)).length + ' / ' + need.length + ' on time'),
+      ...(count('late') ? [el('span', 'tag late', count('late') + ' late')] : []),
+      ...(count('miss') ? [el('span', 'tag miss', count('miss') + ' missing')] : []));
+    const t = el('table', 'rtable');
+    const head = el('tr');
+    head.append(el('th', null, 'Name'), el('th', null, 'Status'), el('th', null, 'Uploaded'));
+    t.append(head);
+    if (!r.people.length) {
+      const tr = el('tr'), td = el('td', 'hint', 'Nobody needs to upload (Employees › Transport receipt).');
+      td.colSpan = 3; tr.append(td); t.append(tr);
+    }
+    r.people.forEach((p, i) => {
+      const tr = el('tr', 'person');
+      const n = el('td', null, p.name);
+      if (p.files.length > 1) n.append(el('span', 'meta', ' · ' + p.files.length + ' files'));
+      const s = el('td'); s.append(el('span', 'tag ' + st[i][0], st[i][1]));
+      const last = p.files[p.files.length - 1];
+      tr.append(n, s, el('td', 'when', last ? last.at.slice(5, 16) : ''));
+      t.append(tr);
+      if (!p.files.length) return;
+      const fr = el('tr', 'files hidden'), td = el('td');
+      td.colSpan = 3;
+      p.files.forEach((f) => td.append(receiptFileRow(f, true, r.month)));
+      fr.append(td);
+      t.append(fr);
+      tr.addEventListener('click', () => fr.classList.toggle('hidden'));
+    });
+    $('rs-table').replaceChildren(t);
+    if (!$('rs-to').value) $('rs-to').value = r.accountant;
+    const late = r.people.reduce((n, p) => n + p.files.filter((f) => f.late && !f.sentAt).length, 0);
+    $('rs-late-box').classList.toggle('hidden', !late);
+    if (!late) $('rs-late').checked = false;
+    $('rs-late-label').textContent = 'Also attach late uploads (' + late + ')';
+    const hist = $('rs-history');
+    hist.replaceChildren();
+    if (r.mails.length) {
+      hist.append(el('div', 'meta', 'Already sent for ' + r.label + ':'));
+      const ul = el('ul', 'names');
+      r.mails.forEach((m) => ul.append(el('li', null, m.at.slice(0, 16) + ' → ' + m.to + ' · ' + m.summary + ' (by ' + m.by + ')')));
+      hist.append(ul);
+    }
+  }
+
+  // 1단계: 서버가 실제로 보낼 메일(받는 사람·제목·표·첨부)을 만들어 보여 줌. 2단계: Confirm 을 눌러야 발송.
+  $('b-rs-review').addEventListener('click', async () => {
+    const btn = $('b-rs-review'); btn.disabled = true;
+    $('rs-msg').className = ''; $('rs-msg').textContent = 'Preparing…';
+    try {
+      const r = await api({ action: 'receiptSend', token: token(), month: rsData.month, to: $('rs-to').value,
+                            includeLate: $('rs-late').checked });
+      if (!r.ok) { $('rs-msg').className = 'err'; $('rs-msg').textContent = serverMsg(r); return; }
+      rsPreview = r;
+      $('rs-msg').textContent = '';
+      $('rs-c-to').textContent = r.to;
+      $('rs-c-subject').textContent = r.subject;
+      $('rs-c-n').textContent = r.files.length;
+      $('rs-c-files').textContent = r.files.join(', ');
+      $('rs-c-body').srcdoc = r.html;
+      $('b-rs-send').textContent = 'Confirm and send to ' + r.to;
+      $('rs-form').classList.add('hidden');
+      $('rs-confirm').classList.remove('hidden');
+    } catch (e) {
+      $('rs-msg').className = 'err'; $('rs-msg').textContent = 'Network problem.' + detail(e);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $('b-rs-cancel').addEventListener('click', () => {
+    rsPreview = null;
+    $('rs-confirm').classList.add('hidden');
+    $('rs-form').classList.remove('hidden');
+  });
+
+  $('b-rs-send').addEventListener('click', async () => {
+    if (!rsPreview) return;
+    const btn = $('b-rs-send'); btn.disabled = true;
+    $('rs-msg').className = ''; $('rs-msg').textContent = 'Sending…';
+    try {
+      const r = await api({ action: 'receiptSend', token: token(), month: rsData.month, to: rsPreview.to,
+                            includeLate: $('rs-late').checked, confirm: true, expect: rsPreview.expect });
+      if (!r.ok) {
+        $('rs-msg').className = 'err'; $('rs-msg').textContent = serverMsg(r);
+        if (r.code === 'CHANGED') openReceipts(rsData.month).then(() => { $('rs-msg').className = 'err'; $('rs-msg').textContent = r.error; });
+        return;
+      }
+      await openReceipts(rsData.month);
+      $('rs-msg').className = 'ok';
+      $('rs-msg').textContent = 'Sent to ' + r.to + ' (' + r.summary + '). A copy is in Gmail › Sent.';
+    } catch (e) {
+      $('rs-msg').className = 'err'; $('rs-msg').textContent = 'Network problem.' + detail(e);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $('b-receipts').addEventListener('click', () => openReceipts());
+  $('b-rs-back').addEventListener('click', () => goHome());
+
   // ---------------------------------------------------------------- 관리자
   let pickedPhotos = [];
   let editingRule = null;
@@ -1549,16 +1970,16 @@
   }
   $('b-edit-cancel').addEventListener('click', stopEditRule);
 
-  function resizeImage(file) {
+  function resizeImage(file, max = 1600, quality = 0.82) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
-        const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
         const c = document.createElement('canvas');
         c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
         c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
         URL.revokeObjectURL(img.src);
-        resolve(c.toDataURL('image/jpeg', 0.82));
+        resolve(c.toDataURL('image/jpeg', quality));
       };
       img.onerror = () => reject(new Error('Cannot read ' + file.name));
       img.src = URL.createObjectURL(file);
@@ -1722,6 +2143,8 @@
       if (view === 'rules') return openFeed('rules', 'home');
       if (view === 'requests') return openInbox();
       if (view === 'schedule') return openSchedule({}, true, null, 'fresh');
+      if (view === 'receipt') return openReceipt('home');
+      if (view === 'receipts') return openReceipts();
     }
     goHome();
   }
@@ -1784,6 +2207,7 @@
       if (currentView === 'home') return goHome();
       if (currentView === 'ann') return openFeed(feed, annReturn);
       if (currentView === 'inbox') return openInbox();
+      if (currentView === 'receipt' && !rcNew.length) return openReceipt(rcReturn);
       if (currentView === 'schedule') {
         return openSchedule(schedData ? { sched: schedData.sched, file: schedData.file, tab: schedData.tab } : {}, false, null, true);
       }
