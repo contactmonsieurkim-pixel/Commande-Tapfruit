@@ -9,6 +9,7 @@
 //   Our Rules     : Rule ID | Version | Saved at | Saved by | Title | Content | Photos | Recipients | Audience | Legacy ID | Hash
 //                   (수정할 때마다 새 버전 행 추가. 확인 기록은 Confirmations 에 'Rule-001 v2' 로)
 //   Requests      : Sent at | From | Message | Hash   (직원 → Supervisor)
+//   Deleted       : ID | Title | Deleted at | Deleted by | Hash   (Supervisor 가 지운 공지. 원래 행은 그대로 남음)
 // 각 행의 Hash 는 직전 행 Hash + 내용으로 만든 HMAC 체인 -> verifyRecords() 로 수정 여부 검사.
 
 var APP_URL_DEFAULT = 'https://contactmonsieurkim-pixel.github.io/Commande-Tapfruit/worktime/';
@@ -28,6 +29,7 @@ var REC_SHEETS = {
   'Our Rules': ['Rule ID', 'Version', 'Saved at', 'Saved by', 'Title', 'Content', 'Photos', 'Recipients', 'Audience',
                 'Legacy ID', 'Hash'],
   Requests: ['Sent at', 'From', 'Message', 'Hash'],
+  Deleted: ['ID', 'Title', 'Deleted at', 'Deleted by', 'Hash'],
 };
 
 // ------------------------------------------------------------------ setup helpers
@@ -180,9 +182,21 @@ function announcements_() {
   });
 }
 
-/** 일반 공지만 (예전에 공지로 올린 Rule 은 Our Rules 로 옮겨졌으므로 제외). */
+/** 일반 공지만 (예전에 공지로 올린 Rule 은 Our Rules 로 옮겨졌으므로 제외, 지운 공지 제외). */
 function notices_() {
-  return announcements_().filter(function (a) { return !a.rule; });
+  var gone = {};
+  readRecords_('Deleted').forEach(function (r) { gone[r[0]] = true; });
+  return announcements_().filter(function (a) { return !a.rule && !gone[a.id]; });
+}
+
+/**
+ * 이 사람이 볼 수 있는 공지: 받는 사람이었거나, 지금 대상(전체 / 그 팀 / 그 사람)에 해당.
+ * 나중에 들어온 직원도 지난 공지를 볼 수 있음 — 단 확인 요청은 게시 때 받는 사람에게만.
+ */
+function canSeeNotice_(a, me) {
+  if (!me) return false;
+  if (me.supervisor || a.recipients.indexOf(me.name) >= 0 || !a.audience) return true;
+  return a.audience.people.indexOf(me.name) >= 0 || !!(me.team && a.audience.teams.indexOf(me.team) >= 0);
 }
 
 /** 확인 일시 (없으면 null). 룰 v1 은 이관 전 공지(Legacy ID)에서 확인한 것도 인정. */
@@ -282,20 +296,38 @@ function subscribe_(req) {
   return { ok: true };
 }
 
+/** 공지 목록 (최신이 위). */
 function annList_(req) {
-  var name = whoAmI_(req.token), confs = confirmations_();
-  var list = notices_().filter(function (a) { return a.recipients.indexOf(name) >= 0; })
+  var name = whoAmI_(req.token), me = findEmployee_(name), confs = confirmations_();
+  var list = notices_().filter(function (a) { return canSeeNotice_(a, me); })
     .map(function (a) {
-      return { id: a.id, posted: a.posted, title: a.title, content: a.content,
-               photos: a.photos.length, confirmedAt: confirmedAt_(a, name, confs) };
+      var mine = a.recipients.indexOf(name) >= 0;
+      return { id: a.id, posted: a.posted, title: a.title, content: a.content, photos: a.photos.length,
+               mustConfirm: mine, confirmedAt: mine ? confirmedAt_(a, name, confs) : null };
     }).reverse();
-  return { ok: true, announcements: list };
+  return { ok: true, announcements: list, canDelete: !!(me && me.supervisor) };
+}
+
+/** Supervisor 전용: 공지 삭제. 기록 시트의 원래 행은 지우지 않고 Deleted 에 한 줄 추가 (앱·알림에서 사라짐). */
+function annDelete_(req) {
+  var name = whoAmI_(req.token), me = findEmployee_(name);
+  if (!me || !me.supervisor) fail_('Only the supervisor can delete announcements.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var a = notices_().filter(function (x) { return x.id === req.id; })[0];
+    if (!a) fail_('Announcement not found (maybe already deleted).');
+    appendRecord_('Deleted', [a.id, a.title, nowStamp_(), name]);
+  } finally {
+    lock.releaseLock();
+  }
+  return { ok: true, id: req.id, unread: unreadFor_(name).length };
 }
 
 function annPhoto_(req) {
   var name = whoAmI_(req.token);
-  var a = announcements_().filter(function (x) { return x.id === req.id; })[0];
-  if (!a || (a.recipients.indexOf(name) < 0 && !isAdmin_(name))) fail_('Not found.');
+  var a = notices_().filter(function (x) { return x.id === req.id; })[0];
+  if (!a || (!canSeeNotice_(a, findEmployee_(name)) && !isAdmin_(name))) fail_('Not found.');
   var fileId = a.photos[Number(req.index)];
   if (!fileId) fail_('Not found.');
   var blob = DriveApp.getFileById(fileId).getBlob();

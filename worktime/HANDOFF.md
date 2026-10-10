@@ -16,7 +16,7 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 데이터는 모두 Drive 폴더 **Work Time Log with NFC** 안:
 - `yyyy-MM` 월별 시트 → 직원 이름 탭 → `DATE | TIME | Info(START/END) | Modify`
 - **WorkTime Config** → `Employees` 탭: `Name | PIN | Active | Email | Admin | Team | Supervisor` (A~G)
-- **Announcement Records** (보호 + HMAC 체인): `Announcements`, `Confirmations`, `Notifications`, `Logins`, `Our Rules`, `Requests`
+- **Announcement Records** (보호 + HMAC 체인): `Announcements`, `Confirmations`, `Notifications`, `Logins`, `Our Rules`, `Requests`, `Deleted`
 - `Announcement Photos` 폴더 (비공개, 앱에는 API 로 base64 전달)
 
 ## 2. 서버 파일 (Apps Script 에 같은 이름으로 7개 + appsscript.json)
@@ -31,7 +31,7 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 | `Rules.gs` | Our Rules (번호, 버전, 이관, 확인, 수정) | `announceRule_` |
 | `Schedule.gs` | 스케줄 시트 읽기(주 단위), 주별 읽고 동의(내용 지문), 2주 전 화요일 알림, 변경 감지 | `checkSchedule` |
 
-API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team`
+API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete`
 
 스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
 
@@ -53,9 +53,13 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 **공지 · Our Rules**
 - 공지와 룰은 **알림·화면·기록이 분리**. 룰은 `Rule-001` 번호, 수정 시 새 버전 행 추가(덮어쓰기 없음), 대상자 **재확인 필요**, 이전 내용은 작게 표시.
 - 확인 화면: 미확인만 하나씩(집중 모드) → 다 확인해야 지난 목록. 앱을 열면 **메인 화면 먼저**(공지 창 자동 진입은 압박감 때문에 제거). 알림·메일 링크로 들어온 경우만 바로 해당 화면.
+- 공지·Our Rules 목록(다 확인한 뒤)은 **제목만, 눌러서 펼침**(사진은 펼칠 때 받음, 앱 복귀로 다시 그려도 펼친 것 유지) + 왼쪽 아래 떠 있는 **← Back** = 메인 화면.
 - 확인은 사람당 1회 기록(브라우저든 앱이든). 앱은 다시 열릴 때 서버에서 새로고침.
 - 업로더 이름은 **앱·메일에서 숨김**, 기록 시트에는 남김(감사용).
-- 게시 시점의 대상자만 확인 대상(신규 입사자는 예전 공지 안 받음). 단 팀 대상 룰 팁은 나중에 들어온 팀원에게도 보임.
+- **공지**: 게시 시점의 대상자만 확인 대상. 나중에 온 직원도 지금 대상(전체/팀/개인)에 해당하면 지난 공지를 **읽을 수는 있음**(확인 요청 없음, `mustConfirm: false`). Supervisor 는 모든 공지를 봄.
+- **룰**: 확인 대상 = 저장된 받는 사람 + 지금 대상에 해당하는 재직자(`ruleTargets_`) → **새로 온 직원도 모든 룰을 확인**해야 함(09:00 리마인더·관리자 현황에도 포함). 로그인 직후 확인 안 한 룰이 있으면 홈 대신 바로 Our Rules.
+- 순서: 룰은 번호순(기록), 공지는 최신이 위(현장성).
+- 공지 삭제 = Supervisor 전용(펼친 공지 아래 *Delete announcement*). 기록 시트 행은 그대로 두고 **Deleted** 탭(HMAC 체인)에 한 줄 추가 → 앱·알림·현황에서 사라짐.
 - 관리자도 대상자면 자기 글을 확인해야 함(그대로 둠, 사장님이 바꾸길 원하면 "작성자 자동 확인" 추가).
 - 메일: 버튼 **Go to Confirm 하나만 맨 위**, 끝에 메일마다 다른 `Ref` 줄 → Gmail 이 반복으로 접는 것 방지.
 
@@ -95,7 +99,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 79개)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 81개)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```
