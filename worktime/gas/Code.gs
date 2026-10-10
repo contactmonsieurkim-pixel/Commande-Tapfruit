@@ -5,6 +5,7 @@
 //   SDM_FILE_KEY  : ntag424_setup.py genkeys 가 출력한 값 (32 hex)
 //   FOLDER_ID     : (선택) 기록 폴더 ID. 없으면 아래 기본값 사용
 //   CONFIG_SHEET_ID : setup() 실행 시 자동 저장됨
+//   ACCOUNTANT_EMAIL : 영수증을 처음 보낼 때 화면에서 입력한 회계사 주소가 저장됨
 //
 // 시트 구조: <폴더>/<yyyy-MM> 스프레드시트 / <직원 이름> 시트 / DATE | TIME | Info | Modify
 
@@ -37,7 +38,7 @@ function setup() {
 function checkFiles_() {
   var last = { 'Code.gs': 'json_', 'Crypto.gs': 'verifySun_', 'WebPush.gs': 'sendWebPush_',
                'Announce.gs': 'morningRun', 'Supervisor.gs': 'recordLogin_', 'Rules.gs': 'announceRule_',
-               'Schedule.gs': 'checkSchedule' };
+               'Schedule.gs': 'checkSchedule', 'Receipts.gs': 'notifyReceipts_' };
   var missing = Object.keys(last).filter(function (f) { return typeof this[last[f]] !== 'function'; }, this);
   if (typeof props_ === 'undefined' || typeof TZ === 'undefined' || typeof DEFAULT_FOLDER_ID === 'undefined') {
     missing.push('Code.gs (맨 윗부분: var DEFAULT_FOLDER_ID ... var props_)');
@@ -65,7 +66,8 @@ function ensureConfig_() {
   if (!sh.getRange('E1').getValue()) sh.getRange('E1').setValue('Admin');
   if (!sh.getRange('F1').getValue()) sh.getRange('F1').setValue('Team');
   if (!sh.getRange('G1').getValue()) sh.getRange('G1').setValue('Supervisor');
-  sh.getRange('A1:G1').setFontWeight('bold');
+  if (!sh.getRange('H1').getValue()) sh.getRange('H1').setValue('Transport receipt'); // 빈칸 = 대상, FALSE = 제외
+  sh.getRange('A1:H1').setFontWeight('bold');
   return ss;
 }
 
@@ -89,6 +91,8 @@ function doPost(e) {
       rules: rulesList_, ruleConfirm: ruleConfirm_, rulePhoto: rulePhoto_, ruleEdit: ruleEdit_,
       request: request_, requests: requestsList_, annDelete: annDelete_,
       schedule: scheduleView_, scheduleConfirm: scheduleConfirm_, team: teamClock_,
+      receipt: receiptMine_, receiptUpload: receiptUpload_, receiptDelete: receiptDelete_, receiptFile: receiptFile_,
+      receiptStatus: receiptStatus_, receiptSend: receiptSend_,
     };
     var fn = handlers[req.action];
     if (!fn) return json_({ ok: false, error: 'Unknown action.' });
@@ -123,7 +127,18 @@ function me_(req) {
   var me = findEmployee_(name);
   return { ok: true, name: name, admin: isAdmin_(name), supervisor: !!(me && me.supervisor),
            unread: unreadCount_(name), unreadRules: unreadRulesFor_(name).length, tips: tips_(name),
-           schedulePending: schedulePendingCount_(name), clock: myClock_(name), today: todayStamp_() };
+           schedulePending: schedulePendingCount_(name), clock: myClock_(name), today: todayStamp_(),
+           receipt: safeReceiptDue_(name) };
+}
+
+/** 메인 화면 영수증 버튼 색 (문제가 생겨도 메인 화면을 막지 않도록). */
+function safeReceiptDue_(name) {
+  try {
+    return receiptDue_(name);
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
 }
 
 function unreadCount_(name) {
@@ -208,12 +223,13 @@ function employees_() {
   var rows = SpreadsheetApp.openById(id).getSheetByName('Employees').getDataRange().getDisplayValues();
   var out = [];
   for (var i = 1; i < rows.length; i++) {
-    var r = rows[i].concat(['', '', '', '', '', '', '']);
+    var r = rows[i].concat(['', '', '', '', '', '', '', '']);
     var n = String(r[0]).trim();
     if (!n || String(r[2]).trim().toUpperCase() === 'FALSE') continue;
     out.push({ name: n, pin: String(r[1]).trim(), email: String(r[3]).trim(),
                admin: String(r[4]).trim().toUpperCase() === 'TRUE', team: String(r[5]).trim(),
-               supervisor: String(r[6]).trim().toUpperCase() === 'TRUE' });
+               supervisor: String(r[6]).trim().toUpperCase() === 'TRUE',
+               transport: String(r[7]).trim().toUpperCase() !== 'FALSE' });
   }
   return out;
 }

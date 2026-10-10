@@ -120,6 +120,17 @@ URL 기록 → SDM(SUN) 켜기 → NDEF 쓰기 잠금 → Key1/Key2 교체 → �
 - 예전에 공지에서 "Rule" 체크로 올린 것은 처음 한 번 자동으로 Rule-001… 로 옮겨지고, 그때 확인한 사람은 확인한 것으로 인정됩니다.
 - 앱과 메일에는 올린 사람 이름이 표시되지 않습니다. (기록 시트에는 감사용으로 남음)
 
+## 교통카드 정기권 영수증 (Transport pass receipt, TCL)
+
+- 정기권 비용의 50% 가 월급에 포함되어 지원됨 → 직원이 매월 **1~5일**에 그달 정기권 결제 영수증을 올림. (안 올리면 본인 손해라 알림은 가볍게)
+- 직원: 메인 화면 **Transport pass receipt** → 카메라로 찍기 또는 사진/PDF 선택 → Upload. Drive `Transport Receipts` 폴더에 `이름 yyyy-MM.jpg`.
+- 대상: Employees 탭 **H열 `Transport receipt`** — 빈칸 = 대상, `FALSE` = 제외.
+- 알림: 매월 **1일 09:00 메일 1통**뿐. 1~5일 아직 안 올렸으면 메인 화면 버튼이 **파란색**("Upload by 5 October"). 출근 도장 화면·푸시 없음. 5일 이후에 올려도 그대로 받고(다음 발송 때 같이 감), 노란 안내로 "다음엔 5일까지"만. Supervisor 화면에는 'after the 5th' 표시.
+- Supervisor: **Transport pass receipts · accountant** → 사람별 현황 → 회계사 주소 → **Check the email**(보내는 사람·받는 사람·제목·표·첨부 미리보기) → **Confirm and send**.
+  메일 본문 표는 사람마다 제출 여부(Yes/No)만, 영수증은 첨부. 보내는 사람은 누가 눌러도 **contact.monsieurkim@gmail.com**
+  (Apps Script 가 이 계정으로 배포돼 있어야 함, 아니면 보내지 않고 오류). 보낸 파일은 Gmail 보낸편지함에 남으므로 Drive 에서는 휴지통으로.
+- 기록: Receipts, Receipt Mails 탭.
+
 ## Request (직원 → Supervisor)
 
 - 모든 직원이 앱의 **Request** 로 Supervisor 에게 직접 요청·고민을 보낼 수 있습니다. 공개되지 않습니다.

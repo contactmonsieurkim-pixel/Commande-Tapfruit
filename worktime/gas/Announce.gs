@@ -10,6 +10,7 @@
 //                   (수정할 때마다 새 버전 행 추가. 확인 기록은 Confirmations 에 'Rule-001 v2' 로)
 //   Requests      : Sent at | From | Message | Hash   (직원 → Supervisor)
 //   Deleted       : ID | Title | Deleted at | Deleted by | Hash   (Supervisor 가 지운 공지. 원래 행은 그대로 남음)
+//   Receipts, Receipt Mails : 교통카드 영수증 (Receipts.gs 참고)
 // 각 행의 Hash 는 직전 행 Hash + 내용으로 만든 HMAC 체인 -> verifyRecords() 로 수정 여부 검사.
 
 var APP_URL_DEFAULT = 'https://contactmonsieurkim-pixel.github.io/Commande-Tapfruit/worktime/';
@@ -30,6 +31,8 @@ var REC_SHEETS = {
                 'Legacy ID', 'Hash'],
   Requests: ['Sent at', 'From', 'Message', 'Hash'],
   Deleted: ['ID', 'Title', 'Deleted at', 'Deleted by', 'Hash'],
+  Receipts: ['Saved at', 'Name', 'Month', 'File name', 'File ID', 'Status', 'Hash'],
+  'Receipt Mails': ['Sent at', 'Month', 'Sent by', 'To', 'Summary', 'File IDs', 'Hash'],
 };
 
 // ------------------------------------------------------------------ setup helpers
@@ -541,6 +544,7 @@ function dailyReminder() {
  *  한 사람에게는 1)+2)를 합쳐 메일 1통·푸시 1번만 보냄.
  *  3) 밤사이 Supervisor 알림(출퇴근·로그인)을 한 번에 요약해서 보냄.
  *  4) 스케줄 확인 요청 (Schedule.gs)
+ *  5) 매월 1일: 교통카드 정기권 영수증 업로드 요청 메일 (Receipts.gs)
  */
 function morningRun() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
@@ -568,5 +572,10 @@ function morningRun() {
     notifySchedules_(); // 스케줄 확인 요청 (2주 전 화요일부터 확인할 때까지 매일)
   } catch (err) {
     console.error(err); // 스케줄 파일 문제가 다른 아침 알림을 막지 않도록
+  }
+  try {
+    notifyReceipts_(); // 매월 1일만
+  } catch (err2) {
+    console.error(err2);
   }
 }
