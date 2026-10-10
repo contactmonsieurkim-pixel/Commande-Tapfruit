@@ -1919,9 +1919,9 @@
     rcInfo = r;
     $('rc-month').textContent = 'TCL pass · ' + r.label;
     const done = r.files.length > 0;
-    $('rc-alert').textContent = 'The upload period is the 1st to the 5th of each month. Your receipt is still accepted — ' +
-      'next time, please upload by the 5th. 🙏';
-    $('rc-alert').classList.toggle('hidden', !r.late);
+    // 5일이 지나서 올린 경우에만: 담담하게 기간만 알려 줌
+    $('rc-alert').textContent = 'Received after the 5th. The upload period is the 1st to the 5th of each month.';
+    $('rc-alert').classList.toggle('hidden', !r.files.some((f) => f.late));
     $('rc-due').textContent = (r.required ? '' : 'You are not on the transport receipt list — upload only if your manager asked. ') +
       'Upload period: 1–' + r.deadline + '. A photo of the receipt or a screenshot / PDF from the TCL app is fine. ' +
       'It is sent to the accountant with your name.';
