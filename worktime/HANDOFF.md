@@ -31,7 +31,7 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 | `Rules.gs` | Our Rules (번호, 버전, 이관, 확인, 수정) | `announceRule_` |
 | `Schedule.gs` | 스케줄 시트 읽기(주 단위), 주별 읽고 동의(내용 지문), 2주 전 화요일 알림, 변경 감지 | `checkSchedule` |
 
-API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm`
+API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team`
 
 스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
 
@@ -69,6 +69,14 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - 기록 시트는 보호 + 행마다 직전 행과 이어지는 HMAC. 소유자 편집은 Google 이 막을 수 없으므로 "막기"가 아니라 "드러나게". 관리자 화면 경고 / 편집기에서 `verifyRecords`.
 - 시트 구조를 바꿀 때 **기존 행·열을 건드리지 말 것**(체인이 깨짐). 예: 수신 대상은 새 열 대신 Type 칸에 ` · Teams: …` 로 덧붙임.
 
+**현재 상태 (오른쪽 위 아이콘 · Team status)**
+- 오른쪽 위 = 마지막 출퇴근 기록: START → 초록 시계(바늘 회전) *Now working* + `In 09:02`, END → 회색 달 *Off duty* + `Out 18:31`, 기록 없음 → 점선 원. 오늘이 아니면 `yesterday`/`Thu 8 Oct` 를 붙임. 누르면 상세(시간 변경 요청 포함).
+- START 뒤 16시간이 지나도 END 가 없으면 주황 `!` *No clock-out?* (퇴근 태그 잊음).
+- 기준은 시트(이번 달, 없으면 지난달; 마지막 20줄 중 START/END 인 마지막 줄). 시간은 **기록된 시간**, Modify 열 값은 "Change requested" 로 따로 표시.
+- 직원 화면은 `me` 에 실려 오고 10분 캐시(`clk_<이름>`, 태그·시간 변경 때 즉시 갱신). 폰에도 `wt_clock` 저장 → 앱을 열자마자 표시.
+- Supervisor(G열) 전용 홈 버튼 **Team status** (`team` 액션): 매번 시트에서 새로 읽음. Working / No clock-out? / Off duty / No record yet 순, 근무 중엔 경과 시간.
+- 시트를 손으로 고친 것은 Team status 에는 바로, 직원 본인 화면에는 최대 10분 뒤 반영.
+
 ## 4. 작업 방식 (사장님과 합의된 흐름)
 
 - 사장님: 한국어, Mac + iPhone(Chrome/Safari), Supervisor = **Kim namheon**.
@@ -87,7 +95,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 77개)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 79개)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```

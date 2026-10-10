@@ -239,6 +239,32 @@
     .zone.am .role { color: #1d2420; border-color: #c8cfcb; }
     .zone.pm .role { color: #ffffff; border-color: #6b736f; }
     #sch-body { overflow-anchor: none; }
+    /* 오른쪽 위: 나의 현재 상태 (마지막 출퇴근 기록) */
+    .me { display: flex; align-items: center; gap: 8px; width: auto; margin: 0; padding: 4px 6px; border-radius: 12px;
+          background: none; color: var(--text); font-weight: 400; text-align: left; }
+    .me-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+    .me-label { font-size: 13px; font-weight: 700; white-space: nowrap; }
+    .me-time, .me-name { font-size: 12px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .st { width: 30px; height: 30px; flex: none; display: block; }
+    .st.working { color: var(--ok); } .st.late { color: #d68a00; } .st.off, .st.none { color: var(--muted); }
+    .lbl-working { color: var(--ok); } .lbl-late { color: #d68a00; } .lbl-off, .lbl-none { color: var(--muted); }
+    .st .hand { transform-origin: 12px 12px; animation: spin 4s linear infinite; }
+    .st .pulse { transform-origin: 12px 12px; animation: pulse 2s ease-out infinite; }
+    @keyframes pulse { from { transform: scale(.7); opacity: .5; } to { transform: scale(1.15); opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) { .st .hand, .st .pulse { animation: none; } }
+    /* Team status (Supervisor) */
+    .team-group { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin: 16px 2px 6px; }
+    .mate { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--line);
+            border-radius: 14px; padding: 10px 14px; margin-bottom: 8px; }
+    .mate.working { border-left: 5px solid var(--ok); } .mate.late { border-left: 5px solid #d68a00; }
+    .mate .st { width: 34px; height: 34px; }
+    .mate-who { flex: 1; min-width: 0; }
+    .mate-who b, .mate-who span { display: block; overflow-wrap: anywhere; }
+    .mate-state { text-align: right; flex: none; line-height: 1.25; }
+    .mate-state .me-label { font-size: 14px; }
+    .mate-state .me-time { font-size: 13px; }
+    .change { display: inline-block; margin-top: 3px; font-size: 12px; font-weight: 600; border-radius: 6px; padding: 0 6px;
+              background: var(--warn-bg); color: var(--warn-ink); }
     .pending-box button { width: auto; margin: 6px 6px 0 0; padding: 8px 12px; font-size: 14px; background: #fff; color: var(--err); }
   </style>
 </head>
@@ -247,7 +273,14 @@
   <header>
     <button id="b-logo" class="brand" type="button" aria-label="monsieur Kim — home"><img src="logo-mark.png" alt=""></button>
     <span class="who">
-      <span id="who"></span>
+      <button id="b-me" class="me hidden" type="button">
+        <span id="me-icon"></span>
+        <span class="me-text">
+          <span id="me-label" class="me-label hidden"></span>
+          <span id="me-time" class="me-time hidden"></span>
+          <span id="who" class="me-name"></span>
+        </span>
+      </button>
       <button id="b-bell" class="bell hidden" aria-label="Notifications" title="Notifications">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
@@ -278,6 +311,7 @@
     <button id="b-sched" class="secondary">Schedule<span id="badge-sched" class="badge hidden"></span></button>
     <button id="b-request" class="secondary">Request</button>
     <button id="b-inbox" class="secondary hidden">Requests inbox</button>
+    <button id="b-team" class="secondary hidden">Team status</button>
     <button id="b-admin" class="secondary hidden">Manager</button>
   </section>
 
@@ -329,6 +363,13 @@
   </section>
 
   <!-- 관리자: 공지 작성 + 확인 현황 -->
+  <section id="v-team" class="hidden">
+    <h2 class="feed-title">Team status</h2>
+    <div class="sch-bar"><span id="team-meta" class="meta"></span><button id="b-team-refresh" class="link" type="button">Refresh</button></div>
+    <div id="team-list"><p class="hint">Loading…</p></div>
+    <button id="b-team-back" class="secondary">Back</button>
+  </section>
+
   <section id="v-admin" class="hidden">
     <div class="card">
       <h3 id="post-heading">New announcement or rule</h3>
@@ -464,7 +505,7 @@
       if (v != null) { try { localStorage.setItem(k, v); } catch (e) {} }
     }
   }
-  const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed', 'request', 'inbox', 'schedule'];
+  const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed', 'request', 'inbox', 'schedule', 'team'];
   let lastTap = null;
   let annReturn = 'home';
 
@@ -475,9 +516,12 @@
     document.querySelector('main').classList.toggle('wide', view === 'schedule');
     const name = store.get('wt_name');
     $('who').textContent = name || '';
+    $('b-me').classList.toggle('hidden', !name || view === 'login');
     $('b-bell').classList.toggle('hidden', !name || view === 'login');
     $('b-admin').classList.toggle('hidden', store.get('wt_admin') !== '1');
     $('b-inbox').classList.toggle('hidden', store.get('wt_sup') !== '1');
+    $('b-team').classList.toggle('hidden', store.get('wt_sup') !== '1');
+    renderMe();
     window.scrollTo(0, 0);
   }
 
@@ -653,6 +697,7 @@
       return;
     }
     lastTap = r;
+    saveClock(r.clock);
     saveTips(r.tips);
     if (!currentTip) { currentTip = pickTip(); showTip(currentTip); }
     result('✅', r.info, r.date + '  ' + r.time, 'Saved. Thank you!', 'ok');
@@ -691,6 +736,8 @@
         setSchedBadge(r.schedulePending || 0);
         store.set('wt_sup', r.supervisor ? '1' : '0');
         $('b-inbox').classList.toggle('hidden', !r.supervisor);
+        $('b-team').classList.toggle('hidden', !r.supervisor);
+        saveClock(r.clock);
         saveTips(r.tips);
       }
     } catch (e) { /* 오프라인이어도 홈 화면은 유지 */ }
@@ -964,6 +1011,140 @@
   }
   $('b-inbox').addEventListener('click', openInbox);
   $('b-inbox-back').addEventListener('click', () => goHome());
+
+  // ---------------------------------------------------------------- 현재 상태 (마지막 출퇴근 기록)
+  // 오른쪽 위: 지금 근무 중인지(START) 퇴근했는지(END) + 기록된 시간. Supervisor 는 Team status 에서 모두를 봄.
+  const LATE_HOURS = 16; // START 뒤로 이만큼 지나도 END 가 없으면 "퇴근 태그를 잊었나?" 로 표시
+  const ICONS = {
+    working: '<circle class="pulse" cx="12" cy="12" r="11" fill="currentColor"/>' +
+      '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/>' +
+      '<line class="hand" x1="12" y1="12" x2="12" y2="6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' +
+      '<circle cx="12" cy="12" r="1.6" fill="currentColor"/>',
+    late: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/>' +
+      '<line x1="12" y1="7" x2="12" y2="13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>' +
+      '<circle cx="12" cy="16.6" r="1.3" fill="currentColor"/>',
+    off: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>',
+    none: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"/>',
+  };
+  const stIcon = (kind) => {
+    const n = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    n.setAttribute('viewBox', '0 0 24 24'); n.setAttribute('class', 'st ' + kind); n.setAttribute('aria-hidden', 'true');
+    n.innerHTML = ICONS[kind];
+    return n;
+  };
+
+  // 지금 파리 시각 'yyyy-MM-dd HH:mm' (기록 시트와 같은 기준)
+  function parisNow() {
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit',
+      day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()).map((x) => [x.type, x.value]));
+    return p.year + '-' + p.month + '-' + p.day + ' ' + p.hour + ':' + p.minute;
+  }
+  const stampMin = (date, time) => {
+    const [y, mo, d] = date.split('-').map(Number), [h, mi] = String(time).split(':').map(Number);
+    return Date.UTC(y, mo - 1, d, h || 0, mi || 0) / 60000;
+  };
+  function dayWord(date, today) {
+    const diff = Math.round((stampMin(today, '00:00') - stampMin(date, '00:00')) / 1440);
+    if (diff === 0) return '';
+    if (diff === 1) return 'yesterday ';
+    const d = new Date(stampMin(date, '00:00') * 60000);
+    return d.toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }) + ' ';
+  }
+  const since = (min) => (min >= 60 ? Math.floor(min / 60) + 'h ' + String(min % 60).padStart(2, '0') + 'm' : min + ' min');
+
+  // { kind, label, time, elapsed } — kind: working | late | off | none
+  function clockState(c) {
+    if (!c || !c.date) return { kind: 'none', label: 'No record yet', time: '' };
+    const now = parisNow(), today = now.slice(0, 10);
+    const when = dayWord(c.date, today) + c.time;
+    if (c.info === 'START') {
+      const min = Math.max(0, stampMin(today, now.slice(11)) - stampMin(c.date, c.time));
+      if (min >= LATE_HOURS * 60) return { kind: 'late', label: 'No clock-out?', time: 'In ' + when, elapsed: min };
+      return { kind: 'working', label: 'Now working', time: 'In ' + when, elapsed: min };
+    }
+    return { kind: 'off', label: 'Off duty', time: 'Out ' + when };
+  }
+
+  // 저장해 두고 앱을 열자마자 보여줌 (서버 답이 오면 갱신). 다른 이름으로 로그인하면 쓰지 않음.
+  function myClock() {
+    try {
+      const x = JSON.parse(store.get('wt_clock') || 'null');
+      return x && x.name === store.get('wt_name') ? x.clock : undefined;
+    } catch (e) { return undefined; }
+  }
+  function saveClock(c) {
+    if (c === undefined) return; // 서버가 상태를 못 읽음 -> 이전 표시 유지
+    store.set('wt_clock', JSON.stringify({ name: store.get('wt_name'), clock: c }));
+    renderMe();
+  }
+  function renderMe() {
+    const c = myClock(), known = c !== undefined, st = clockState(c);
+    $('me-icon').replaceChildren(known ? stIcon(st.kind) : '');
+    $('me-label').textContent = st.label;
+    $('me-label').className = 'me-label lbl-' + st.kind + (known ? '' : ' hidden');
+    $('me-time').textContent = st.time;
+    $('me-time').classList.toggle('hidden', !known || !st.time);
+    $('b-me').setAttribute('aria-label', (known ? st.label + (st.time ? ', ' + st.time : '') + ' — ' : '') + store.get('wt_name'));
+  }
+  $('b-me').addEventListener('click', () => {
+    const c = myClock();
+    if (c === undefined) return;
+    const st = clockState(c);
+    if (!c) return toast('No clock-in or clock-out recorded yet.');
+    toast('Last record: ' + (c.info === 'START' ? 'clock-in (START)' : 'clock-out (END)') + ' · ' +
+          st.time.replace(/^(In|Out) /, '') + (c.change ? ' · change requested: ' + c.change : '') +
+          (st.kind === 'late' ? ' · Forgot to tap END? Please tell your manager.' : ''));
+  });
+  setInterval(() => { if (document.visibilityState === 'visible') renderMe(); }, 60000); // 자정·16시간 경계
+
+  // Supervisor: 모든 직원의 상태를 한 화면에
+  const TEAM_GROUPS = [['working', 'Working'], ['late', 'No clock-out?'], ['off', 'Off duty'], ['none', 'No record yet']];
+  async function openTeam() {
+    if (currentView !== 'team') {
+      show('team');
+      $('team-list').replaceChildren(el('p', 'hint', 'Loading…'));
+    }
+    $('team-meta').textContent = 'Updating…';
+    try {
+      const r = await api({ action: 'team', token: token() });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) { $('team-meta').textContent = ''; return $('team-list').replaceChildren(el('p', 'err', serverMsg(r))); }
+      renderTeam(r.staff);
+      $('team-meta').textContent = 'Updated ' + parisNow().slice(11);
+    } catch (e) {
+      $('team-meta').textContent = '';
+      $('team-list').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
+    }
+  }
+  function renderTeam(staff) {
+    const rows = staff.map((x) => Object.assign({ st: clockState(x.clock) }, x));
+    const key = (x) => (x.clock ? stampMin(x.clock.date, x.clock.time) : 0);
+    const box = $('team-list');
+    box.replaceChildren();
+    for (const [kind, title] of TEAM_GROUPS) {
+      const list = rows.filter((x) => x.st.kind === kind)
+        .sort((a, b) => (kind === 'off' ? key(b) - key(a) : kind === 'none' ? a.name.localeCompare(b.name) : key(a) - key(b)));
+      if (!list.length) continue;
+      box.append(el('div', 'team-group', title + ' (' + list.length + ')'));
+      for (const x of list) {
+        const card = el('div', 'mate ' + x.st.kind);
+        const who = el('div', 'mate-who');
+        who.append(el('b', null, x.name));
+        if (x.team) who.append(el('span', 'meta', x.team));
+        const state = el('div', 'mate-state');
+        state.append(el('div', 'me-label lbl-' + x.st.kind, x.st.label));
+        if (x.st.time) state.append(el('div', 'me-time', x.st.time));
+        if (x.st.elapsed != null) state.append(el('div', 'me-time', 'for ' + since(x.st.elapsed)));
+        if (x.clock && x.clock.change) state.append(el('span', 'change', 'Change requested: ' + x.clock.change));
+        card.append(stIcon(x.st.kind), who, state);
+        box.append(card);
+      }
+    }
+    if (!rows.length) box.append(el('p', 'hint', 'No active staff.'));
+  }
+  $('b-team').addEventListener('click', openTeam);
+  $('b-team-refresh').addEventListener('click', openTeam);
+  $('b-team-back').addEventListener('click', () => goHome());
 
   // ---------------------------------------------------------------- Schedule (읽기 전용 + 주마다 읽고 동의)
   let schedSel = {}, schedData = null;
@@ -1758,6 +1939,7 @@
       const r = await api({ action: 'modify', token: token(), editToken: lastTap.editToken, time: $('m-time').value });
       if (!r.ok) { $('m-msg').textContent = r.error; return; }
       $('b-modify').classList.add('hidden');
+      if (lastTap.clock) saveClock(Object.assign({}, lastTap.clock, { change: r.time }));
       result('📝', lastTap.info, lastTap.date + '  ' + lastTap.time,
              'Time change requested: ' + r.time + '. Your manager will review it.', 'ok');
     } catch (e) {
@@ -1784,6 +1966,7 @@
       if (currentView === 'home') return goHome();
       if (currentView === 'ann') return openFeed(feed, annReturn);
       if (currentView === 'inbox') return openInbox();
+      if (currentView === 'team') return openTeam();
       if (currentView === 'schedule') {
         return openSchedule(schedData ? { sched: schedData.sched, file: schedData.file, tab: schedData.tab } : {}, false, null, true);
       }
