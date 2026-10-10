@@ -84,6 +84,12 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - Supervisor(G열) 전용 홈 버튼 **Team status** (`team` 액션): 매번 시트에서 새로 읽음. Working / No clock-out? / Off duty / No record yet 순, 근무 중엔 경과 시간.
 - 시트를 손으로 고친 것은 Team status 에는 바로, 직원 본인 화면에는 최대 10분 뒤 반영.
 
+**메인 화면 = 앱 아이콘** (2026-10-10)
+- 버튼 목록 대신 3열 아이콘 그리드: Announcements · Our Rules · Schedule · Pass receipt · Request (+ 관리자면 **Manager 폴더**).
+- 확인할 것이 있으면 아이콘 오른쪽 위 빨간 숫자 배지(예전 "채워진 버튼" 대신). 영수증 1~5일 미제출 = 파란 점 + 아이콘 아래 `by 5 October`.
+- **Manager 폴더**(iPhone 폴더처럼, 눌러서 열고 바깥을 누르면 닫힘): Admin(E열) → *Post & status*(예전 Manager 화면), Supervisor(G열) → *Requests inbox* · *Team status* · *To accountant*. 안에 보이는 앱이 하나도 없으면 폴더 자체가 안 보임(`syncManager`). 폴더 아이콘은 안에 든 앱을 작게 2×2.
+- 버튼 id(`b-anns` 등)와 동작은 그대로 — 화면만 바뀜.
+
 ## 4. 작업 방식 (사장님과 합의된 흐름)
 
 - 사장님: 한국어, Mac + iPhone(Chrome/Safari), Supervisor = **Kim namheon**.
