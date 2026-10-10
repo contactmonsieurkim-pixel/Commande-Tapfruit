@@ -2,7 +2,8 @@
 //   (정기권 비용의 50% 가 월급에 포함되어 지원됨. 안 올리면 본인 손해일 뿐이라 알림은 가볍게.)
 //
 //   - 대상: Employees 탭 H열(Transport receipt)이 FALSE 가 아닌 직원 (빈칸 = 대상)
-//   - 기간: 그달 1일 ~ RECEIPT_DUE_DAY 일 (파리), 그달 정기권 영수증. 그 뒤에 올린 것은 'late' 로 기록, 기본으로 메일에 안 붙음
+//   - 기간: 그달 1일 ~ RECEIPT_DUE_DAY 일 (파리), 그달 정기권 영수증. 그 뒤에 올려도 그대로 받음
+//     ('late' 로 기록 + 노란 안내 '다음엔 5일까지'. 5일 마감은 사람을 움직이게 하려는 것일 뿐, 늦은 것도 다음 발송 때 같이 감)
 //   - 알림: 1일 09:00 메일 1통만. 1~5일 아직 안 올렸으면 메인 화면 버튼에 파란 색 (출근 도장 화면·푸시 없음)
 //   - 파일: Drive 'Transport Receipts' 폴더에 '이름 yyyy-MM.jpg' (두 번째부터 ' (2)')
 //   - 회계사 메일: Supervisor 가 화면에서 주소·내용을 확인하고 Confirm → 제출 여부 표(본문) + 첨부.
@@ -223,11 +224,11 @@ function receiptStatus_(req) {
 }
 
 /** 이번에 보낼 파일 + 메일 본문(사람마다 제출 여부만). 미리보기와 실제 발송이 같은 함수를 씀. */
-function receiptMail_(month, includeLate) {
+function receiptMail_(month) {
   var state = receiptState_(month), people = receiptPeople_(state);
   var attach = [], rows = [], yes = 0;
   people.forEach(function (p) {
-    var send = p.files.filter(function (f) { return !f.sentAt && (!f.late || includeLate); });
+    var send = p.files.filter(function (f) { return !f.sentAt; }); // 늦게 올린 것도 포함
     var submitted = send.length > 0 || p.files.some(function (f) { return f.sentAt; });
     if (submitted) yes++;
     send.forEach(function (f) { attach.push(f); });
@@ -268,12 +269,11 @@ function receiptSend_(req) {
   if (!/^\d{4}-\d\d$/.test(month)) fail_('Please choose a month.');
   var to = String(req.to || '').trim();
   if (!/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(to)) fail_('Please enter the accountant\'s email address.');
-  var includeLate = !!req.includeLate;
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
     checkSender_();
-    var mail = receiptMail_(month, includeLate);
+    var mail = receiptMail_(month);
     if (!mail.attach.length) fail_('There is no new receipt to send for ' + monthLabel_(month) + '.');
     var ids = mail.attach.map(function (f) { return f.id; });
     if (!req.confirm) {
@@ -331,8 +331,7 @@ function notifyReceipts_() {
           '<p style="margin:16px 0"><a href="' + esc_(url) + '" style="display:inline-block;background:#2b6cb0;' +
           'color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px">' +
           'Upload receipt</a></p>' +
-          '<p style="color:#66706b;font-size:13px">Receipts uploaded after ' + esc_(deadline) +
-          ' cannot be included for ' + esc_(label) + '.</p></div>' });
+          '</div>' });
       result = 'sent';
     } catch (err) { result = 'error: ' + err.message; }
     var lock = LockService.getScriptLock();

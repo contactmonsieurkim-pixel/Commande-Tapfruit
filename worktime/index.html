@@ -380,7 +380,6 @@
       <div id="rs-form">
         <label for="rs-to">Accountant's email</label>
         <input id="rs-to" type="email" autocomplete="off" placeholder="accountant@example.com">
-        <label class="check" id="rs-late-box"><input type="checkbox" id="rs-late"> <span id="rs-late-label">Also attach late uploads</span></label>
         <button id="b-rs-review" type="button">Check the email</button>
       </div>
       <div id="rs-confirm" class="hidden">
@@ -1661,8 +1660,8 @@
     rcInfo = r;
     $('rc-month').textContent = 'TCL pass · ' + r.label;
     const done = r.files.length > 0;
-    $('rc-alert').textContent = 'The upload period (1–' + r.deadline + ') is over. A receipt uploaded now cannot be included for ' +
-      r.label + '.';
+    $('rc-alert').textContent = 'The upload period is the 1st to the 5th of each month. Your receipt is still accepted — ' +
+      'next time, please upload by the 5th. 🙏';
     $('rc-alert').classList.toggle('hidden', !r.late);
     $('rc-due').textContent = (r.required ? '' : 'You are not on the transport receipt list — upload only if your manager asked. ') +
       'Upload period: 1–' + r.deadline + '. A photo of the receipt or a screenshot / PDF from the TCL app is fine. ' +
@@ -1680,7 +1679,7 @@
   function receiptFileRow(f, forSup, month) {
     const row = el('div', 'rc-file');
     const name = el('div', 'fname', f.fileName);
-    if (f.late) name.append(el('span', 'tag late', 'late'));
+    if (f.late && forSup) name.append(el('span', 'tag late', 'after the 5th'));
     if (f.sent || f.sentAt) name.append(el('span', 'tag sent', 'sent' + (f.sentAt ? ' ' + f.sentAt.slice(5, 10) : '')));
     row.append(name, el('div', 'meta', 'Uploaded ' + f.at.slice(0, 16)));
     const acts = el('div', 'acts');
@@ -1760,8 +1759,6 @@
 
   $('b-rc-upload').addEventListener('click', async () => {
     if (!rcNew.length) return;
-    if (rcInfo && rcInfo.late && !confirm('The deadline (' + rcInfo.deadline + ') has passed.\n' +
-      'This receipt will NOT be included for ' + rcInfo.label + '. Upload anyway?')) return;
     const btn = $('b-rc-upload'); btn.disabled = true;
     $('rc-msg').className = ''; $('rc-msg').textContent = 'Uploading…';
     try {
@@ -1769,9 +1766,8 @@
       if (!r.ok) { $('rc-msg').className = 'err'; $('rc-msg').textContent = serverMsg(r); return; }
       rcNew = []; renderNew();
       renderReceipt(r);
-      $('rc-msg').className = r.late ? 'err' : 'ok';
-      $('rc-msg').textContent = r.late ? 'Uploaded, but after the deadline — not included for ' + r.label + '.'
-        : 'Uploaded. Thank you!';
+      $('rc-msg').className = 'ok';
+      $('rc-msg').textContent = 'Uploaded. Thank you!';
     } catch (e) {
       $('rc-msg').className = 'err'; $('rc-msg').textContent = 'Network problem. Please try again.' + detail(e);
     } finally {
@@ -1809,7 +1805,7 @@
   function personStatus(p) {
     const left = p.files.filter((f) => !f.sentAt);
     if (left.some((f) => !f.late)) return ['ok', 'Received'];
-    if (left.length) return ['late', 'Late'];
+    if (left.length) return ['late', 'Received late'];
     if (p.files.length) return ['sent', 'Sent'];
     return p.required ? ['miss', 'Missing'] : ['sent', '—'];
   }
@@ -1828,8 +1824,8 @@
     const st = r.people.map(personStatus), count = (k) => st.filter((x) => x[0] === k).length;
     const need = r.people.filter((p) => p.required);
     $('rs-counts').replaceChildren(
-      el('span', 'tag ok', '✓ ' + need.filter((p) => p.files.some((f) => !f.late)).length + ' / ' + need.length + ' on time'),
-      ...(count('late') ? [el('span', 'tag late', count('late') + ' late')] : []),
+      el('span', 'tag ok', '✓ ' + need.filter((p) => p.files.length).length + ' / ' + need.length + ' submitted'),
+      ...(count('late') ? [el('span', 'tag late', count('late') + ' after the 5th')] : []),
       ...(count('miss') ? [el('span', 'tag miss', count('miss') + ' missing')] : []));
     const t = el('table', 'rtable');
     const head = el('tr');
@@ -1857,10 +1853,6 @@
     });
     $('rs-table').replaceChildren(t);
     if (!$('rs-to').value) $('rs-to').value = r.accountant;
-    const late = r.people.reduce((n, p) => n + p.files.filter((f) => f.late && !f.sentAt).length, 0);
-    $('rs-late-box').classList.toggle('hidden', !late);
-    if (!late) $('rs-late').checked = false;
-    $('rs-late-label').textContent = 'Also attach late uploads (' + late + ')';
     const hist = $('rs-history');
     hist.replaceChildren();
     if (r.mails.length) {
@@ -1876,8 +1868,7 @@
     const btn = $('b-rs-review'); btn.disabled = true;
     $('rs-msg').className = ''; $('rs-msg').textContent = 'Preparing…';
     try {
-      const r = await api({ action: 'receiptSend', token: token(), month: rsData.month, to: $('rs-to').value,
-                            includeLate: $('rs-late').checked });
+      const r = await api({ action: 'receiptSend', token: token(), month: rsData.month, to: $('rs-to').value });
       if (!r.ok) { $('rs-msg').className = 'err'; $('rs-msg').textContent = serverMsg(r); return; }
       rsPreview = r;
       $('rs-msg').textContent = '';
@@ -1909,7 +1900,7 @@
     $('rs-msg').className = ''; $('rs-msg').textContent = 'Sending…';
     try {
       const r = await api({ action: 'receiptSend', token: token(), month: rsData.month, to: rsPreview.to,
-                            includeLate: $('rs-late').checked, confirm: true, expect: rsPreview.expect });
+                            confirm: true, expect: rsPreview.expect });
       if (!r.ok) {
         $('rs-msg').className = 'err'; $('rs-msg').textContent = serverMsg(r);
         if (r.code === 'CHANGED') openReceipts(rsData.month).then(() => { $('rs-msg').className = 'err'; $('rs-msg').textContent = r.error; });
