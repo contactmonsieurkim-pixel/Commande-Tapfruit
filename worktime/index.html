@@ -361,6 +361,59 @@
     @keyframes fade { from { opacity: 0; } }
     @keyframes pop { from { transform: scale(.85); opacity: 0; } }
     @media (prefers-reduced-motion: reduce) { .folder, .folder-box .apps { animation: none; } }
+    /* Chat: 전체 방 + 팀별 방 */
+    .ic-chat { background: linear-gradient(160deg, #5cc96f, #2e9c4a); }
+    .room { display: flex; align-items: center; gap: 12px; width: 100%; margin: 0 0 8px; padding: 12px 14px; text-align: left;
+            background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 14px; font-weight: 400; }
+    .room-av { width: 44px; height: 44px; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+               font-size: 19px; font-weight: 700; color: #fff; background: linear-gradient(160deg, #5cc96f, #2e9c4a); }
+    .room-main { display: block; flex: 1; min-width: 0; }
+    .room-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .room-top b { font-size: 16px; }
+    .room-top .meta { flex: none; font-size: 12px; }
+    .room-last { display: block; color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .room .badge { margin: 0; flex: none; }
+    .room .muted-ic { font-size: 13px; opacity: .7; }
+    #v-chat.in-room { padding-bottom: 150px; }
+    #v-chat:not(.in-room) { padding-bottom: 72px; }
+    #v-chat.in-room .back-fab { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 74px); }
+    .chat-head { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; }
+    .chat-head .feed-title { margin: 0; }
+    .chat-head .meta { flex: 1; }
+    .chat-head .bell { width: 40px; height: 40px; padding: 8px; margin: 0; }
+    #b-chat-older { display: block; margin: 0 auto 8px; }
+    .day-sep { text-align: center; margin: 14px 0 6px; }
+    .day-sep span { font-size: 12px; font-weight: 600; color: var(--muted); background: var(--bg); padding: 2px 10px;
+                    border: 1px solid var(--line); border-radius: 10px; }
+    .msg { display: flex; flex-direction: column; align-items: flex-start; margin-top: 2px; }
+    .msg.first { margin-top: 10px; }
+    .msg.mine { align-items: flex-end; }
+    .msg .from { font-size: 12px; font-weight: 700; color: var(--muted); margin: 0 0 2px 10px; }
+    .bubble { max-width: 82%; padding: 8px 12px; border-radius: 18px; background: var(--card); border: 1px solid var(--line);
+              white-space: pre-wrap; overflow-wrap: anywhere; font-size: 16px; line-height: 1.35; cursor: pointer; }
+    .msg.mine .bubble { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+    .msg.del .bubble { background: transparent; color: var(--muted); font-style: italic; font-size: 14px; cursor: default; }
+    .msg.pending .bubble { opacity: .6; }
+    .bubble img { display: block; max-width: 100%; max-height: 320px; border-radius: 12px; margin: 2px -4px; }
+    .bubble .ph { display: block; font-size: 14px; opacity: .8; }
+    .msg .when { font-size: 11px; color: var(--muted); margin: 1px 10px 0; font-variant-numeric: tabular-nums; }
+    .msg .acts { margin: 2px 8px 0; }
+    .msg .acts button { color: var(--err); font-size: 13px; }
+    .composer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; display: flex; justify-content: center;
+                padding: 8px 12px max(10px, env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--line); }
+    .composer-in { width: 100%; max-width: 420px; }
+    .composer-row { display: flex; align-items: flex-end; gap: 8px; }
+    .composer textarea { min-height: 0; height: 42px; max-height: 140px; padding: 9px 14px; border-radius: 21px; font-size: 16px;
+                         line-height: 1.4; resize: none; overflow-y: auto; }
+    .composer .pick { flex: none; width: 42px; height: 42px; margin: 0; padding: 0; border-radius: 50%; font-size: 20px; line-height: 42px;
+                      background: var(--card); border: 1px solid var(--line); }
+    .composer button[type=submit] { flex: none; width: auto; margin: 0; padding: 0 16px; height: 42px; border-radius: 21px; font-size: 16px; }
+    .composer .att { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 14px; color: var(--muted); }
+    .composer .att img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; }
+    .composer .att button { width: auto; margin: 0; }
+    .new-pill { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(max(10px, env(safe-area-inset-bottom)) + 74px);
+                width: auto; margin: 0; padding: 8px 16px; border-radius: 18px; font-size: 14px; z-index: 6;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, .2); }
   </style>
 </head>
 <body>
@@ -405,6 +458,7 @@
       <button id="b-anns" class="app" type="button"><span class="app-ic ic-ann"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg><span id="badge" class="badge hidden"></span></span><span class="app-name">Announcements</span></button>
       <button id="b-rules" class="app" type="button"><span class="app-ic ic-rules"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/></svg><span id="badge-rules" class="badge hidden"></span></span><span class="app-name">Our Rules</span></button>
       <button id="b-sched" class="app" type="button"><span class="app-ic ic-sched"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h2M14 14h2M8 18h2"/></svg><span id="badge-sched" class="badge hidden"></span></span><span class="app-name">Schedule</span></button>
+      <button id="b-chat" class="app" type="button"><span class="app-ic ic-chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg><span id="badge-chat" class="badge hidden"></span></span><span class="app-name">Chat</span></button>
       <button id="b-receipt" class="app" type="button"><span class="app-ic ic-receipt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4z"/><path d="M14 5v2M14 11v2M14 17v2"/></svg><span class="badge dot hidden"></span></span><span class="app-name">Pass receipt</span><small id="receipt-due" class="app-sub hidden"></small></button>
       <button id="b-request" class="app" type="button"><span class="app-ic ic-request"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg></span><span class="app-name">Request</span></button>
       <button id="b-folder" class="app hidden" type="button" aria-haspopup="dialog"><span id="folder-ic" class="app-ic folder-ic"></span><span class="app-name">Manager</span></button>
@@ -446,6 +500,40 @@
     <div id="sch-body"><p class="hint">Loading…</p></div>
     <button id="b-sch-back" class="back-fab" type="button">← Back</button>
     <button id="b-sch-today" class="today-fab" type="button">Today</button>
+  </section>
+
+  <!-- Chat: 방 목록 -> 방 (몇 초마다 새 메시지를 물어봄) -->
+  <section id="v-chat" class="hidden">
+    <div id="chat-list-box">
+      <h2 class="feed-title">Chat</h2>
+      <div id="chat-rooms"><p class="hint">Loading…</p></div>
+    </div>
+    <div id="chat-room-box" class="hidden">
+      <div class="chat-head">
+        <h2 id="chat-title" class="feed-title"></h2>
+        <span id="chat-members" class="meta"></span>
+        <button id="b-chat-mute" class="bell" type="button" aria-label="Notifications for this chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            <line class="slash" x1="3" y1="3" x2="21" y2="21"/>
+          </svg>
+        </button>
+      </div>
+      <button id="b-chat-older" class="link hidden" type="button">Earlier messages</button>
+      <div id="chat-msgs"></div>
+      <button id="b-chat-new" class="new-pill hidden" type="button">New messages ↓</button>
+      <form id="f-chat" class="composer">
+        <div class="composer-in">
+          <div id="chat-att" class="att hidden"><img id="chat-att-img" alt=""><span>Photo</span><button id="b-chat-att-x" class="link" type="button">Remove</button></div>
+          <div class="composer-row">
+            <label class="pick" title="Add a photo" aria-label="Add a photo">📷<input id="chat-photo" type="file" accept="image/*"></label>
+            <textarea id="chat-text" rows="1" maxlength="1000" placeholder="Message"></textarea>
+            <button type="submit" id="b-chat-send">Send</button>
+          </div>
+        </div>
+      </form>
+    </div>
+    <button id="b-chat-back" class="back-fab" type="button">← Back</button>
   </section>
 
   <!-- 교통카드 결제 영수증 올리기 (매월 1~5일) -->
@@ -666,7 +754,7 @@
     }
   }
   const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed', 'request', 'inbox', 'schedule', 'team',
-                 'receipt', 'receipts'];
+                 'receipt', 'receipts', 'chat'];
   let lastTap = null;
   let annReturn = 'home';
 
@@ -682,6 +770,7 @@
     closeFolder();
     syncManager();
     renderMe();
+    if (view !== 'chat') stopChatPoll();
     window.scrollTo(0, 0);
   }
 
@@ -734,7 +823,8 @@
     if (q.has('p') && q.has('a') && q.has('c')) {
       sessionStorage.setItem('wt_pending', JSON.stringify({ a: q.get('a'), p: q.get('p'), c: q.get('c') }));
     }
-    if (['ann', 'rules', 'requests', 'schedule', 'receipt', 'receipts'].includes(q.get('view'))) sessionStorage.setItem('wt_view', q.get('view'));
+    if (['ann', 'rules', 'requests', 'schedule', 'receipt', 'receipts', 'chat'].includes(q.get('view'))) sessionStorage.setItem('wt_view', q.get('view'));
+    if (q.get('view') === 'chat' && q.get('room')) sessionStorage.setItem('wt_chat_room', q.get('room'));
     if (location.search) history.replaceState(null, '', location.pathname);
     const raw = sessionStorage.getItem('wt_pending');
     return raw ? JSON.parse(raw) : null;
@@ -910,6 +1000,7 @@
         setBadge(r.unread);
         setRuleBadge(r.unreadRules);
         setSchedBadge(r.schedulePending || 0);
+        setChatBadge(r.chatUnread || 0);
         store.set('wt_sup', r.supervisor ? '1' : '0');
         syncManager();
         setReceiptDue(r.receipt);
@@ -2428,6 +2519,370 @@
   $('b-admin').addEventListener('click', () => { stopEditRule(); show('admin'); loadStatus(); loadStaff(); });
   $('b-admin-back').addEventListener('click', () => { stopEditRule(); goHome(); });
 
+  // ---------------------------------------------------------------- Chat (전체 방 + 팀별 방)
+  // Apps Script 는 서버가 먼저 보낼 수 없으므로, 화면이 열려 있는 동안 몇 초마다 새 메시지를 물어봄.
+  // 받은 메시지는 폰에도 저장(wt_chat_v1) -> 다시 열면 바로 보이고 뒤에서 갱신. 방을 열면 서버가 읽음으로 기록.
+  const CHAT_POLL_ROOM = 5000, CHAT_POLL_LIST = 15000, CHAT_STORE = 'wt_chat_v1';
+  const chat = { rooms: [], room: null, loaded: null, msgs: [], hasOlder: false, muted: false, canDeleteAll: false, act: null, sig: '' };
+  const chatPhotos = {};
+  let chatTimer = null, chatBusy = false, chatPhotoData = null;
+
+  function setChatBadge(n) {
+    $('badge-chat').textContent = n > 99 ? '99+' : n;
+    $('badge-chat').classList.toggle('hidden', !n);
+  }
+
+  function chatSaved() {
+    const empty = { name: store.get('wt_name'), rooms: [], msgs: {} };
+    try {
+      const x = JSON.parse(store.get(CHAT_STORE) || 'null');
+      return x && x.name === store.get('wt_name') ? x : empty;
+    } catch (e) { return empty; }
+  }
+  function chatSave() {
+    const x = chatSaved();
+    x.rooms = chat.rooms;
+    if (chat.room && chat.loaded === chat.room) x.msgs[chat.room] = chat.msgs.filter((m) => !m.pending).slice(-60);
+    store.set(CHAT_STORE, JSON.stringify(x));
+  }
+
+  function stopChatPoll() { clearTimeout(chatTimer); chatTimer = null; }
+  function chatSchedule() {
+    stopChatPoll();
+    if (currentView !== 'chat') return;
+    chatTimer = setTimeout(() => (document.visibilityState === 'visible' ? chatRefresh() : chatSchedule()),
+      chat.room ? CHAT_POLL_ROOM : CHAT_POLL_LIST);
+  }
+
+  const chatTop = () => chat.msgs.reduce((n, m) => (m.pending ? n : Math.max(n, m.s)), 0);
+  const roomLabel = (id) => (id === 'all' ? 'Everyone' : String(id).replace(/^team:/, ''));
+  const nearBottom = () => window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 140;
+  const toBottom = () => window.scrollTo(0, document.documentElement.scrollHeight);
+
+  // 'yyyy-MM-dd HH:mm:ss' (파리) -> 오늘이면 '14:03', 아니면 'Yesterday' / 'Thu 8 Oct'
+  function chatWhen(at) {
+    const day = at.slice(0, 10), today = parisNow().slice(0, 10);
+    if (day === today) return at.slice(11, 16);
+    const w = dayWord(day, today).trim();
+    return w === 'yesterday' ? 'Yesterday' : w;
+  }
+
+  async function openChat(room) {
+    chat.rooms = chatSaved().rooms || [];
+    show('chat');
+    if (room) return openRoom(room);
+    if (chat.rooms.length === 1) return openRoom(chat.rooms[0].id); // 팀이 없으면 Everyone 하나뿐
+    showRoomList();
+    chatRefresh({ auto: true });
+  }
+
+  function showRoomList() {
+    chat.room = null;
+    $('v-chat').classList.remove('in-room');
+    $('chat-list-box').classList.remove('hidden');
+    $('chat-room-box').classList.add('hidden');
+    $('b-chat-new').classList.add('hidden');
+    renderRooms();
+    window.scrollTo(0, 0);
+  }
+
+  function renderRooms() {
+    const box = $('chat-rooms');
+    if (!chat.rooms.length) return box.replaceChildren(el('p', 'hint', 'Loading…'));
+    box.replaceChildren(...chat.rooms.map((r) => {
+      const b = el('button', 'room');
+      b.type = 'button';
+      const main = el('span', 'room-main'), top = el('span', 'room-top');
+      top.append(el('b', null, r.name), el('span', 'meta', r.last ? chatWhen(r.last.at) : ''));
+      main.append(top, el('span', 'room-last', r.last ? r.last.from + ': ' + r.last.text
+        : r.members + (r.members === 1 ? ' member' : ' members') + ' · no messages yet'));
+      b.append(el('span', 'room-av', r.id === 'all' ? '👥' : r.name.slice(0, 1).toUpperCase()), main);
+      if (r.muted) b.append(el('span', 'muted-ic', '🔕'));
+      if (r.unread) b.append(el('span', 'badge', r.unread > 99 ? '99+' : r.unread));
+      b.addEventListener('click', () => openRoom(r.id));
+      return b;
+    }));
+  }
+
+  function openRoom(id) {
+    const info = chat.rooms.find((r) => r.id === id);
+    Object.assign(chat, { room: id, loaded: null, msgs: (chatSaved().msgs[id] || []).slice(), hasOlder: false,
+                          muted: info ? info.muted : false, act: null, sig: '' });
+    $('v-chat').classList.add('in-room');
+    $('chat-list-box').classList.add('hidden');
+    $('chat-room-box').classList.remove('hidden');
+    $('b-chat-new').classList.add('hidden');
+    $('chat-title').textContent = info ? info.name : roomLabel(id);
+    $('chat-members').textContent = info ? info.members + (info.members === 1 ? ' member' : ' members') : '';
+    renderMute();
+    renderMsgs(true);
+    chatRefresh();
+  }
+
+  async function chatRefresh(opts = {}) {
+    if (!token() || currentView !== 'chat' || chatBusy) return;
+    const room = chat.room;
+    const body = { action: 'chat', token: token() };
+    if (room) {
+      body.room = room;
+      if (chat.loaded === room) body.after = chatTop();
+    }
+    chatBusy = true;
+    let next = null;
+    try {
+      const r = await api(body);
+      if (r.code === 'AUTH') { next = () => logout(r.error); return; }
+      if (room !== chat.room || currentView !== 'chat') return; // 그사이 다른 방으로 감
+      if (!r.ok) {
+        if (room) { toast(r.error); next = () => { showRoomList(); chatRefresh(); }; }
+        else $('chat-rooms').replaceChildren(el('p', 'err', serverMsg(r)));
+        return;
+      }
+      chat.rooms = r.rooms;
+      setChatBadge(r.rooms.reduce((n, x) => n + (x.muted ? 0 : x.unread), 0));
+      if (room) {
+        const info = r.rooms.find((x) => x.id === room);
+        if (info) $('chat-members').textContent = info.members + (info.members === 1 ? ' member' : ' members');
+        chat.muted = r.muted;
+        chat.canDeleteAll = r.canDeleteAll;
+        renderMute();
+        const first = body.after == null, before = chatTop();
+        if (first) {
+          chat.msgs = r.messages.concat(chat.msgs.filter((m) => m.pending));
+          chat.hasOlder = !!r.hasOlder;
+          chat.loaded = room;
+        } else {
+          mergeMsgs(r.messages);
+        }
+        const fresh = chat.msgs.some((m) => !m.pending && m.s > before && m.from !== store.get('wt_name'));
+        renderMsgs(first, fresh && !first);
+      } else {
+        renderRooms();
+        if (opts.auto && r.rooms.length === 1) next = () => openRoom(r.rooms[0].id);
+      }
+      chatSave();
+    } catch (e) {
+      if (!room && !chat.rooms.length) $('chat-rooms').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
+    } finally {
+      chatBusy = false;
+      if (next) next();
+      else if (room !== chat.room) chatRefresh(); // 기다리는 동안 다른 방을 열었으면 바로 그 방을
+      else chatSchedule();
+    }
+  }
+
+  function mergeMsgs(list) {
+    const byId = new Map(chat.msgs.map((m) => [m.id, m]));
+    for (const m of list) byId.set(m.id, m);
+    chat.msgs = [...byId.values()].sort((a, b) => (a.pending ? Infinity : a.s) - (b.pending ? Infinity : b.s));
+  }
+
+  function renderMute() {
+    $('b-chat-mute').classList.toggle('on', !chat.muted);
+    $('b-chat-mute').classList.toggle('off', chat.muted);
+    $('b-chat-mute').title = chat.muted ? 'Notifications off for this chat' : 'Notifications on for this chat';
+  }
+
+  const minOf = (at) => stampMin(at.slice(0, 10), at.slice(11, 16));
+
+  // fresh: 다른 사람의 새 메시지가 왔음 -> 아래쪽을 보고 있으면 따라 내려가고, 위를 읽는 중이면 'New messages ↓'
+  function renderMsgs(forceBottom, fresh) {
+    const sig = chat.msgs.map((m) => m.id + (m.del ? 'x' : '') + (m.pending ? 'p' : '') + (chatPhotos[m.id] ? 'i' : '')).join() +
+      '|' + chat.act + '|' + chat.hasOlder + '|' + chat.loaded;
+    if (sig === chat.sig && !forceBottom) return;
+    chat.sig = sig;
+    const stay = forceBottom || nearBottom(), me = store.get('wt_name'), today = parisNow().slice(0, 10);
+    $('b-chat-older').classList.toggle('hidden', !chat.hasOlder);
+    const nodes = [], list = chat.msgs;
+    if (!list.length) nodes.push(el('p', 'hint', chat.loaded === chat.room ? 'No messages yet.' : 'Loading…'));
+    const isFirst = (i) => !i || list[i - 1].from !== list[i].from || list[i - 1].at.slice(0, 10) !== list[i].at.slice(0, 10) ||
+      minOf(list[i].at) - minOf(list[i - 1].at) > 5;
+    list.forEach((m, i) => {
+      const day = m.at.slice(0, 10);
+      if (!i || list[i - 1].at.slice(0, 10) !== day) {
+        const sep = el('div', 'day-sep');
+        sep.append(el('span', null, day === today ? 'Today' : chatWhen(day + ' 00:00')));
+        nodes.push(sep);
+      }
+      const mine = m.from === me, first = isFirst(i), last = i === list.length - 1 || isFirst(i + 1);
+      const n = el('div', 'msg' + (mine ? ' mine' : '') + (first ? ' first' : '') + (m.del ? ' del' : '') + (m.pending ? ' pending' : ''));
+      if (first && !mine) n.append(el('div', 'from', m.from));
+      const b = el('div', 'bubble');
+      if (m.del) {
+        b.textContent = 'Message deleted';
+      } else {
+        if (m.photo) b.append(chatPhotoNode(m));
+        if (m.text) b.append(document.createTextNode(m.text));
+        if (!m.pending && (mine || chat.canDeleteAll)) {
+          b.addEventListener('click', () => { chat.act = chat.act === m.id ? null : m.id; renderMsgs(); });
+        }
+      }
+      n.append(b);
+      if (m.pending) n.append(el('div', 'when', 'Sending…'));
+      else if (last) n.append(el('div', 'when', m.at.slice(11, 16)));
+      if (chat.act === m.id && !m.del) {
+        const acts = el('div', 'acts'), del = el('button', 'link', 'Delete');
+        del.type = 'button';
+        del.addEventListener('click', () => deleteChatMsg(m));
+        acts.append(del);
+        n.append(acts);
+      }
+      nodes.push(n);
+    });
+    $('chat-msgs').replaceChildren(...nodes);
+    if (stay) {
+      toBottom();
+      $('b-chat-new').classList.add('hidden');
+    } else if (fresh) {
+      $('b-chat-new').classList.remove('hidden');
+    }
+  }
+
+  function chatPhotoNode(m) {
+    const src = m.localPhoto || chatPhotos[m.id];
+    if (src) {
+      const img = el('img');
+      img.src = src;
+      img.alt = 'Photo from ' + m.from;
+      img.addEventListener('load', () => { if (nearBottom()) toBottom(); });
+      return img;
+    }
+    loadChatPhoto(m.id);
+    return el('span', 'ph', '📷 Loading photo…');
+  }
+
+  const photoLoading = new Set();
+  async function loadChatPhoto(id) {
+    if (photoLoading.has(id)) return;
+    photoLoading.add(id);
+    try {
+      const r = await api({ action: 'chatPhoto', token: token(), id });
+      if (r.ok) { chatPhotos[id] = r.dataUrl; if (currentView === 'chat') renderMsgs(); }
+    } catch (e) { /* 다음에 다시 그릴 때 재시도 */ } finally {
+      photoLoading.delete(id);
+    }
+  }
+
+  async function deleteChatMsg(m) {
+    if (!confirm(m.from === store.get('wt_name') ? 'Delete this message?' : 'Delete this message from ' + m.from + '?')) return;
+    try {
+      const r = await api({ action: 'chatDelete', token: token(), id: m.id });
+      if (!r.ok) return toast(r.error);
+      m.del = true; m.text = ''; m.photo = false;
+      chat.act = null;
+      renderMsgs();
+      chatSave();
+    } catch (e) { toast('Network problem.' + detail(e)); }
+  }
+
+  $('b-chat-older').addEventListener('click', async () => {
+    const btn = $('b-chat-older'), room = chat.room, first = chat.msgs.find((m) => !m.pending);
+    if (!first) return;
+    btn.disabled = true;
+    try {
+      const r = await api({ action: 'chat', token: token(), room, before: first.s });
+      if (!r.ok || room !== chat.room) return;
+      const h = document.documentElement.scrollHeight;
+      chat.hasOlder = r.messages.length === 50;
+      mergeMsgs(r.messages);
+      renderMsgs();
+      window.scrollBy(0, document.documentElement.scrollHeight - h); // 보던 자리 유지
+    } catch (e) { toast('Network problem.' + detail(e)); } finally {
+      btn.disabled = false;
+    }
+  });
+
+  function growChat() {
+    const t = $('chat-text');
+    t.style.height = 'auto';
+    t.style.height = Math.min(t.scrollHeight + 2, 140) + 'px';
+  }
+  function clearChatPhoto() {
+    chatPhotoData = null;
+    $('chat-photo').value = '';
+    $('chat-att').classList.add('hidden');
+  }
+  function setChatPhoto(url) {
+    chatPhotoData = url;
+    $('chat-att-img').src = url;
+    $('chat-att').classList.remove('hidden');
+  }
+
+  $('chat-text').addEventListener('input', growChat);
+  $('chat-text').addEventListener('keydown', (e) => {
+    // 컴퓨터(마우스)에서는 Enter = 보내기, Shift+Enter = 줄바꿈. 폰에서는 Enter = 줄바꿈
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && matchMedia('(pointer: fine)').matches) {
+      e.preventDefault();
+      $('f-chat').requestSubmit();
+    }
+  });
+  $('chat-photo').addEventListener('change', async (ev) => {
+    const f = ev.target.files[0];
+    if (!f) return;
+    try { setChatPhoto(await resizeImage(f, 1280, 0.8)); } catch (e) { toast(e.message); clearChatPhoto(); }
+  });
+  $('b-chat-att-x').addEventListener('click', clearChatPhoto);
+
+  $('f-chat').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const text = $('chat-text').value.trim(), photo = chatPhotoData, room = chat.room;
+    if ((!text && !photo) || !room) return;
+    const tmp = { id: 'tmp' + Date.now(), pending: true, from: store.get('wt_name'), text, photo: !!photo, localPhoto: photo,
+                  at: parisNow() + ':00' };
+    chat.msgs.push(tmp);
+    $('chat-text').value = '';
+    growChat();
+    clearChatPhoto();
+    renderMsgs(true);
+    try {
+      const r = await api({ action: 'chatSend', token: token(), room, text, photo: photo || undefined });
+      if (!r.ok) throw new Error(r.error);
+      if (photo) chatPhotos[r.message.id] = photo;
+      if (chat.room !== room) return;
+      chat.msgs = chat.msgs.filter((m) => m !== tmp);
+      mergeMsgs([r.message]);
+      renderMsgs(true);
+      chatSave();
+    } catch (e) {
+      chat.msgs = chat.msgs.filter((m) => m !== tmp);
+      if (chat.room === room) {
+        if (!$('chat-text').value) { $('chat-text').value = text; growChat(); }
+        if (photo && !chatPhotoData) setChatPhoto(photo);
+        renderMsgs();
+      }
+      toast('Not sent. ' + e.message);
+    }
+  });
+
+  $('b-chat-mute').addEventListener('click', async () => {
+    const room = chat.room, muted = !chat.muted;
+    chat.muted = muted;
+    renderMute();
+    try {
+      const r = await api({ action: 'chatMute', token: token(), room, muted });
+      if (!r.ok) throw new Error(r.error);
+      const info = chat.rooms.find((x) => x.id === room);
+      if (info) info.muted = muted;
+      chatSave();
+      toast(muted ? 'Notifications for ' + roomLabel(room) + ' are off. New messages still show here.'
+                  : 'Notifications for ' + roomLabel(room) + ' are on.');
+    } catch (e) {
+      if (chat.room === room) { chat.muted = !muted; renderMute(); }
+      toast('Could not change it. ' + e.message);
+    }
+  });
+
+  $('b-chat-new').addEventListener('click', () => { toBottom(); $('b-chat-new').classList.add('hidden'); });
+  window.addEventListener('scroll', () => {
+    if (currentView === 'chat' && nearBottom()) $('b-chat-new').classList.add('hidden');
+  }, { passive: true });
+
+  $('b-chat').addEventListener('click', () => openChat());
+  $('b-chat-back').addEventListener('click', () => {
+    if (chat.room && chat.rooms.length > 1) { showRoomList(); return chatRefresh(); }
+    goHome();
+  });
+
   // ---------------------------------------------------------------- 로그인 / 시간 변경
   function afterLogin() {
     const pending = takeTagParams();
@@ -2441,6 +2896,11 @@
       if (view === 'schedule') return openSchedule({}, true, null, 'fresh');
       if (view === 'receipt') return openReceipt('home');
       if (view === 'receipts') return openReceipts();
+      if (view === 'chat') {
+        const room = sessionStorage.getItem('wt_chat_room');
+        sessionStorage.removeItem('wt_chat_room');
+        return openChat(room);
+      }
     }
     goHome();
   }
@@ -2510,6 +2970,7 @@
       if (currentView === 'ann') return openFeed(feed, annReturn);
       if (currentView === 'inbox') return openInbox();
       if (currentView === 'team') return openTeam();
+      if (currentView === 'chat') return chatRefresh();
       if (currentView === 'receipt' && !rcNew.length) return openReceipt(rcReturn);
       if (currentView === 'schedule') {
         return openSchedule(schedData ? { sched: schedData.sched, file: schedData.file, tab: schedData.tab } : {}, false, null, true);

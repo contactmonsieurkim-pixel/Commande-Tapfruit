@@ -11,6 +11,7 @@
 //   Requests      : Sent at | From | Message | Hash   (직원 → Supervisor)
 //   Deleted       : ID | Title | Deleted at | Deleted by | Hash   (Supervisor 가 지운 공지. 원래 행은 그대로 남음)
 //   Receipts, Receipt Mails : 교통카드 영수증 (Receipts.gs 참고)
+//   Chat          : ID | Sent at | Room | From | Text | Photo | Hash   (단체 채팅, Chat.gs 참고)
 // 각 행의 Hash 는 직전 행 Hash + 내용으로 만든 HMAC 체인 -> verifyRecords() 로 수정 여부 검사.
 
 var APP_URL_DEFAULT = 'https://contactmonsieurkim-pixel.github.io/Commande-Tapfruit/worktime/';
@@ -33,6 +34,7 @@ var REC_SHEETS = {
   Deleted: ['ID', 'Title', 'Deleted at', 'Deleted by', 'Hash'],
   Receipts: ['Saved at', 'Name', 'Month', 'File name', 'File ID', 'Status', 'Hash'],
   'Receipt Mails': ['Sent at', 'Month', 'Sent by', 'To', 'Summary', 'File IDs', 'Hash'],
+  Chat: ['ID', 'Sent at', 'Room', 'From', 'Text', 'Photo', 'Hash'],
 };
 
 // ------------------------------------------------------------------ setup helpers
@@ -545,8 +547,10 @@ function dailyReminder() {
  *  3) 밤사이 Supervisor 알림(출퇴근·로그인)을 한 번에 요약해서 보냄.
  *  4) 스케줄 확인 요청 (Schedule.gs)
  *  5) 매월 1일: 교통카드 정기권 영수증 업로드 요청 메일 (Receipts.gs)
+ *  6) 밤사이 온 채팅 메시지 -> 사람마다 푸시 1번 (Chat.gs)
  */
 function morningRun() {
+  employeesMemo_ = null;
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === 'morningRun') ScriptApp.deleteTrigger(t);
   });
@@ -577,5 +581,10 @@ function morningRun() {
     notifyReceipts_(); // 매월 1일만
   } catch (err2) {
     console.error(err2);
+  }
+  try {
+    chatPushRun(true);
+  } catch (err3) {
+    console.error(err3);
   }
 }

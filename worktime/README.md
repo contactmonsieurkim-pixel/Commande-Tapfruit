@@ -51,7 +51,7 @@ python ntag424_setup.py genkeys
 ### 2. Apps Script 백엔드
 
 1. 기존 "Work Time Log with NFC" Apps Script 프로젝트를 열고 기존 코드를 지운 뒤
-   `gas/` 의 `.gs` 파일 4개(`Code`, `Crypto`, `WebPush`, `Announce`)를 같은 이름으로 붙여 넣습니다.
+   `gas/` 의 `.gs` 파일 9개(`Code`, `Crypto`, `WebPush`, `Announce`, `Supervisor`, `Rules`, `Schedule`, `Receipts`, `Chat`)를 같은 이름으로 붙여 넣습니다.
    (`Index.html`은 삭제. 파일 끝까지 복사됐는지는 `setup` 실행 시 자동으로 검사합니다)
 2. 프로젝트 설정 → "appsscript.json 표시" 체크 → `gas/appsscript.json` 내용으로 교체
 3. 프로젝트 설정 → 스크립트 속성에 추가:
