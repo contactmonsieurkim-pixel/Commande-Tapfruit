@@ -87,7 +87,7 @@ function doPost(e) {
       pushKey: pushKey_, subscribe: subscribe_, anns: annList_, photo: annPhoto_,
       confirm: confirm_, post: post_, status: annStatus_, staff: staff_,
       rules: rulesList_, ruleConfirm: ruleConfirm_, rulePhoto: rulePhoto_, ruleEdit: ruleEdit_,
-      request: request_, requests: requestsList_,
+      request: request_, requests: requestsList_, annDelete: annDelete_,
       schedule: scheduleView_, scheduleConfirm: scheduleConfirm_, team: teamClock_,
     };
     var fn = handlers[req.action];

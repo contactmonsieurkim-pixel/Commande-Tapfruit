@@ -128,6 +128,9 @@
     details.ann.rule[open] > summary::after { transform: rotate(-135deg); margin-bottom: -4px; }
     details.ann.rule .rule-body { padding: 0 16px 16px; }
     details.ann.rule .updated { margin: 0; flex: none; }
+    details.ann.rule .sum-title { flex: 1; min-width: 0; }
+    details.ann.rule .sum-title .meta { font-size: 12px; }
+    .edit-link.danger { color: var(--err); }
     .back-fab { position: fixed; left: 16px; bottom: max(20px, env(safe-area-inset-bottom)); width: auto; margin: 0;
                 padding: 12px 18px; border-radius: 24px; font-size: 15px; box-shadow: 0 3px 10px rgba(0, 0, 0, .25); z-index: 5; }
     #b-ann-later { display: block; margin: 14px auto 0; }
@@ -735,7 +738,10 @@
     show('login');
   }
 
+  let justLoggedIn = false;
   async function goHome() {
+    const afterLoginNow = justLoggedIn;
+    justLoggedIn = false;
     show('home');
     updateBell();
     try {
@@ -752,6 +758,8 @@
         $('b-team').classList.toggle('hidden', !r.supervisor);
         saveClock(r.clock);
         saveTips(r.tips);
+        // 로그인 직후(새로 온 직원 등) 확인 안 한 룰이 있으면 바로 Our Rules 로
+        if (afterLoginNow && r.unreadRules > 0 && currentView === 'home') return openFeed('rules', 'home');
       }
     } catch (e) { /* 오프라인이어도 홈 화면은 유지 */ }
   }
@@ -774,16 +782,18 @@
              alert: 'Our Rules have changed — please read', empty: 'No rules yet.',
              done: '✓ All caught up. Here are all our rules.' },
   };
-  let feed = 'ann', feedItems = [], canEditRules = false;
+  let feed = 'ann', feedItems = [], canEditRules = false, canDeleteAnns = false;
 
   async function loadFeed(kind) {
     const r = await api({ action: FEEDS[kind].list, token: token() });
     if (!r.ok) throw Object.assign(new Error(r.error), { code: r.code });
     if (kind === 'rules') canEditRules = !!r.admin;
+    if (kind === 'ann') canDeleteAnns = !!r.canDelete;
     return r[FEEDS[kind].field].map((x) => Object.assign(x, { kind }));
   }
 
-  const needsConfirm = (x) => !x.confirmedAt && (x.kind === 'ann' || x.mustConfirm);
+  // 공지: 게시 때 받는 사람만 확인 (나중에 온 직원은 읽기만). 룰: 서버가 정함 (새로 온 직원도 모두 확인)
+  const needsConfirm = (x) => !x.confirmedAt && (x.kind === 'ann' ? x.mustConfirm !== false : !!x.mustConfirm);
   const alertFor = (x) => (x.kind === 'ann' ? FEEDS.ann.alert
     : x.updatedAt ? 'A rule has been updated — please read' : 'New rule — please read');
   // 공지는 서버가 최신순으로 줌 -> 오래된 것부터. 룰은 번호순 그대로.
@@ -821,9 +831,9 @@
     $('ann-dock').classList.toggle('hidden', !focus);
     $('b-ann-later').classList.toggle('hidden', !focus);
     $('b-ann-back').classList.toggle('hidden', focus);
-    const folded = !focus && feed === 'rules'; // 룰 목록은 접어서 + Back 은 왼쪽 아래에 떠 있게
+    const folded = !focus; // 목록은 제목만(눌러서 펼침) + Back 은 왼쪽 아래에 떠 있게
     $('v-ann').classList.toggle('folded', folded);
-    $('b-ann-back').className = folded ? 'back-fab' : 'secondary';
+    $('b-ann-back').className = (folded ? 'back-fab' : 'secondary') + (focus ? ' hidden' : '');
     $('b-ann-back').textContent = folded ? '← Back' : 'Back';
     $('ann-done').textContent = F.done;
     $('ann-done').classList.toggle('hidden', focus || !justFinished);
@@ -836,32 +846,61 @@
       return;
     }
     if (!list.length) box.append(el('p', 'hint', F.empty));
-    for (const x of list) box.append(feed === 'rules' ? foldedRule(x) : itemCard(x, feed));
+    // 룰은 번호순(기록), 공지는 최신이 위(서버 순서 그대로)
+    for (const x of list) box.append(foldedItem(x, feed));
   }
 
-  /** 룰 목록: 제목만 보이고, 누르면 내용(사진은 펼칠 때 받음). */
-  function foldedRule(x) {
-    const d = el('details', 'ann rule'), sum = el('summary');
+  /** 목록: 제목만 보이고, 누르면 내용(사진은 펼칠 때 받음). */
+  function foldedItem(x, kind) {
+    const d = el('details', 'ann rule' + (needsConfirm(x) ? ' unread' : '')), sum = el('summary');
     const h = el('h2');
-    h.append(el('span', 'rule-no', '[' + x.id + '] '), document.createTextNode(x.title));
-    sum.append(h);
+    if (kind === 'rules') h.append(el('span', 'rule-no', '[' + x.id + '] '));
+    h.append(document.createTextNode(x.title));
+    if (kind === 'ann') {
+      const t = el('div', 'sum-title');
+      t.append(el('div', 'meta', x.posted.slice(0, 16)), h);
+      sum.append(t);
+    } else sum.append(h);
     if (x.updatedAt) sum.append(el('span', 'updated', 'Updated'));
     const body = el('div', 'rule-body');
     d.append(sum, body);
     const fill = () => {
       if (body.childNodes.length) return;
-      const card = itemCard(x, 'rules', canEditRules);
+      const card = itemCard(x, kind, kind === 'rules' && canEditRules);
       card.querySelector('h2').remove(); // 제목은 summary 에 있음
+      if (kind === 'ann') card.querySelector('.meta').remove();
       body.append(...card.childNodes);
+      if (kind === 'ann' && canDeleteAnns) {
+        const b = el('button', 'link edit-link danger', 'Delete announcement');
+        b.addEventListener('click', () => deleteAnn(x, b));
+        body.append(b);
+      }
     };
+    const key = kind + '/' + x.id;
     d.addEventListener('toggle', () => {
-      (d.open ? openRules.add : openRules.delete).call(openRules, x.id);
+      (d.open ? openItems.add : openItems.delete).call(openItems, key);
       if (d.open) fill();
     });
-    if (openRules.has(x.id)) { d.open = true; fill(); } // 다시 그려도(앱 복귀 등) 펼친 것은 그대로
+    if (openItems.has(key)) { d.open = true; fill(); } // 다시 그려도(앱 복귀 등) 펼친 것은 그대로
     return d;
   }
-  const openRules = new Set();
+  const openItems = new Set();
+
+  // Supervisor: 공지 삭제 (기록 시트의 원래 행은 남고, 앱·알림에서만 사라짐)
+  async function deleteAnn(x, btn) {
+    if (!confirm('Delete this announcement for everyone?\n\n"' + x.title + '"\n\nIt stays in the records sheet.')) return;
+    btn.disabled = true;
+    try {
+      const r = await api({ action: 'annDelete', token: token(), id: x.id });
+      if (!r.ok) throw new Error(serverMsg(r));
+      setBadge(r.unread);
+      toast('Deleted: ' + x.title);
+      renderFeed(feedItems.filter((y) => y.id !== x.id));
+    } catch (e) {
+      btn.disabled = false;
+      alert('Could not delete. (' + e.message + ')');
+    }
+  }
   const renderAnns = renderFeed;
 
   $('b-ann-confirm').addEventListener('click', async () => {
@@ -1958,6 +1997,7 @@
       if (!r.ok) { $('login-msg').textContent = r.error; return; }
       store.set('wt_token', r.token); store.set('wt_name', r.name); store.set('wt_admin', r.admin ? '1' : '0');
       $('pin').value = '';
+      justLoggedIn = true;
       afterLogin();
     } catch (e) {
       $('login-msg').textContent = 'Network problem. Please try again.' + detail(e);
