@@ -117,6 +117,19 @@
     #v-result { padding-bottom: 120px; }
     #v-result #b-modify { display: block; margin: 14px auto 0; }
     #v-ann.focus { padding-bottom: 120px; }
+    /* Our Rules 목록: 제목만, 눌러서 펼침 + 왼쪽 아래 떠 있는 Back */
+    #v-ann.folded { padding-bottom: 80px; }
+    details.ann.rule { padding: 0; border-top: 1px solid var(--line); }
+    details.ann.rule > summary { list-style: none; display: flex; align-items: center; gap: 10px; padding: 14px 16px; }
+    details.ann.rule > summary::-webkit-details-marker { display: none; }
+    details.ann.rule > summary h2 { flex: 1; font-size: 17px; margin: 0; }
+    details.ann.rule > summary::after { content: ''; flex: none; width: 9px; height: 9px; margin: 0 4px 4px;
+      border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .15s; }
+    details.ann.rule[open] > summary::after { transform: rotate(-135deg); margin-bottom: -4px; }
+    details.ann.rule .rule-body { padding: 0 16px 16px; }
+    details.ann.rule .updated { margin: 0; flex: none; }
+    .back-fab { position: fixed; left: 16px; bottom: max(20px, env(safe-area-inset-bottom)); width: auto; margin: 0;
+                padding: 12px 18px; border-radius: 24px; font-size: 15px; box-shadow: 0 3px 10px rgba(0, 0, 0, .25); z-index: 5; }
     #b-ann-later { display: block; margin: 14px auto 0; }
     .count { color: var(--muted); font-size: 14px; text-align: center; margin: -4px 0 10px; }
     .feed-title { font-size: 20px; margin: 0 0 12px; }
@@ -808,6 +821,10 @@
     $('ann-dock').classList.toggle('hidden', !focus);
     $('b-ann-later').classList.toggle('hidden', !focus);
     $('b-ann-back').classList.toggle('hidden', focus);
+    const folded = !focus && feed === 'rules'; // 룰 목록은 접어서 + Back 은 왼쪽 아래에 떠 있게
+    $('v-ann').classList.toggle('folded', folded);
+    $('b-ann-back').className = folded ? 'back-fab' : 'secondary';
+    $('b-ann-back').textContent = folded ? '← Back' : 'Back';
     $('ann-done').textContent = F.done;
     $('ann-done').classList.toggle('hidden', focus || !justFinished);
     const box = $('ann-list');
@@ -819,8 +836,32 @@
       return;
     }
     if (!list.length) box.append(el('p', 'hint', F.empty));
-    for (const x of list) box.append(itemCard(x, feed, feed === 'rules' && canEditRules));
+    for (const x of list) box.append(feed === 'rules' ? foldedRule(x) : itemCard(x, feed));
   }
+
+  /** 룰 목록: 제목만 보이고, 누르면 내용(사진은 펼칠 때 받음). */
+  function foldedRule(x) {
+    const d = el('details', 'ann rule'), sum = el('summary');
+    const h = el('h2');
+    h.append(el('span', 'rule-no', '[' + x.id + '] '), document.createTextNode(x.title));
+    sum.append(h);
+    if (x.updatedAt) sum.append(el('span', 'updated', 'Updated'));
+    const body = el('div', 'rule-body');
+    d.append(sum, body);
+    const fill = () => {
+      if (body.childNodes.length) return;
+      const card = itemCard(x, 'rules', canEditRules);
+      card.querySelector('h2').remove(); // 제목은 summary 에 있음
+      body.append(...card.childNodes);
+    };
+    d.addEventListener('toggle', () => {
+      (d.open ? openRules.add : openRules.delete).call(openRules, x.id);
+      if (d.open) fill();
+    });
+    if (openRules.has(x.id)) { d.open = true; fill(); } // 다시 그려도(앱 복귀 등) 펼친 것은 그대로
+    return d;
+  }
+  const openRules = new Set();
   const renderAnns = renderFeed;
 
   $('b-ann-confirm').addEventListener('click', async () => {
@@ -894,7 +935,7 @@
   $('b-anns').addEventListener('click', () => openFeed('ann', 'home'));
   $('b-rules').addEventListener('click', () => openFeed('rules', 'home'));
   const leaveAnns = () => (annReturn === 'result' ? show('result') : goHome());
-  $('b-ann-back').addEventListener('click', leaveAnns);
+  $('b-ann-back').addEventListener('click', () => ($('v-ann').classList.contains('folded') ? goHome() : leaveAnns()));
   $('b-ann-later').addEventListener('click', leaveAnns);
 
   // ---------------------------------------------------------------- 알림 (웹 푸시)
