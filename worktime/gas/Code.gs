@@ -38,7 +38,8 @@ function setup() {
 function checkFiles_() {
   var last = { 'Code.gs': 'json_', 'Crypto.gs': 'verifySun_', 'WebPush.gs': 'sendWebPush_',
                'Announce.gs': 'morningRun', 'Supervisor.gs': 'recordLogin_', 'Rules.gs': 'announceRule_',
-               'Schedule.gs': 'checkSchedule', 'Receipts.gs': 'notifyReceipts_' };
+               'Schedule.gs': 'checkSchedule', 'Receipts.gs': 'notifyReceipts_',
+               'Chat.gs': 'chatPushRun' };
   var missing = Object.keys(last).filter(function (f) { return typeof this[last[f]] !== 'function'; }, this);
   if (typeof props_ === 'undefined' || typeof TZ === 'undefined' || typeof DEFAULT_FOLDER_ID === 'undefined') {
     missing.push('Code.gs (맨 윗부분: var DEFAULT_FOLDER_ID ... var props_)');
@@ -84,6 +85,7 @@ function doPost(e) {
   }
   try {
     schedResetMemo_();
+    employeesMemo_ = null;
     var handlers = {
       login: login_, tap: tap_, modify: modify_, me: me_,
       pushKey: pushKey_, subscribe: subscribe_, anns: annList_, photo: annPhoto_,
@@ -93,6 +95,7 @@ function doPost(e) {
       schedule: scheduleView_, scheduleConfirm: scheduleConfirm_, team: teamClock_,
       receipt: receiptMine_, receiptUpload: receiptUpload_, receiptDelete: receiptDelete_, receiptFile: receiptFile_,
       receiptStatus: receiptStatus_, receiptSend: receiptSend_,
+      chat: chatView_, chatSend: chatSend_, chatDelete: chatDelete_, chatPhoto: chatPhoto_, chatMute: chatMute_,
     };
     var fn = handlers[req.action];
     if (!fn) return json_({ ok: false, error: 'Unknown action.' });
@@ -119,6 +122,11 @@ function login_(req) {
   } catch (err) {
     console.error(err); // 기록·알림 실패가 로그인을 막지 않도록
   }
+  try {
+    chatJoin_(emp.name, before); // 처음 로그인: 지난 채팅은 안 읽음으로 세지 않음
+  } catch (err2) {
+    console.error(err2);
+  }
   return { ok: true, token: token, name: emp.name, admin: emp.admin || emp.supervisor };
 }
 
@@ -128,7 +136,17 @@ function me_(req) {
   return { ok: true, name: name, admin: isAdmin_(name), supervisor: !!(me && me.supervisor),
            unread: unreadCount_(name), unreadRules: unreadRulesFor_(name).length, tips: tips_(name),
            schedulePending: schedulePendingCount_(name), clock: myClock_(name), today: todayStamp_(),
-           receipt: safeReceiptDue_(name) };
+           receipt: safeReceiptDue_(name), chatUnread: safeChatUnread_(name) };
+}
+
+/** 메인 화면 Chat 배지 (문제가 생겨도 메인 화면을 막지 않도록). */
+function safeChatUnread_(name) {
+  try {
+    return chatUnreadCount_(name);
+  } catch (err) {
+    console.error(err);
+    return 0;
+  }
 }
 
 /** 메인 화면 영수증 버튼 색 (문제가 생겨도 메인 화면을 막지 않도록). */
@@ -218,7 +236,11 @@ function whoAmI_(token) {
   return emp.name;
 }
 
+// 한 요청 안에서는 직원 명단을 한 번만 읽음 (채팅은 몇 초마다 불리므로). doPost·트리거 시작 때 비움.
+var employeesMemo_ = null;
+
 function employees_() {
+  if (employeesMemo_) return employeesMemo_;
   var id = requiredProp_('CONFIG_SHEET_ID');
   var rows = SpreadsheetApp.openById(id).getSheetByName('Employees').getDataRange().getDisplayValues();
   var out = [];
@@ -231,7 +253,7 @@ function employees_() {
                supervisor: String(r[6]).trim().toUpperCase() === 'TRUE',
                transport: String(r[7]).trim().toUpperCase() !== 'FALSE' });
   }
-  return out;
+  return (employeesMemo_ = out);
 }
 
 function activeEmployees_() { return employees_(); }

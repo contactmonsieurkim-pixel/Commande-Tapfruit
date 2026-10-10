@@ -132,8 +132,8 @@ function makeEnv(propsInit) {
       deleteTrigger: (t) => triggers.splice(triggers.indexOf(t), 1),
       newTrigger: (fn) => {
         const b = { timeBased: () => b, everyDays: () => b, everyMinutes: (m) => { b.minutes = m; return b; }, atHour: (h) => { b.hour = h; return b; },
-                    at: (d) => { b.at = d; return b; }, inTimezone: () => b,
-                    create: () => triggers.push({ getHandlerFunction: () => fn, hour: b.hour, at: b.at, minutes: b.minutes }) };
+                    at: (d) => { b.at = d; return b; }, after: (ms) => { b.after = ms; return b; }, inTimezone: () => b,
+                    create: () => triggers.push({ getHandlerFunction: () => fn, hour: b.hour, at: b.at, minutes: b.minutes, after: b.after }) };
         return b;
       },
     },
@@ -188,7 +188,7 @@ function makeEnv(propsInit) {
     },
   };
   vm.createContext(ctx);
-  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs', 'Rules.gs', 'Schedule.gs', 'Receipts.gs']) {
+  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs', 'Rules.gs', 'Schedule.gs', 'Receipts.gs', 'Chat.gs']) {
     vm.runInContext(fs.readFileSync(path.join(GAS, f), 'utf8'), ctx, { filename: f });
   }
   ctx.setup();
@@ -350,7 +350,7 @@ const recRows = (name) => {
 test('setup: protected record sheets, daily trigger, VAPID keys', () => {
   const ss = env.files[env.props.ANN_SHEET_ID];
   assert.deepStrictEqual(ss.sheets.map((x) => x.name),
-    ['Announcements', 'Confirmations', 'Notifications', 'Logins', 'Our Rules', 'Requests', 'Deleted', 'Receipts', 'Receipt Mails']);
+    ['Announcements', 'Confirmations', 'Notifications', 'Logins', 'Our Rules', 'Requests', 'Deleted', 'Receipts', 'Receipt Mails', 'Chat']);
   assert.ok(ss.sheets.every((x) => x.protected));
   assert.deepStrictEqual(env.triggers.map((t) => [t.getHandlerFunction(), t.hour || t.minutes]),
     [['scheduleMorning', 7], ['checkScheduleChanges', 30]]);
@@ -1611,6 +1611,184 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
 
   test('receipts: records still verify', () => {
     assert.ok(R.ctx.verifyRecords().every((x) => x.ok));
+  });
+}
+
+// ------------------------------------------------------------------ chat
+{
+  const C = makeEnv({ SDM_META_KEY: keys.K1_SDM_META, SDM_FILE_KEY: keys.K2_SDM_FILE });
+  const at = (iso) => { C.clock.fixed = iso; C.clock.days = 0; };
+  const pushes = [];
+  C.ctx.sendWebPush_ = (sub, msg) => { pushes.push({ to: sub.name, msg }); return 201; };
+  const login = (n, p) => C.call({ action: 'login', name: n, pin: p }).token;
+  const sup = login('Nam KIM', '4321'), yu = login('Yuna', '2222'), nm = login('No Mail', '3333');
+  for (const [t, ep] of [[sup, 'sup'], [yu, 'yu'], [nm, 'nm']]) {
+    C.call({ action: 'subscribe', token: t, sub: { endpoint: 'https://push.example/' + ep, keys: { p256dh: 'x', auth: 'y' } } });
+  }
+  const chatRows = () => {
+    const sh = C.files[C.props.ANN_SHEET_ID].getSheetByName('Chat');
+    return Array.from({ length: sh.getLastRow() - 1 }, (_, i) => sh.getRange(i + 2, 1, 1, 7).getValues()[0]);
+  };
+  const send = (t, room, text, extra) => C.call(Object.assign({ action: 'chatSend', token: t, room, text }, extra));
+  const view = (t, room, extra) => C.call(Object.assign({ action: 'chat', token: t, room }, extra));
+  const run = (force) => { const n = pushes.length; C.ctx.chatPushRun(force); return pushes.slice(n); };
+  const chatTriggers = () => C.triggers.filter((x) => x.getHandlerFunction() === 'chatPushRun');
+
+  test('chat: rooms = Everyone + own team; supervisor sees every team (other teams muted)', () => {
+    const y = view(yu);
+    assert.ok(y.ok, JSON.stringify(y));
+    assert.deepStrictEqual(y.rooms.map((r) => [r.id, r.name, r.members, r.muted]),
+      [['all', 'Everyone', 3, false], ['team:Kitchen', 'Kitchen', 2, false]]);
+    assert.deepStrictEqual(view(sup).rooms.map((r) => [r.id, r.muted]),
+      [['all', false], ['team:Service', false], ['team:Kitchen', true]]);
+  });
+
+  test('chat: cannot read or write another team room', () => {
+    assert.strictEqual(view(yu, 'team:Service').ok, false);
+    assert.strictEqual(send(yu, 'team:Service', 'hi').ok, false);
+    assert.strictEqual(send(yu, 'all', '   ').ok, false);
+    assert.strictEqual(send(yu, 'all', 'x'.repeat(1001)).ok, false);
+  });
+
+  test('chat: send -> record row (hash chain) + one delayed push trigger', () => {
+    const r = send(yu, 'all', '  Fish is late today\r\nNo sea bass  ');
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.deepStrictEqual([r.message.id, r.message.from, r.message.text, r.message.photo], ['C000001', 'Yuna', 'Fish is late today\nNo sea bass', false]);
+    assert.deepStrictEqual(chatRows()[0].slice(0, 6).filter((x, i) => i !== 1), ['C000001', 'all', 'Yuna', 'Fish is late today\nNo sea bass', '']);
+    assert.match(chatRows()[0][6], /^[0-9A-F]{64}$/);
+    assert.deepStrictEqual(chatTriggers().map((t) => t.after), [60000]);
+    assert.ok(send(sup, 'all', 'Thanks, I will call them').ok);
+    assert.ok(send(sup, 'team:Kitchen', 'Kitchen: use the cod instead').ok);
+    assert.strictEqual(chatTriggers().length, 1, 'still one pending trigger');
+    assert.strictEqual(pushes.length, 0, 'nothing pushed while sending');
+  });
+
+  test('chat: unread badge on me (own messages never count, muted rooms not counted)', () => {
+    assert.strictEqual(C.call({ action: 'me', token: yu }).chatUnread, 2);
+    assert.strictEqual(C.call({ action: 'me', token: nm }).chatUnread, 3);
+    assert.strictEqual(C.call({ action: 'me', token: sup }).chatUnread, 0, 'replying = has read the room');
+  });
+
+  test('chat: opening a room marks it read; after= returns only new messages', () => {
+    const v = view(yu, 'all');
+    assert.deepStrictEqual(v.messages.map((m) => m.text), ['Fish is late today\nNo sea bass', 'Thanks, I will call them']);
+    assert.strictEqual(v.hasOlder, false);
+    assert.strictEqual(v.rooms.find((r) => r.id === 'all').unread, 0);
+    assert.strictEqual(v.rooms.find((r) => r.id === 'team:Kitchen').unread, 1);
+    assert.strictEqual(v.rooms.find((r) => r.id === 'team:Kitchen').last.text, 'Kitchen: use the cod instead');
+    assert.strictEqual(C.call({ action: 'me', token: yu }).chatUnread, 1);
+    assert.deepStrictEqual(view(yu, 'all', { after: 2 }).messages, []);
+    send(nm, 'all', 'ok');
+    assert.deepStrictEqual(view(yu, 'all', { after: 2 }).messages.map((m) => m.from), ['No Mail']);
+  });
+
+  test('chat: push run (daytime) -> one bundled push per person, tag chat, link to the room', () => {
+    send(sup, 'all', 'Staff meeting at 5');
+    const p = run();
+    assert.deepStrictEqual(p.map((x) => x.to).sort(), ['No Mail', 'Yuna'], 'not to the sender');
+    for (const x of p) {
+      assert.deepStrictEqual([x.msg.title, x.msg.tag], ['💬 2 new messages', 'chat']);
+      assert.strictEqual(x.msg.body, 'Everyone (1) · Nam KIM: Staff meeting at 5\nKitchen (1) · Nam KIM: Kitchen: use the cod instead');
+      assert.match(x.msg.url, /\?view=chat$/);
+    }
+    assert.strictEqual(chatTriggers().length, 0);
+    assert.deepStrictEqual(run(), [], 'nothing new -> no push again');
+  });
+
+  test('chat: a new message within 5 minutes of the last push waits (one later push, not one per message)', () => {
+    view(yu, 'all'); view(nm, 'all');
+    send(sup, 'team:Kitchen', 'Delivery at 3pm');
+    send(sup, 'team:Kitchen', 'Please sign for it');
+    assert.deepStrictEqual(run(), []);
+    assert.ok(chatTriggers().length === 1 && chatTriggers()[0].after >= 60000, 'retry scheduled after the gap');
+    for (const n of ['Yuna', 'No Mail']) {
+      const ns = JSON.parse(C.props['chatn_' + n]); ns.at -= 5 * 60000; C.props['chatn_' + n] = JSON.stringify(ns);
+    }
+    const p = run();
+    assert.deepStrictEqual(p.map((x) => x.to).sort(), ['No Mail', 'Yuna']);
+    assert.strictEqual(p.find((x) => x.to === 'Yuna').msg.body, '3 new messages · Nam KIM: Please sign for it');
+    assert.strictEqual(p.find((x) => x.to === 'Yuna').msg.title, '💬 Kitchen');
+    assert.match(p[0].msg.url, /\?view=chat&room=team%3AKitchen$/);
+  });
+
+  test('chat: quiet hours -> only the supervisor gets a push; the others get one at 09:00', () => {
+    at('2026-10-09T23:30:00+02:00');
+    for (const n of ['Nam KIM', 'Yuna', 'No Mail']) delete C.props['chatn_' + n];
+    view(yu, 'team:Kitchen'); view(nm, 'team:Kitchen'); view(nm, 'all'); view(sup, 'all');
+    send(yu, 'all', 'Who closes tonight?');
+    assert.deepStrictEqual(run().map((x) => x.to), ['Nam KIM']);
+    at('2026-10-10T09:00:00+02:00');
+    const n0 = pushes.length;
+    C.ctx.morningRun();
+    assert.deepStrictEqual(pushes.slice(n0).map((x) => x.to), ['No Mail']);
+    at('2026-10-09T12:00:00+02:00');
+  });
+
+  test('chat: mute a room -> no push and no badge for it', () => {
+    assert.ok(C.call({ action: 'chatMute', token: nm, room: 'all', muted: true }).ok);
+    send(yu, 'all', 'Muted test');
+    delete C.props['chatn_No Mail'];
+    assert.ok(!run().some((x) => x.to === 'No Mail'));
+    assert.strictEqual(C.call({ action: 'me', token: nm }).chatUnread, 0);
+    assert.strictEqual(view(nm).rooms.find((r) => r.id === 'all').unread, 2, 'room list still shows the count');
+    assert.ok(C.call({ action: 'chatMute', token: nm, room: 'all', muted: false }).ok);
+    assert.strictEqual(C.call({ action: 'me', token: nm }).chatUnread, 2);
+    assert.strictEqual(C.call({ action: 'chatMute', token: nm, room: 'team:Service', muted: true }).ok, false);
+  });
+
+  test('chat: delete own message; only the supervisor can delete others', () => {
+    const id = send(yu, 'all', 'Oops wrong chat').message.id;
+    assert.strictEqual(C.call({ action: 'chatDelete', token: nm, id }).ok, false);
+    assert.ok(C.call({ action: 'chatDelete', token: yu, id }).ok);
+    assert.strictEqual(C.call({ action: 'chatDelete', token: yu, id }).ok, false, 'already deleted');
+    const m = view(nm, 'all').messages.find((x) => x.id === id);
+    assert.deepStrictEqual([m.del, m.text], [true, '']);
+    assert.ok(view(nm, 'all', { after: 999 }).messages.some((x) => x.id === id && x.del), 'polling also learns about deletions');
+    const other = send(nm, 'all', 'Rude message').message.id;
+    assert.ok(C.call({ action: 'chatDelete', token: sup, id: other }).ok);
+    const del = C.files[C.props.ANN_SHEET_ID].getSheetByName('Deleted');
+    assert.strictEqual(del.getRange(del.getLastRow(), 1, 1, 4).getValues()[0][3], 'Nam KIM');
+    assert.ok(chatRows().some((r) => r[0] === other), 'original row stays');
+    assert.strictEqual(view(sup).rooms.find((r) => r.id === 'all').last.text, 'Muted test', 'deleted messages are not previews');
+  });
+
+  test('chat: photo message', () => {
+    const img = 'data:image/jpeg;base64,' + nodeCrypto.randomBytes(200).toString('base64');
+    const r = send(yu, 'team:Kitchen', '', { photo: img });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.strictEqual(r.message.photo, true);
+    assert.strictEqual(view(nm).rooms.find((x) => x.id === 'team:Kitchen').last.text, '📷 Photo');
+    assert.strictEqual(C.call({ action: 'chatPhoto', token: nm, id: r.message.id }).dataUrl, img);
+    assert.strictEqual(C.call({ action: 'chatPhoto', token: sup, id: r.message.id }).ok, true);
+    assert.strictEqual(send(yu, 'all', '', { photo: 'data:text/plain;base64,AAAA' }).ok, false);
+  });
+
+  test('chat: works the same after the cache is lost (rebuilt from the sheet)', () => {
+    const before = view(nm, 'all').messages;
+    for (const k of Object.keys(C.cache)) if (k.startsWith('chat_')) delete C.cache[k];
+    assert.deepStrictEqual(view(nm, 'all').messages, before);
+  });
+
+  test('chat: long history -> recent 100 + "Earlier messages" from the sheet', () => {
+    for (let i = 0; i < 120; i++) send(sup, 'team:Service', 'msg ' + i);
+    const v = view(sup, 'team:Service');
+    assert.strictEqual(v.messages.length, 100);
+    assert.strictEqual(v.messages[99].text, 'msg 119');
+    assert.strictEqual(v.hasOlder, true);
+    const o = view(sup, 'team:Service', { before: v.messages[0].s });
+    assert.deepStrictEqual(o.messages.map((m) => m.text), Array.from({ length: 20 }, (_, i) => 'msg ' + i));
+  });
+
+  test('chat: a new employee does not start with old messages as unread', () => {
+    const cfg = C.files[C.props.CONFIG_SHEET_ID].sheets[0];
+    cfg.getRange(6, 1, 1, 6).setValues([['New Cook', '5555', 'TRUE', '', '', 'Kitchen']]);
+    const t = login('New Cook', '5555');
+    assert.strictEqual(C.call({ action: 'me', token: t }).chatUnread, 0);
+    assert.ok(view(t, 'team:Kitchen').messages.length > 0, 'can still read the history');
+  });
+
+  test('chat: records still verify', () => {
+    assert.ok(C.ctx.verifyRecords().every((x) => x.ok));
   });
 }
 
