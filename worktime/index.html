@@ -138,7 +138,7 @@
                 -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); transition: background .15s; }
     .back-fab:active, .back-fab:focus-visible { background: var(--brand); }
     #v-ann.focus .back-fab { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 84px); } /* 확인 버튼 위 */
-    #v-request, #v-inbox, #v-team, #v-admin { padding-bottom: 72px; }
+    #v-request, #v-inbox, #v-team, #v-admin, #v-receipt, #v-receipts { padding-bottom: 72px; }
     .count { color: var(--muted); font-size: 14px; text-align: center; margin: -4px 0 10px; }
     .feed-title { font-size: 20px; margin: 0 0 12px; }
     .rule-no { color: var(--brand); font-weight: 700; }
@@ -416,7 +416,7 @@
       <button id="b-rc-upload" class="hidden">Upload</button>
       <p id="rc-msg"></p>
     </div>
-    <button id="b-rc-back" class="secondary">Back</button>
+    <button id="b-rc-back" class="back-fab" type="button">← Back</button>
   </section>
 
   <!-- Supervisor 전용: 영수증 현황 + 회계사에게 보내기 -->
@@ -449,7 +449,7 @@
       <p id="rs-msg"></p>
       <div id="rs-history"></div>
     </div>
-    <button id="b-rs-back" class="secondary">Back</button>
+    <button id="b-rs-back" class="back-fab" type="button">← Back</button>
   </section>
 
   <!-- 직원 -> Supervisor 요청 (공개되지 않음) -->
