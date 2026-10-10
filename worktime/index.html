@@ -14,13 +14,13 @@
     :root {
       --bg: #f3f5f4; --card: #ffffff; --text: #1d2420; --muted: #66706b;
       --brand: #1f6f54; --brand-ink: #ffffff; --ok: #1f8a4c; --err: #c0392b;
-      --warn-bg: #fff3cd; --warn-ink: #6b5200; --line: #dfe4e1;
+      --warn-bg: #fff3cd; --warn-ink: #6b5200; --line: #dfe4e1; --fab-bg: rgba(31, 111, 84, .72);
     }
     @media (prefers-color-scheme: dark) {
       :root {
         --bg: #121614; --card: #1c211e; --text: #e8ece9; --muted: #9aa49f;
         --brand: #3fae86; --brand-ink: #0b1510; --ok: #4cc27f; --err: #ff7b6b;
-        --warn-bg: #3a3112; --warn-ink: #f2d675; --line: #2c3430;
+        --warn-bg: #3a3112; --warn-ink: #f2d675; --line: #2c3430; --fab-bg: rgba(63, 174, 134, .65);
       }
     }
     * { box-sizing: border-box; }
@@ -116,7 +116,7 @@
     #r-ann { margin-top: 12px; }
     #v-result { padding-bottom: 120px; }
     #v-result #b-modify { display: block; margin: 14px auto 0; }
-    #v-ann.focus { padding-bottom: 120px; }
+    #v-ann.focus { padding-bottom: 170px; }
     /* Our Rules 목록: 제목만, 눌러서 펼침 + 왼쪽 아래 떠 있는 Back */
     #v-ann.folded { padding-bottom: 80px; }
     details.ann.rule { padding: 0; border-top: 1px solid var(--line); }
@@ -131,9 +131,14 @@
     details.ann.rule .sum-title { flex: 1; min-width: 0; }
     details.ann.rule .sum-title .meta { font-size: 12px; }
     .edit-link.danger { color: var(--err); }
+    /* 모든 화면(메인 제외) 왼쪽 아래에 늘 떠 있는 Back = 메인 화면. 늘 보이므로 반투명하게 */
     .back-fab { position: fixed; left: 16px; bottom: max(20px, env(safe-area-inset-bottom)); width: auto; margin: 0;
-                padding: 12px 18px; border-radius: 24px; font-size: 15px; box-shadow: 0 3px 10px rgba(0, 0, 0, .25); z-index: 5; }
-    #b-ann-later { display: block; margin: 14px auto 0; }
+                padding: 10px 16px; border-radius: 22px; font-size: 14px; z-index: 5;
+                background: var(--fab-bg); color: var(--brand-ink); box-shadow: 0 2px 6px rgba(0, 0, 0, .12);
+                -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); transition: background .15s; }
+    .back-fab:active, .back-fab:focus-visible { background: var(--brand); }
+    #v-ann.focus .back-fab { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 84px); } /* 확인 버튼 위 */
+    #v-request, #v-inbox, #v-team, #v-admin { padding-bottom: 72px; }
     .count { color: var(--muted); font-size: 14px; text-align: center; margin: -4px 0 10px; }
     .feed-title { font-size: 20px; margin: 0 0 12px; }
     .rule-no { color: var(--brand); font-weight: 700; }
@@ -338,8 +343,7 @@
     <div id="ann-alert" class="alert hidden">I have an unread announcement !</div>
     <div id="ann-done" class="saved hidden">✓ All caught up.</div>
     <div id="ann-list"><p class="hint">Loading…</p></div>
-    <button id="b-ann-later" class="link hidden">Later</button>
-    <button id="b-ann-back" class="secondary">Back</button>
+    <button id="b-ann-back" class="back-fab" type="button">← Back</button>
     <div id="ann-dock" class="dock hidden"><button id="b-ann-confirm">I have read and understood</button></div>
   </section>
 
@@ -352,7 +356,7 @@
     <div id="sch-pending" class="alert pending-box hidden"></div>
     <div class="sch-bar"><span id="sch-meta" class="meta"></span><button id="b-sch-zoom" class="link" type="button"></button></div>
     <div id="sch-body"><p class="hint">Loading…</p></div>
-    <button id="b-sch-back" class="secondary">Back</button>
+    <button id="b-sch-back" class="back-fab" type="button">← Back</button>
     <button id="b-sch-today" class="today-fab" type="button">Today</button>
   </section>
 
@@ -368,14 +372,14 @@
       </form>
       <p id="q-msg"></p>
     </div>
-    <button id="b-request-back" class="secondary">Back</button>
+    <button id="b-request-back" class="back-fab" type="button">← Back</button>
   </section>
 
   <!-- Supervisor 전용: 받은 요청 -->
   <section id="v-inbox" class="hidden">
     <h2 class="feed-title">Requests</h2>
     <div id="inbox-list"><p class="hint">Loading…</p></div>
-    <button id="b-inbox-back" class="secondary">Back</button>
+    <button id="b-inbox-back" class="back-fab" type="button">← Back</button>
   </section>
 
   <!-- 관리자: 공지 작성 + 확인 현황 -->
@@ -383,7 +387,7 @@
     <h2 class="feed-title">Team status</h2>
     <div class="sch-bar"><span id="team-meta" class="meta"></span><button id="b-team-refresh" class="link" type="button">Refresh</button></div>
     <div id="team-list"><p class="hint">Loading…</p></div>
-    <button id="b-team-back" class="secondary">Back</button>
+    <button id="b-team-back" class="back-fab" type="button">← Back</button>
   </section>
 
   <section id="v-admin" class="hidden">
@@ -424,7 +428,7 @@
       <p id="integrity" class="meta"></p>
       <div id="status-list"><p class="hint">Loading…</p></div>
     </div>
-    <button id="b-admin-back" class="secondary">Back</button>
+    <button id="b-admin-back" class="back-fab" type="button">← Back</button>
   </section>
 
   <!-- 처리 중 / 결과: 상태 + (확인 안 한 공지 | 랜덤 규칙) + 항상 같은 자리의 큰 버튼 -->
@@ -829,12 +833,7 @@
     if (focus) $('ann-alert').textContent = alertFor(unread[0]);
     $('ann-alert').classList.toggle('hidden', !focus);
     $('ann-dock').classList.toggle('hidden', !focus);
-    $('b-ann-later').classList.toggle('hidden', !focus);
-    $('b-ann-back').classList.toggle('hidden', focus);
-    const folded = !focus; // 목록은 제목만(눌러서 펼침) + Back 은 왼쪽 아래에 떠 있게
-    $('v-ann').classList.toggle('folded', folded);
-    $('b-ann-back').className = (folded ? 'back-fab' : 'secondary') + (focus ? ' hidden' : '');
-    $('b-ann-back').textContent = folded ? '← Back' : 'Back';
+    $('v-ann').classList.toggle('folded', !focus); // 목록은 제목만(눌러서 펼침)
     $('ann-done').textContent = F.done;
     $('ann-done').classList.toggle('hidden', focus || !justFinished);
     const box = $('ann-list');
@@ -974,8 +973,7 @@
   $('b-anns').addEventListener('click', () => openFeed('ann', 'home'));
   $('b-rules').addEventListener('click', () => openFeed('rules', 'home'));
   const leaveAnns = () => (annReturn === 'result' ? show('result') : goHome());
-  $('b-ann-back').addEventListener('click', () => ($('v-ann').classList.contains('folded') ? goHome() : leaveAnns()));
-  $('b-ann-later').addEventListener('click', leaveAnns);
+  $('b-ann-back').addEventListener('click', leaveAnns); // 확인 중에도 = 나중에 (Later)
 
   // ---------------------------------------------------------------- 알림 (웹 푸시)
   const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
