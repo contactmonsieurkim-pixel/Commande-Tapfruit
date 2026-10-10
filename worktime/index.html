@@ -1928,7 +1928,7 @@
     const box = $('rc-files');
     box.replaceChildren();
     if (done) {
-      box.append(el('div', 'saved', '✓ Uploaded — thank you!'));
+      box.append(el('div', 'saved', '✓ Uploaded.'));
       for (const f of r.files) box.append(receiptFileRow(f, false));
     }
     setReceiptDue(!r.late && r.required && !done ? { label: r.label, deadline: r.deadline, daysLeft: 5 - r.day } : null);
@@ -2025,10 +2025,9 @@
       if (!r.ok) { $('rc-msg').className = 'err'; $('rc-msg').textContent = serverMsg(r); return; }
       rcNew = []; renderNew();
       renderReceipt(r);
-      $('rc-msg').className = 'ok';
-      $('rc-msg').textContent = 'Uploaded. Thank you!';
+      $('rc-msg').textContent = ''; // 위의 '✓ Uploaded.' 로 충분
     } catch (e) {
-      $('rc-msg').className = 'err'; $('rc-msg').textContent = 'Network problem. Please try again.' + detail(e);
+      $('rc-msg').className = 'err'; $('rc-msg').textContent = 'Network problem. Try again.' + detail(e);
     } finally {
       btn.disabled = false;
     }

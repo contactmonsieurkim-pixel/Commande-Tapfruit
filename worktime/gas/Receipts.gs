@@ -109,7 +109,7 @@ function receiptMine_(req) {
 }
 
 function parseReceiptFiles_(list) {
-  if (!list || !list.length) fail_('Please choose a photo or a file.');
+  if (!list || !list.length) fail_('Choose a photo or a file.');
   if (list.length > RECEIPT_MAX_FILES) fail_('Up to ' + RECEIPT_MAX_FILES + ' files at a time.');
   return list.map(function (p, i) {
     var m = String(p || '').match(/^data:(image\/(?:jpeg|png|webp|gif)|application\/pdf);base64,([A-Za-z0-9+\/=]+)$/);
@@ -130,7 +130,7 @@ function receiptUpload_(req) {
     var now = receiptNow_(), late = now.day > RECEIPT_DUE_DAY;
     var mine = filesOf_(receiptState_(now.month), name);
     if (mine.length + files.length > RECEIPT_MAX_PER_MONTH) {
-      fail_('Too many files for this month. Please delete some first.');
+      fail_('Too many files for this month. Delete some first.');
     }
     var used = mine.map(function (f) { return f.fileName.replace(/\.\w+$/, ''); });
     var folder = receiptFolder_(), n = 1;
