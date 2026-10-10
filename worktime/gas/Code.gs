@@ -25,6 +25,7 @@ function setup() {
   var config = ensureConfig_();
   var records = ensureRecords_();
   ensureScheduleConfig_(config);
+  ensureOrgConfig_(config);
   vapidKeys_();
   if (!props_.getProperty('VAPID_SUBJECT')) {
     props_.setProperty('VAPID_SUBJECT', 'mailto:' + Session.getEffectiveUser().getEmail());
@@ -96,6 +97,7 @@ function doPost(e) {
       receipt: receiptMine_, receiptUpload: receiptUpload_, receiptDelete: receiptDelete_, receiptFile: receiptFile_,
       receiptStatus: receiptStatus_, receiptSend: receiptSend_,
       chat: chatView_, chatSend: chatSend_, chatDelete: chatDelete_, chatPhoto: chatPhoto_, chatMute: chatMute_,
+      org: orgView_,
     };
     var fn = handlers[req.action];
     if (!fn) return json_({ ok: false, error: 'Unknown action.' });
@@ -365,6 +367,35 @@ function employeeSheet_(ss, name) {
   sheet.getRange('A:D').setNumberFormat('@');
   sheet.setFrozenRows(1);
   return sheet;
+}
+
+// ------------------------------------------------------------------ 조직도 (Our Team)
+// WorkTime Config 의 'Org Chart' 탭: Position | Reports to | Person | Team. 시트에서만 수정.
+// 행 순서 = 화면 순서. 같은 Position + Reports to 행은 화면에서 한 박스(공동 책임자).
+// Person 은 쉼표로 여러 명 가능, 빈칸 = 공석. 트리는 화면(index.html)이 만듦.
+var ORG_HEAD = ['Position', 'Reports to', 'Person', 'Team'];
+var ORG_CACHE_SEC = 60;
+
+function ensureOrgConfig_(config) {
+  if (config.getSheetByName('Org Chart')) return;
+  var sh = config.insertSheet('Org Chart');
+  sh.getRange(1, 1, 1, 4).setValues([ORG_HEAD]).setFontWeight('bold');
+  sh.setFrozenRows(1);
+}
+
+function orgView_(req) {
+  whoAmI_(req.token);
+  var cache = CacheService.getScriptCache(), hit = cache.get('org_rows');
+  if (hit) return { ok: true, rows: JSON.parse(hit) };
+  var sh = SpreadsheetApp.openById(requiredProp_('CONFIG_SHEET_ID')).getSheetByName('Org Chart');
+  var rows = [];
+  if (sh && sh.getLastRow() > 1) {
+    rows = sh.getRange(2, 1, sh.getLastRow() - 1, 4).getDisplayValues()
+      .map(function (r) { return r.map(function (v) { return String(v).trim(); }); })
+      .filter(function (r) { return r[0]; });
+  }
+  cache.put('org_rows', JSON.stringify(rows), ORG_CACHE_SEC);
+  return { ok: true, rows: rows };
 }
 
 function requiredProp_(key) {

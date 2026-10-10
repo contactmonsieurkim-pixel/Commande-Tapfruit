@@ -689,6 +689,24 @@ test('status: team view for the supervisor only, read fresh from the sheet', () 
   assert.strictEqual(env.call({ action: 'me', token: yuna }).clock.info, 'END', 'team view refreshes the cache');
 });
 
+test('org chart: setup adds the tab; any logged-in staff reads its rows (sheet order, blanks skipped)', () => {
+  assert.strictEqual(env.call({ action: 'org' }).code, 'AUTH');
+  const tab = env.files[env.props.CONFIG_SHEET_ID].getSheetByName('Org Chart');
+  assert.deepStrictEqual([1, 2, 3, 4].map((c) => tab.cells['1,' + c]), ['Position', 'Reports to', 'Person', 'Team']);
+  assert.deepStrictEqual(env.call({ action: 'org', token: yuna }).rows, []);
+  delete env.cache.org_rows;
+  tab.getRange(2, 1, 4, 4).setValues([
+    ['Owner', '', 'Boss, Partner ', ''],
+    [' Kitchen Manager', 'Owner', 'Yuna', 'Kitchen'],
+    ['', '', 'stray note', ''],
+    ['Cook', 'Kitchen Manager', '', 'Kitchen'],
+  ]);
+  const r = env.call({ action: 'org', token: yuna });
+  assert.ok(r.ok, JSON.stringify(r));
+  assert.deepStrictEqual(r.rows, [['Owner', '', 'Boss, Partner', ''], ['Kitchen Manager', 'Owner', 'Yuna', 'Kitchen'],
+                                  ['Cook', 'Kitchen Manager', '', 'Kitchen']]);
+});
+
 test('supervisor can be changed/added in the sheet; supervisor has manager rights', () => {
   const config = env.files[env.props.CONFIG_SHEET_ID];
   config.sheets[0].getRange(8, 1, 1, 7).setValues([['Second Boss', '8888', 'TRUE', '', '', '', 'TRUE']]);

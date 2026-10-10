@@ -1,6 +1,6 @@
 # 인수인계 메모 (새 세션은 이 파일부터 읽기)
 
-> 마지막 정리: 2026-10-10 · Chat(단체 채팅) 추가
+> 마지막 정리: 2026-10-10 · Our Team(조직도) 추가
 > 설치·사용법은 `README.md`, 이 파일은 **구조 · 결정한 이유 · 작업 방식 · 남은 일**.
 
 ## 1. 한눈에 보기
@@ -10,11 +10,12 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 | 부분 | 위치 | 역할 |
 |---|---|---|
 | NFC 태그 (NTAG 424 DNA ×2: START, END) | 가게 벽 | 폰을 대면 서명된 1회용 URL 을 염 |
-| PWA (앱 이름 **monsieur Kim**) | `worktime/index.html` → GitHub Pages `https://contactmonsieurkim-pixel.github.io/Commande-Tapfruit/worktime/` | 출퇴근 결과, 공지, Our Rules, Chat, Request, 관리자 화면 |
+| PWA (앱 이름 **monsieur Kim**) | `worktime/index.html` → GitHub Pages `https://contactmonsieurkim-pixel.github.io/Commande-Tapfruit/worktime/` | 출퇴근 결과, 공지, Our Rules, Chat, Our Team, Request, 관리자 화면 |
 | 서버 | Google Apps Script 프로젝트 "Work Time Log with NFC" (`worktime/gas/*.gs`), `/exec` URL 은 `index.html` 의 `API_URL` | JSON API, 시트 기록, 메일, 웹 푸시, 트리거 |
 
 데이터는 모두 Drive 폴더 **Work Time Log with NFC** 안:
 - `yyyy-MM` 월별 시트 → 직원 이름 탭 → `DATE | TIME | Info(START/END) | Modify`
+- **WorkTime Config** → `Org Chart` 탭: `Position | Reports to | Person | Team` (조직도, 시트에서만 수정)
 - **WorkTime Config** → `Employees` 탭: `Name | PIN | Active | Email | Admin | Team | Supervisor | Transport receipt` (A~H, H 빈칸=대상, FALSE=제외)
 - **Announcement Records** (보호 + HMAC 체인): `Announcements`, `Confirmations`, `Notifications`, `Logins`, `Our Rules`, `Requests`, `Deleted`, `Receipts`, `Receipt Mails`, `Chat`
 - `Transport Receipts` 폴더 (영수증 `이름 yyyy-MM.jpg`, 회계사에게 보내면 휴지통으로)
@@ -24,7 +25,7 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 
 | 파일 | 내용 | `setup` 잘림 검사 표식(파일 마지막 함수) |
 |---|---|---|
-| `Code.gs` | 상수(맨 위 `DEFAULT_FOLDER_ID`, `TZ`, `props_`), `setup`, `doPost` 라우터, 로그인, 출퇴근(`tap_`), 시간변경(`modify_`), 직원 명단 | `json_` + 맨 위 변수 |
+| `Code.gs` | 상수(맨 위 `DEFAULT_FOLDER_ID`, `TZ`, `props_`), `setup`, `doPost` 라우터, 로그인, 출퇴근(`tap_`), 시간변경(`modify_`), 직원 명단, 조직도(`orgView_`) | `json_` + 맨 위 변수 |
 | `Crypto.gs` | 순수 JS AES-128 / CMAC, `verifySun_` (NTAG 424 SUN 검증) | `verifySun_` |
 | `WebPush.gs` | 순수 JS P-256(BigInt), ECDSA(VAPID ES256), ECDH, AES-GCM, RFC 8291 암호화, `sendWebPush_` | `sendWebPush_` |
 | `Announce.gs` | 기록 시트·해시 체인, 공지, 수신 대상(팀/개인), 알림(`notify_`), 조용한 시간, `morningRun` | `morningRun` |
@@ -34,7 +35,7 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 | `Receipts.gs` | 교통카드 영수증: 업로드·삭제·보기, 1~5일 알림, Supervisor 현황, 회계사 메일(미리보기 → Confirm) | `notifyReceipts_` |
 | `Chat.gs` | 단체 채팅(전체 방 + 팀별 방): 메시지·사진·삭제·알림 끄기, 방별 캐시, 모아서 보내는 푸시(`chatPushRun`) | `chatPushRun` |
 
-API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend chat chatSend chatDelete chatPhoto chatMute`
+API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend chat chatSend chatDelete chatPhoto chatMute org`
 
 스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID RECEIPT_FOLDER_ID ACCOUNTANT_EMAIL RECEIPT_NOTIFIED LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE CHAT_SEQ CHAT_VER_<방> CHAT_PUSH_AT chatr_<이름> chatn_<이름> chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
 
@@ -92,6 +93,16 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - **Manager 폴더**(iPhone 폴더처럼, 눌러서 열고 바깥을 누르면 닫힘): Admin(E열) → *Post & status*(예전 Manager 화면), Supervisor(G열) → *Requests inbox* · *Team status* · *To accountant*. 안에 보이는 앱이 하나도 없으면 폴더 자체가 안 보임(`syncManager`). 폴더 아이콘은 안에 든 앱을 작게 2×2.
 - 버튼 id(`b-anns` 등)와 동작은 그대로 — 화면만 바뀜.
 
+**Our Team (조직도)** (2026-10-10)
+- 홈 아이콘 **Our Team**(모든 직원). WorkTime Config `Org Chart` 탭(`setup` 이 만듦) `Position | Reports to | Person | Team` 을 서버(`org` 액션)가 그대로 주고, **트리는 화면이 만듦**(`buildOrg`). 시트에서만 수정, 서버 캐시 60초(`org_rows`).
+- 고전적인 위계 다이어그램(사장님: "확실한 위계가 필요한 곳"): 위→아래 박스 + 꺾인 선, 박스 = 직책·이름·팀(**사진 없음**), 팀 색은 시트에 나온 순서대로 자동 5색, 처음부터 전부 펼침. 맨 위 박스는 진한 바탕.
+- **Position + Reports to 가 같은 행 = 한 박스**(공동 책임자: Kitchen Manager 2명 → 그 아래 쿡들은 두 사람 모두의 부하). 사람마다 한 행 또는 Person 칸에 쉼표로 여러 명. 빈칸 = 공석(점선 박스). 행 순서 = 왼쪽→오른쪽 순서.
+  Reports to = 위 직책 이름 **또는 사람 이름**. 따로 팀을 맡기려면 직책 이름을 다르게(예: `Kitchen Manager (Lunch)`).
+  같은 규칙이라 같은 직책의 쿡 2명도 한 박스(사장님 확인함). 없는 직책을 가리키거나 서로를 가리키면 화면 위에 경고.
+- 아래가 전부 말단이고 3개 이상이면 세로로 쌓음(폭 절약). 폰에서는 기본 **Fit**(폭에 맞춰 축소), **100%** = 원래 크기로 옆으로 밀어 보기.
+- 내 박스 = 초록 테두리 + YOU (여러 명 박스면 내 이름에 밑줄). 이름 비교는 대소문자 무시, Employees 이름과 같게 적어야 강조됨.
+- 박스를 누르면 아래 시트: 팀 · Reports to · Team below. 폰 저장 `wt_org_v1` → 열면 바로 보이고 뒤에서 갱신.
+
 **Chat (단체 채팅)** (2026-10-10)
 - 방 = **Everyone + 팀별 방**(Employees F열 Team 값마다 자동). 직원은 Everyone + 자기 팀, Supervisor 는 모든 팀 방(자기 팀 아닌 방은 처음에 알림 꺼짐). 1:1 대화 없음.
 - 글(1000자) + 사진 1장, 내 글 삭제(Supervisor 는 모든 글 삭제 가능 = 관리용). 삭제는 기록 시트 행을 남기고 `Deleted` 탭에 `C000123` 한 줄. 읽음 표시·입력 중 표시·답장/반응은 없음(필요하면 나중에).
@@ -109,7 +120,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ## 4. 작업 방식 (사장님과 합의된 흐름)
 
 - 사장님: 한국어, Mac + iPhone(Chrome/Safari), Supervisor = **Kim namheon**.
-- **PR 은 요청할 때만** 만든다. 작업 브랜치는 세션마다 지정됨(Chat 은 `claude/busy-lovelace-zyng5o`), 병합된 뒤 새 작업은 최신 `main` 에서 시작.
+- **PR 은 요청할 때만** 만든다. 작업 브랜치는 세션마다 지정됨(Our Team 은 `claude/busy-turing-aygx7q`), 병합된 뒤 새 작업은 최신 `main` 에서 시작.
 - 서버(.gs)가 바뀌는 변경의 배포 순서: **① Apps Script 파일 교체 → ② 필요하면 `setup` 실행 → ③ 배포 관리 → 수정 → 새 버전 → ④ 그다음 PR 병합**(화면이 새 서버를 부르기 때문).
 - 파일 복사 안내는 raw 링크 + "⌘A → ⌘C" (예전에 앞/뒤가 잘려 붙은 적 있음 → `setup` 의 `checkFiles_` 가 잡아줌).
 - **사장님 요청: .gs 파일을 고칠 때마다 답변 끝에 바뀐 파일 각각의 raw 링크를 항상 붙일 것** (푸시한 작업 브랜치 기준).
@@ -124,7 +135,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 110개, python 의 pycryptodome 필요)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 111개, python 의 pycryptodome 필요)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```
@@ -162,11 +173,6 @@ node test_webpush.js                    # 푸시 암호를 Node crypto 와 교�
   `receiptSend` 를 confirm 없이 부르면 미리보기, confirm 때 `expect` 가 다르면 `CHANGED`. 보낸 파일은 Drive 휴지통(Gmail 보낸편지함에 남음), 다시 보내면 안 보낸 것만.
 
 ## 6. 남은 일
-
-**조직도 (보류 중, 다음 세션 후보)**
-- 미리보기: https://claude.ai/artifact/KUUmYjuszTMaXc754D75b7 (원본: 세션 scratchpad 에만 있음, 필요하면 위 링크를 읽어서 시작)
-- 합의된 것: WorkTime Config 에 **Org Chart** 탭 `Position | Reports to | Person | Team` (포지션 중심, 공석 가능, 행 순서 = 화면 순서, Reports to = 위 직책 이름) · **세로 트리** · 내 위치 강조 · 눌러서 상세(사진·이름·직책·팀) · 공석 표시 · 프로필 사진(Drive `Profile Photos/이름.jpg`) · **시트에서만 수정**. 직속 상사/부하 목록은 지금은 불필요(회사가 크면 추후).
-- 아직 안 정한 것: 카드 정보량·크기, 팀 색, 처음에 전부 펼칠지, 버튼 이름("Our Team"?).
 
 **알려진 한계 / 아이디어**
 - 실기기 확인 현황: PR #9(앱 재개 시 새로고침, 메일·앱 중복 확인 해결)와 PR #10(로고 = 홈) 모두 사장님이 iPhone 에서 동작 확인.
