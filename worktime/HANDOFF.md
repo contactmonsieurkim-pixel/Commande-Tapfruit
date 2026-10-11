@@ -140,6 +140,9 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
   열어 둔 사이에 시트에서 바뀌었으면 `CHANGED` 로 거절(덮어쓰지 않음, 다시 열기). **Delete = 탭 숨기기**(시트에서 숨김 해제하면 복구, Production log 는 그대로).
   사진: 고르는 즉시 줄여서(1280px) `Recipe Photos` 폴더에 `<레시피이름>-yyyyMMdd-HHmmss.jpg` 로 올리고 그 파일 이름을 PHOTO 줄에 넣음. 사장님이 Drive 에 직접 올리고 파일 이름을 적어도 됨.
   **Boxes**: 박스 목록(Capacity·Name·Note·사진) 편집 = `Boxes` 탭을 다시 씀. 박스 이름을 바꾸면 그 박스를 쓰던 레시피에서 다시 골라야 함(이름으로 연결).
+- **재료 목록 (Ingredients 탭)**: 편집기의 재료 이름 칸 = 자동완성(앞글자만 쳐도 목록이 뜸, 단어 시작·포함 순). 목록에 없으면 노란 *New ingredient* + 비슷한 이름이 있으면 *Did you mean …?*(편집 거리 2 이하 또는 앞부분 일치).
+  저장할 때 서버가 대소문자·띄어쓰기·악센트만 다른 이름을 목록의 표기로 맞추고(`ingKey_`), 새 이름은 탭에 자동 추가(Added, First recipe). 목적 = 나중에 주문 시스템에서 같은 재료가 다른 이름으로 갈라지지 않게.
+  탭은 setup/첫 저장 때 지금 레시피들의 재료로 채워짐. 시트에서 고치거나 지워도 됨(이미 저장된 레시피의 이름은 그대로 — 바꾸면 레시피 탭도 같이 고칠 것).
 - 캐시: 서버 60초(`rcp_all_<RCP_VER>`, 앱에서 고치면 바로 새로), 폰 `wt_rcp_v1`(열면 바로 + 뒤에서 갱신), 사진은 폰 IndexedDB `rph:<파일 이름>` → **같은 파일 이름으로 사진을 바꾸면 폰에는 옛 사진이 남음** (새 이름 사용).
 
 **Stock (재고 종합본 · 재고 조사 · 소비량)** (2026-10-11)
@@ -179,7 +182,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 136개, python 의 pycryptodome 필요)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 137개, python 의 pycryptodome 필요)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```

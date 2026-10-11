@@ -17,6 +17,9 @@
 //     COUNT    재고 조사: Daily (매일 저녁, 기본) / Sunday (일요일 조사만)
 //   'Boxes' 탭: Name | Capacity | Photo | Note  (박스 목록. 앱에서는 용량 + 작은 사진)
 //   'Places' 탭: 저장 위치 목록 (Stock.gs 참고)
+//   'Ingredients' 탭: 재료 이름 목록 (Name | Note | Added | First recipe). 편집기의 재료 칸 자동완성 = 이 목록.
+//     레시피를 저장할 때 대소문자·띄어쓰기·악센트만 다른 이름은 목록의 이름으로 맞추고(Soy Sauce → Soy sauce),
+//     목록에 없는 새 이름은 자동으로 추가됨. 나중에 주문 시스템이 같은 이름을 쓰도록. 시트에서 고치거나 지워도 됨.
 //   'How to' 탭과 이름이 _ 로 시작하는 탭, 숨긴 탭은 레시피가 아님 (앱에서 지운 레시피 = 숨긴 탭, 숨김 해제로 복구).
 // "Production Log" 스프레드시트 (PROD_SHEET_ID): 프렙 입고 기록·재고·재고 조사 — Stock.gs.
 // 보는 사람 = Employees F열 Team 이 RECIPE_TEAMS(스크립트 속성, 기본 'Kitchen', 쉼표로 여러 팀)인 직원 + Supervisor.
@@ -24,7 +27,8 @@
 
 var RECIPE_HEAD = ['Kind', 'Name / text', 'Amount', 'Unit / note'];
 var BOX_HEAD = ['Name', 'Capacity', 'Photo', 'Note'];
-var RECIPE_SKIP_TAB = /^(boxes|places|how to|_.*)$/i;
+var RECIPE_SKIP_TAB = /^(boxes|places|ingredients|how to|_.*)$/i;
+var INGREDIENT_HEAD = ['Name', 'Note', 'Added', 'First recipe'];
 var RECIPE_CACHE_SEC = 60;       // 시트에서 직접 고친 것은 최대 1분 뒤 앱에 보임 (앱에서 고친 것은 바로)
 var RECIPE_MAX_ITEMS = 300;
 
@@ -53,6 +57,7 @@ function ensureRecipes_() {
   }
   recipePhotoFolder_();
   ensurePlaces_(ss);
+  ensureIngredients_(ss);
   prodSheet_();
   return ss;
 }
@@ -197,12 +202,44 @@ function readBoxes_(ss) {
     .filter(function (b) { return b.name; });
 }
 
+/** 재료 이름 비교용: 대소문자·앞뒤/겹친 띄어쓰기·악센트 무시 (Crème = creme). */
+function ingKey_(s) {
+  return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+/** 처음 한 번: Ingredients 탭을 만들고 지금 레시피들에 쓰인 재료로 채움. */
+function ensureIngredients_(ss) {
+  if (ss.getSheetByName('Ingredients')) return;
+  var sh = ss.insertSheet('Ingredients'), seen = {}, rows = [], today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  recipeTabs_(ss).forEach(function (t) {
+    var r = parseRecipe_(t.getName(), recipeValues_(t));
+    r.items.forEach(function (it) {
+      if ((it.t === 'ing' || it.t === 'base') && !seen[ingKey_(it.name)]) {
+        seen[ingKey_(it.name)] = true;
+        rows.push([it.name, '', today, r.name]);
+      }
+    });
+  });
+  sh.getRange(1, 1, rows.length + 1, 4).setNumberFormat('@').setValues([INGREDIENT_HEAD].concat(rows));
+  sh.getRange(1, 1, 1, 4).setFontWeight('bold');
+  sh.setFrozenRows(1);
+}
+
+/** Ingredients 탭의 이름들 (시트 순서, 같은 이름은 처음 것만). */
+function readIngredients_(ss) {
+  var sh = ss.getSheetByName('Ingredients');
+  if (!sh || sh.getLastRow() < 2) return [];
+  var seen = {};
+  return sh.getRange(2, 1, sh.getLastRow() - 1, 1).getDisplayValues().map(function (r) { return String(r[0]).replace(/\s+/g, ' ').trim(); })
+    .filter(function (n) { var k = ingKey_(n); if (!n || seen[k]) return false; seen[k] = true; return true; });
+}
+
 /** { recipes: [...], boxes: [...], boxesVer } — 캐시(앱에서 고치면 RCP_VER 이 바뀌어 바로 새로 읽음). */
 function recipesAll_() {
   var key = 'rcp_all_' + (props_.getProperty('RCP_VER') || '0'), cache = CacheService.getScriptCache();
   var hit = cache.get(key);
   if (hit) return JSON.parse(hit);
-  var ss = recipeBook_(), out = { recipes: [], boxes: readBoxes_(ss) };
+  var ss = recipeBook_(), out = { recipes: [], boxes: readBoxes_(ss), ingredients: readIngredients_(ss) };
   out.boxesVer = recipeVer_(out.boxes);
   recipeTabs_(ss).forEach(function (sh) {
     var values = recipeValues_(sh), r = parseRecipe_(sh.getName(), values);
@@ -240,7 +277,16 @@ function recipesView_(req) {
                 if (!sup) delete x.warnings;
                 return x;
               }) };
-  if (sup) out.boxesVer = all.boxesVer;
+  if (sup) {
+    out.boxesVer = all.boxesVer;
+    // 재료 자동완성: Ingredients 탭 + 레시피에 쓰였지만 탭에 없는 이름 (시트에서 직접 쓴 것)
+    var seen = {}, ings = [], add = function (n) { var k = ingKey_(n); if (n && !seen[k]) { seen[k] = true; ings.push(n); } };
+    (all.ingredients || []).forEach(add);
+    all.recipes.forEach(function (r) {
+      r.items.forEach(function (it) { if (it.t === 'ing' || it.t === 'base') add(it.name); });
+    });
+    out.ingredients = ings;
+  }
   if (admin) {
     // Made by 고르기: 레시피 팀 사람 먼저, 그다음 나머지
     var teams = recipeTeams_();
@@ -295,7 +341,8 @@ function rcpText_(v, max, label) {
 }
 
 /** 화면에서 받은 레시피 → 시트 행 (검사 포함). */
-function recipeRows_(r) {
+function recipeRows_(r, canon) {
+  canon = canon || function (n) { return n; };
   var name = rcpText_(r.name, 100, 'The name').replace(/\s+/g, ' ');
   if (!name) fail_('Please enter the recipe name.');
   var mode = r.mode === 'percent' ? 'percent' : 'fixed';
@@ -308,7 +355,7 @@ function recipeRows_(r) {
   items.forEach(function (it, i) {
     var line = 'Line ' + (i + 1) + ': ';
     if (it.t === 'ing' || it.t === 'base') {
-      var nm = rcpText_(it.name, 120, line + 'the ingredient');
+      var nm = canon(rcpText_(it.name, 120, line + 'the ingredient').replace(/\s+/g, ' '));
       if (!nm) fail_(line + 'please enter the ingredient name.');
       var note = rcpText_(it.note, 80, line + 'the note');
       if (it.t === 'base') {
@@ -374,12 +421,21 @@ function recipeSheetById_(ss, id) {
 /** 새 레시피(id 없음) 또는 수정(id + ver: 연 뒤에 시트에서 바뀌었으면 CHANGED). */
 function recipeSave_(req) {
   recipeEditor_(req);
-  var built = recipeRows_(req.recipe || {});
+  var ss = recipeBook_();
+  ensureIngredients_(ss);
+  var known = {}, fresh = [];
+  readIngredients_(ss).forEach(function (n) { known[ingKey_(n)] = n; });
+  // 목록에 있는 이름은 목록의 표기로, 없는 이름은 새 재료로 (같은 레시피 안에서 두 번 써도 한 번만)
+  var built = recipeRows_(req.recipe || {}, function (n) {
+    var k = ingKey_(n);
+    if (!k) return n;
+    if (!known[k]) { known[k] = n; fresh.push(n); }
+    return known[k];
+  });
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   var sh;
   try {
-    var ss = recipeBook_();
     if (req.id) {
       sh = recipeSheetById_(ss, req.id);
       if (!sh) fail_('This recipe was deleted. Please go back to the list.', 'CHANGED');
@@ -396,12 +452,18 @@ function recipeSave_(req) {
     }));
     sh.getRange(1, 1, 1, 4).setFontWeight('bold');
     sh.setFrozenRows(1);
+    if (fresh.length) {
+      var ing = ss.getSheetByName('Ingredients'), today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+      ing.getRange(ing.getLastRow() + 1, 1, fresh.length, 4).setNumberFormat('@').setValues(fresh.map(function (n) {
+        return [/^[=+\-@']/.test(n) ? "'" + n : n, '', today, built.name];
+      }));
+    }
     SpreadsheetApp.flush();
     bumpRecipes_();
   } finally {
     lock.releaseLock();
   }
-  return { ok: true, recipe: recipeById_(sh.getSheetId()) };
+  return { ok: true, recipe: recipeById_(sh.getSheetId()), newIngredients: fresh };
 }
 
 /** 앱에서 지우기 = 탭 숨기기 (시트에서 숨김 해제하면 돌아옴). */
