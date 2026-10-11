@@ -2216,6 +2216,18 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.strictEqual(s2.recipe.items[0].name, 'Beef broth', 'written exactly like the recipe it comes from');
   });
 
+  test('recipes: Not stored = nothing to log, never in stock or counts', () => {
+    const r = C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Fresh dressing', count: 'none', items: [{ t: 'ing', name: 'Soy sauce', q: 200 }], keepDays: 2 } });
+    assert.deepStrictEqual([r.ok, r.recipe.count], [true, 'none']);
+    assert.match(C.call({ action: 'prodLog', token: yu, id: r.recipe.id, mult: 2, boxes: 1, place: 'Ground floor · Fridge 4' }).error, /not stored/);
+    assert.match(C.call({ action: 'prodLog', token: sup, id: r.recipe.id, missing: true, boxes: 1, place: 'Ground floor · Fridge 4' }).error, /not stored/);
+    assert.ok(!C.call({ action: 'stock', token: yu }).items.some((x) => x.recipeId === r.recipe.id));
+    for (const kind of ['daily', 'sunday']) {
+      assert.ok(!C.call({ action: 'countView', token: chef, kind }).places.some((p) => p.items.some((x) => x.recipeId === r.recipe.id)));
+    }
+    assert.strictEqual(C.call({ action: 'prodList', token: yu, id: r.recipe.id }).entries.length, 0);
+  });
+
   test('recipes: delete = hidden tab (not in the list, still in the file)', () => {
     const id = bulgogi().id;
     assert.strictEqual(C.call({ action: 'recipeDelete', token: yu, id }).ok, false);

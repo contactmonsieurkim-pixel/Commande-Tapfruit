@@ -252,6 +252,7 @@ function prodRecipe_(id) {
  */
 function prodLog_(req) {
   var emp = recipeUser_(req), all = recipesAll_(), r = prodRecipe_(req.id), admin = emp.admin || emp.supervisor;
+  if (r.count === 'none') fail_('This recipe is not stored, so there is nothing to log.');
   var boxes = boxesNum_(req.boxes, 'Boxes');
   var box = String(req.box || r.box || '').trim();
   if (!box) fail_('Please choose the box.');
@@ -448,6 +449,7 @@ function countKind_(v) { return v === 'sunday' ? 'sunday' : 'daily'; }
 
 /** 이 조사에서 셀 (위치, 레시피)인지. Daily = Daily 위치의 Daily 레시피, Sunday = 나머지 전부. */
 function inCount_(kind, place, recipe) {
+  if (recipe && recipe.count === 'none') return false; // 재고로 두지 않는 레시피는 조사하지 않음
   var daily = !!place && place.count === 'daily' && (!recipe || recipe.count !== 'sunday');
   return kind === 'daily' ? daily : !daily;
 }

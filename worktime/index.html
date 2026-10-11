@@ -3520,7 +3520,7 @@
     }
     const total = ready ? Object.values(amounts).reduce((a, g) => a + (g || 0), 0) : null;
     const finished = total == null ? null : r.yieldPct ? total * r.yieldPct / 100 : total; // 끓이고 거른 뒤 = 박스에 들어가는 양
-    const boxes = finished && r.fill ? Math.max(0.1, Math.round(finished / r.fill * 10) / 10) : null;
+    const boxes = finished && r.fill && r.count !== 'none' ? Math.max(0.1, Math.round(finished / r.fill * 10) / 10) : null;
     return { amounts, total, finished, baseTotal, boxes, ready };
   }
 
@@ -3672,7 +3672,7 @@
     b.type = 'button';
     t.append(el('b', null, r.name));
     // 왼쪽 = 통 크기, 오른쪽 = 1 batch 통 수 (옅은 배경)
-    const sub = [r.cat, bx && (bx.capacity || bx.name)].filter(Boolean).join(' · '), qty = batchBoxes(r);
+    const sub = [r.cat, r.count !== 'none' && bx && (bx.capacity || bx.name)].filter(Boolean).join(' · '), qty = r.count === 'none' ? 'Not stored' : batchBoxes(r);
     if (sub || qty) {
       const line = el('small', 'rc-subline', sub);
       if (qty) line.append(el('span', 'rc-qty', qty));
@@ -3859,24 +3859,27 @@
     });
     syncClear();
 
-    const st = el('section', 'rc-store'), bx = rcpBox(r.box);
-    st.append(el('h3', null, 'Store in'));
-    if (bx) { const row = el('div', 'rc-boxrow'); row.append(boxThumb(bx), boxText(bx)); st.append(row); }
+    const st = el('section', 'rc-store'), notStored = r.count === 'none', bx = notStored ? null : rcpBox(r.box);
+    st.append(el('h3', null, notStored ? 'Not stored' : 'Store in'));
+    if (notStored) st.append(el('p', 'meta', 'Used right away — not kept in stock, nothing to log.'));
+    else if (bx) { const row = el('div', 'rc-boxrow'); row.append(boxThumb(bx), boxText(bx)); st.append(row); }
     else st.append(el('p', 'meta', 'No box set for this recipe.'));
     const dl = el('dl', 'rc-facts');
     const add = (k, v, cls) => dl.append(el('dt', null, k), el('dd', cls, v));
     if (r.yieldPct) add('Yield', r.yieldPct + '% of the raw weight' + (r.yieldNote ? ' · ' + r.yieldNote : ''));
-    if (r.fill) { add('Fill', 'about ' + fmtW(r.fill) + ' per box'); add('This batch', '', 'rc-nbox'); }
-    if (r.keepNote || r.keepDays != null) add('Keep', [r.keepNote, r.keepDays != null ? r.keepDays + ' days' : ''].filter(Boolean).join(' · '));
-    if (r.keepDays != null) add('Use by', useByText(r.keepDays) + ' (if made today)');
-    if (r.place) add('Usually', '📍 ' + r.place);
+    if (r.fill && !notStored) { add('Fill', 'about ' + fmtW(r.fill) + ' per box'); add('This batch', '', 'rc-nbox'); }
+    if (!notStored && (r.keepNote || r.keepDays != null)) add('Keep', [r.keepNote, r.keepDays != null ? r.keepDays + ' days' : ''].filter(Boolean).join(' · '));
+    if (!notStored && r.keepDays != null) add('Use by', useByText(r.keepDays) + ' (if made today)');
+    if (!notStored && r.place) add('Usually', '📍 ' + r.place);
     if (dl.children.length) st.append(dl);
-    const logBtn = el('button', null, 'Log production');
-    logBtn.type = 'button';
-    logBtn.addEventListener('click', () => openProdSheet(r));
-    const recent = el('div', 'rc-recent');
-    recent.id = 'rc-recent';
-    st.append(logBtn, recent);
+    if (!notStored) { // 재고로 두지 않는 레시피는 기록 없음
+      const logBtn = el('button', null, 'Log production');
+      logBtn.type = 'button';
+      logBtn.addEventListener('click', () => openProdSheet(r));
+      const recent = el('div', 'rc-recent');
+      recent.id = 'rc-recent';
+      st.append(logBtn, recent);
+    }
 
     $('rc-detail').replaceChildren(head, scale, flow, clear, st);
     rcpUpdate(r);
@@ -3916,11 +3919,11 @@
   function entryRow(e, withRecipe) {
     const row = el('div', 'rc-entry'), w = el('span', 'w'), bx = rcpBox(e.box), acts = el('span', 'acts');
     if (withRecipe) w.append(el('b', null, e.recipe), ' · ');
-    const n = e.left < e.boxes ? fmtB(e.left) + ' of ' + fmtB(e.boxes) : fmtB(e.boxes);
-    w.append(el('b', null, (e.left > 0 ? n : 'used up · ' + fmtB(e.boxes)) + ' × ' + ((bx && bx.capacity) || e.box)),
+    const n = e.left < e.boxes ? fmtB(e.left) + ' of ' + fmtB(e.boxes) : fmtB(e.boxes), made = !e.place && !e.boxes; // made = 재고로 두지 않는 레시피
+    w.append(el('b', null, made ? 'Made · ' + e.batch : (e.left > 0 ? n : 'used up · ' + fmtB(e.boxes)) + ' × ' + ((bx && bx.capacity) || e.box)),
              ' · ' + e.madeBy + ' · ' + dayLabel(e.date) + (e.time ? ' ' + e.time : ''));
     if (withRecipe && e.useBy) w.append(' · use by ' + isoLabel(e.useBy));
-    w.append(el('span', 'where', e.place ? '📍 ' + e.place + (e.movedBy ? ' (moved by ' + e.movedBy + ')' : '') : '📍 No place yet'));
+    if (!made) w.append(el('span', 'where', e.place ? '📍 ' + e.place + (e.movedBy ? ' (moved by ' + e.movedBy + ')' : '') : '📍 No place yet'));
     if (e.left > 0) {
       const mv = el('button', 'link move', 'Move');
       mv.type = 'button';
@@ -4929,9 +4932,11 @@
     const g = el('div', 'seg'), hint = el('p', 'meta'), box = el('div');
     const draw = () => {
       g.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.c === (d.count || 'daily')));
-      hint.textContent = d.count === 'sunday' ? 'Counted only in the Sunday count.' : 'Counted every evening when it is in a fridge (shelves and freezers: Sunday).';
+      hint.textContent = d.count === 'sunday' ? 'Counted only in the Sunday count.'
+        : d.count === 'none' ? 'Used right away, not kept in stock: no Log production, never in Stock or the counts.'
+        : 'Counted every evening when it is in a fridge (shelves and freezers: Sunday).';
     };
-    for (const [c, label] of [['daily', 'Every evening'], ['sunday', 'Sunday only']]) {
+    for (const [c, label] of [['daily', 'Every evening'], ['sunday', 'Sunday only'], ['none', 'Not stored']]) {
       const b = el('button', null, label);
       b.type = 'button'; b.dataset.c = c;
       b.addEventListener('click', () => { d.count = c; reDirty(); draw(); });
@@ -5063,7 +5068,7 @@
     if (dr.uploads) return reMsg('Please wait until the photo is uploaded.', 'err');
     const d = dr.d;
     const recipe = { name: d.name, mode: d.mode, cat: d.cat, box: d.box, fill: d.fill ?? '', keepNote: d.keepNote, keepDays: d.keepDays ?? '', place: d.place || '',
-                     count: d.count === 'sunday' ? 'sunday' : 'daily', yieldPct: d.yieldPct ?? '', yieldNote: d.yieldNote || '',
+                     count: d.count === 'sunday' || d.count === 'none' ? d.count : 'daily', yieldPct: d.yieldPct ?? '', yieldNote: d.yieldNote || '',
                      items: d.items.map(({ k, ...x }) => x) };
     btn.disabled = true;
     reMsg('Saving…', 'meta');

@@ -14,7 +14,7 @@
 //     FILL     | 박스 하나에 들어가는 대략 g (예상 박스 수 계산용)
 //     KEEP     보관 조건 | 보관 일수 (사용기한 = 만든 날 + 일수)
 //     PLACE    기본 저장 위치 (Places 탭의 이름, 예: 'Ground floor · Fridge 4')
-//     COUNT    재고 조사: Daily (매일 저녁, 기본) / Sunday (일요일 조사만)
+//     COUNT    재고 조사: Daily (매일 저녁, 기본) / Sunday (일요일 조사만) / Not stored (바로 쓰고 재고로 두지 않음)
 //     YIELD    메모(예: after straining) | 완성 무게 = 재료 총무게의 % (끓이고 거르면 < 100, 밥처럼 불면 > 100)
 //   재료 이름이 다른 레시피 이름과 같으면(홈메이드) 앱에서 그 재료를 눌러 그 레시피로 감.
 //   'Boxes' 탭: Name | Capacity | Photo | Note  (박스 목록. 앱에서는 용량 + 작은 사진)
@@ -52,7 +52,7 @@ function ensureRecipes_() {
       ['BASE | base ingredient (Percent only; weighed at prep time; several BASE rows = their total is 100%)'],
       ['STEP | what to do                    PHOTO | file name in the Recipe Photos folder | | caption'],
       ['BOX | box name from the Boxes tab    FILL | | grams per box    KEEP | storage | days'],
-      ['PLACE | usual place (name from the Places tab)    COUNT | Daily (default) or Sunday'],
+      ['PLACE | usual place (name from the Places tab)    COUNT | Daily (default), Sunday or Not stored'],
       ['YIELD | note (e.g. after straining) | finished weight as % of the raw total (e.g. 60)'],
       ['An ingredient with the same name as another recipe (homemade) opens that recipe in the app.'],
       ['Hidden tabs, this tab, the Boxes and Places tabs and tabs starting with _ are not recipes.'],
@@ -173,8 +173,8 @@ function parseRecipe_(tab, rows) {
       if (n === null || isNaN(n) || n <= 0 || n > 1000) warn(i, 'YIELD needs the finished weight as % of the raw total in column C (e.g. 60).');
       else { r.yieldPct = Math.round(n * 10) / 10; r.yieldNote = b; }
     } else if (k === 'COUNT') {
-      if (!/^(daily|sunday|weekly)$/i.test(b)) warn(i, 'COUNT must be Daily or Sunday.');
-      r.count = /^(sunday|weekly)$/i.test(b) ? 'sunday' : 'daily';
+      if (!/^(daily|sunday|weekly|not stored|none)$/i.test(b)) warn(i, 'COUNT must be Daily, Sunday or Not stored.');
+      r.count = /^(sunday|weekly)$/i.test(b) ? 'sunday' : /^(not stored|none)$/i.test(b) ? 'none' : 'daily';
     } else warn(i, 'Unknown kind “' + k + '”.');
   });
   if (!r.name) r.name = tab;
@@ -407,6 +407,7 @@ function recipeRows_(r, canon) {
     rows.push(['PLACE', prodPlace_(r.place).label, '', '']);
   }
   if (r.count === 'sunday') rows.push(['COUNT', 'Sunday', '', '']);
+  if (r.count === 'none') rows.push(['COUNT', 'Not stored', '', '']);
   if (r.yieldPct !== '' && r.yieldPct != null) {
     var y = recipeNum_(r.yieldPct);
     if (y === null || isNaN(y) || y <= 0 || y > 1000) fail_('Yield: the finished weight as % of the raw total (e.g. 60).');
