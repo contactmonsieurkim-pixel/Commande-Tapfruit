@@ -3656,14 +3656,14 @@
     if (rcpData) renderRcpList();
   }
 
-  /** 목록에 보이는 1 batch 분량 (통 수): '≈ 2.3 / batch'. 비율 레시피는 기준 재료 1 kg 당. 박스당 g(FILL)이 없으면 ''. */
+  /** 목록에 보이는 1 batch 분량 (통 수): '≈ 2.3 box/batch'. 비율 레시피는 기준 재료 1 kg 당. 박스당 g(FILL)이 없으면 ''. */
   function batchBoxes(r) {
     const yf = r.yieldPct ? r.yieldPct / 100 : 1;
     const sum = r.items.filter((x) => x.t === 'ing').reduce((a, x) => a + (x.q || 0), 0);
     const g = r.mode === 'percent' ? 1000 * (1 + sum / 100) * yf : sum * yf; // 완성 무게
     if (!r.fill || !(g > 0)) return '';
     const n = Math.max(0.1, Math.round(g / r.fill * 10) / 10);
-    return '≈ ' + n + (r.mode === 'percent' ? ' / kg base' : ' / batch');
+    return '≈ ' + n + (r.mode === 'percent' ? ' box/kg base' : ' box/batch');
   }
 
   function rcpItem(r, onClick, warn) {
