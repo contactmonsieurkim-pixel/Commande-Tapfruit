@@ -42,7 +42,7 @@ function checkFiles_() {
   var last = { 'Code.gs': 'json_', 'Crypto.gs': 'verifySun_', 'WebPush.gs': 'sendWebPush_',
                'Announce.gs': 'morningRun', 'Supervisor.gs': 'recordLogin_', 'Rules.gs': 'announceRule_',
                'Schedule.gs': 'checkSchedule', 'Receipts.gs': 'notifyReceipts_',
-               'Chat.gs': 'chatPushRun', 'Recipes.gs': 'checkRecipes' };
+               'Chat.gs': 'chatPushRun', 'Recipes.gs': 'checkRecipes', 'Stock.gs': 'checkStock' };
   var missing = Object.keys(last).filter(function (f) { return typeof this[last[f]] !== 'function'; }, this);
   if (typeof props_ === 'undefined' || typeof TZ === 'undefined' || typeof DEFAULT_FOLDER_ID === 'undefined') {
     missing.push('Code.gs (맨 윗부분: var DEFAULT_FOLDER_ID ... var props_)');
@@ -102,7 +102,7 @@ function doPost(e) {
       org: orgView_,
       recipes: recipesView_, recipePhoto: recipePhoto_, recipePhotoUpload: recipePhotoUpload_,
       recipeSave: recipeSave_, recipeDelete: recipeDelete_, boxSave: boxSave_,
-      prodLog: prodLog_, prodList: prodList_, prodDelete: prodDelete_, prodMove: prodMove_, prodStock: prodStock_,
+      prodLog: prodLog_, prodList: prodList_, prodDelete: prodDelete_, prodMove: prodMove_, prodCorrect: prodCorrect_, stock: stockView_, countView: countView_, countSave: countSave_,
     };
     var fn = handlers[req.action];
     if (!fn) return json_({ ok: false, error: 'Unknown action.' });

@@ -480,6 +480,10 @@
     /* Recipes: Kitchen 팀 + Supervisor 가 보는 레시피, Supervisor 의 Recipe editor */
     .ic-recipe { background: linear-gradient(160deg, #e8935a, #c0612b); }
     .ic-redit { background: linear-gradient(160deg, #c98a5e, #8f5634); }
+    .ic-stock { background: linear-gradient(160deg, #5a8fd6, #2f5f9e); }
+    #v-stock { padding-bottom: 80px; }
+    .st-item .tot small, .cn-row .u { font-size: 11px; font-weight: 400; color: var(--muted); margin-left: 3px; white-space: nowrap; }
+    .cn-row .u { margin-left: -6px; min-width: 34px; }
     #v-recipes, #v-redit { padding-bottom: 80px; }
     .rc-search { margin: 0 0 10px; }
     .rc-cats { margin: 0 0 12px; }
@@ -614,6 +618,72 @@
     .rc-group span { color: var(--muted); font-weight: 400; font-size: 13px; }
     .rc-stock-list { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 0 12px; }
     .rc-stock-list .rc-entry:first-child { border-top: 0; }
+    /* Stock (종합본): 레시피 한 줄 = 이름 · 위치(짧은 주소) · 합계 · 언제까지 */
+    .rc-tabs button { font-size: 13px; padding: 7px 2px; }
+    .st-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+    .st-head .feed-title { margin: 0; }
+    .st-list { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .st-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; width: 100%; margin: 0;
+               border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; color: var(--text); text-align: left; padding: 9px 12px; font-weight: 400; }
+    .st-item:first-child { border-top: 0; }
+    .st-item .nm { min-width: 0; }
+    .st-item .nm b { display: block; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .st-item .where { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .st-item .where em { font-style: normal; font-weight: 700; color: var(--text); }
+    .st-item .tot { font-size: 18px; font-weight: 800; min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+    .st-item .left { font-size: 12px; text-align: right; min-width: 56px; color: var(--muted); line-height: 1.2; font-variant-numeric: tabular-nums; }
+    .st-item .left b { display: block; font-size: 14px; color: var(--text); }
+    .st-item .left.low b { color: var(--err); }
+    .st-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--err); margin-left: 6px; vertical-align: 2px; }
+    .st-codes { font-size: 12px; color: var(--muted); margin: 10px 2px 0; line-height: 1.6; }
+    .st-lot { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--line); padding: 10px 0; flex-wrap: wrap; }
+    .st-lot .w { flex: 1; min-width: 0; }
+    .st-lot .st-sub { display: block; }
+    .st-lot .n { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .st-lot .acts { display: flex; gap: 12px; width: 100%; justify-content: flex-end; }
+    .st-lot .acts .move { color: var(--brand); }
+    .st-lot .acts button:not(.move) { color: var(--err); }
+    .st-num { font-size: 22px; text-align: center; font-variant-numeric: tabular-nums; }
+    .st-date { font-size: 17px; }
+    /* Count: 냉장고 하나 = 화면 하나, 품목 한 줄 = 이름 + 숫자 */
+    .cn-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .cn-top h2 { font-size: 20px; margin: 0; }
+    .cn-top .meta { white-space: nowrap; }
+    .cn-bar { height: 4px; background: var(--line); border-radius: 2px; margin: 6px 0 12px; overflow: hidden; }
+    .cn-bar i { display: block; height: 100%; background: var(--brand); }
+    .cn-row { display: flex; align-items: center; gap: 10px; width: 100%; height: 52px; margin: 0; padding: 0 14px; border: 0; border-top: 1px solid var(--line);
+              border-radius: 0; background: none; color: var(--text); text-align: left; font-weight: 400; }
+    .cn-row:first-child { border-top: 0; }
+    .cn-row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 16px; }
+    .cn-row .v { font-size: 20px; color: var(--muted); min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+    .cn-row.set .v { color: var(--text); font-weight: 800; }
+    .cn-row.diff .v { color: var(--brand); }
+    .cn-row .was { font-size: 12px; color: var(--muted); text-decoration: line-through; font-variant-numeric: tabular-nums; }
+    .cn-add { display: block; width: 100%; margin: 0; padding: 12px 14px; border: 0; border-top: 1px solid var(--line); border-radius: 0;
+              background: none; color: var(--brand); text-align: left; font-size: 15px; font-weight: 600; }
+    .cn-hint { color: var(--muted); font-size: 13px; margin: 10px 2px 0; }
+    .cn-nav { display: flex; gap: 8px; margin-top: 14px; }
+    .cn-nav button { margin: 0; flex: 1; }
+    .cn-nav button.go { flex: 3; }
+    .cn-pad { gap: 8px; }
+    .cn-pad-t { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .cn-pad-t b { font-size: 17px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cn-disp { font-size: 40px; font-weight: 800; text-align: center; min-height: 52px; font-variant-numeric: tabular-nums; }
+    .cn-disp small { font-size: 16px; color: var(--muted); font-weight: 400; }
+    .cn-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .cn-keys button { margin: 0; height: 52px; padding: 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 22px; }
+    .cn-keys button.ok { grid-column: 1 / -1; background: var(--brand); color: var(--brand-ink); font-size: 17px; }
+    .cn-waste { margin: 0; background: none; color: var(--err); font-size: 15px; padding: 6px; }
+    .cn-rev { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 2px 12px; }
+    .cn-rev > div { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 15px; }
+    .cn-rev > div:first-child { border-top: 0; }
+    .cn-rev b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .cn-rev b.used { color: var(--brand); } .cn-rev b.waste { color: var(--err); } .cn-rev b.up { color: #d68a00; }
+    .cn-move { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; margin: 0; padding: 10px 0; border: 0;
+               border-top: 1px solid var(--line); border-radius: 0; background: none; color: var(--text); text-align: left; font-size: 15px; font-weight: 600; }
+    .cn-move:first-child { border-top: 0; }
+    .cn-move small { color: var(--muted); font-weight: 400; font-size: 12px; }
+    .cn-move.on small { color: var(--brand); }
   </style>
 </head>
 <body>
@@ -663,6 +733,7 @@
       <button id="b-request" class="app" type="button"><span class="app-ic ic-request"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg></span><span class="app-name">Request</span></button>
       <button id="b-org" class="app" type="button"><span class="app-ic ic-org"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v5M5 17v-3h14v3"/></svg></span><span class="app-name">Our Team</span></button>
       <button id="b-recipes" class="app hidden" type="button"><span class="app-ic ic-recipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><path d="M6 17h12"/></svg></span><span class="app-name">Recipes</span></button>
+      <button id="b-stock" class="app hidden" type="button"><span class="app-ic ic-stock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg></span><span class="app-name">Stock</span></button>
       <button id="b-folder" class="app hidden" type="button" aria-haspopup="dialog"><span id="folder-ic" class="app-ic folder-ic"></span><span class="app-name">Manager</span></button>
     </div>
   </section>
@@ -827,8 +898,6 @@
   <section id="v-recipes" class="hidden">
     <div id="rc-list-box">
       <h2 class="feed-title">Recipes</h2>
-      <div id="rc-tabs" class="seg rc-tabs"><button type="button" data-t="recipes" class="on">Recipes</button><button type="button" data-t="stock">Storage</button></div>
-      <div id="rc-stock" class="hidden"></div>
       <div id="rc-recipes-box">
       <input id="rc-q" class="rc-search" type="search" placeholder="Search recipes" aria-label="Search recipes" autocomplete="off">
       <div id="rc-cats" class="chips rc-cats"></div>
@@ -837,6 +906,14 @@
     </div>
     <div id="rc-detail" class="hidden"></div>
     <button id="b-rc-list-back" class="back-fab" type="button">← Back</button>
+  </section>
+
+  <!-- Stock: 재고 종합본 (Kitchen 팀 + Supervisor) · Count / Sunday 재고 조사 (Admin 이상) -->
+  <section id="v-stock" class="hidden">
+    <div id="st-tabs" class="seg rc-tabs"><button type="button" data-t="stock" class="on">Stock</button><button type="button" data-t="count" class="hidden">Count</button><button type="button" data-t="sunday" class="hidden">Sunday</button></div>
+    <div id="rc-stock"></div>
+    <div id="rc-count" class="hidden"></div>
+    <button id="b-st-back" class="back-fab" type="button">← Back</button>
   </section>
 
   <!-- Supervisor 전용: Recipe editor (앱에서 고치면 시트 탭을 다시 씀) -->
@@ -1003,7 +1080,7 @@
     }
   }
   const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed', 'request', 'inbox', 'schedule', 'team',
-                 'receipt', 'receipts', 'chat', 'org', 'recipes', 'redit'];
+                 'receipt', 'receipts', 'chat', 'org', 'recipes', 'redit', 'stock'];
   let lastTap = null;
   let annReturn = 'home';
 
@@ -1032,6 +1109,7 @@
     $('b-admin').classList.toggle('hidden', !admin);
     for (const id of ['b-inbox', 'b-team', 'b-receipts', 'b-redit']) $(id).classList.toggle('hidden', !sup);
     $('b-recipes').classList.toggle('hidden', store.get('wt_rcp') !== '1');
+    $('b-stock').classList.toggle('hidden', store.get('wt_rcp') !== '1');
     const inside = [...document.querySelectorAll('#folder .app:not(.hidden) .app-ic')];
     $('b-folder').classList.toggle('hidden', !inside.length);
     $('folder-ic').replaceChildren(...inside.slice(0, 4).map((ic) => {
@@ -3362,8 +3440,9 @@
   let rcpOpen = null;            // 보고 있는 레시피 id (null = 목록)
   let rcpShown = null;           // 그려 둔 레시피의 버전 (바뀌었을 때만 다시 그림)
   let rcpProd = { id: null, entries: [] };
-  const rcpState = { q: '', cat: 'All', mult: {}, bases: {}, done: {}, tab: 'recipes', floor: 'All' };
-  let rcpStock = null;           // Storage 화면: 아직 쓸 수 있는 기록들 (서버 prodStock)
+  const rcpState = { q: '', cat: 'All', mult: {}, bases: {}, done: {} };
+  let stTab = 'stock';            // Stock 화면 탭: stock · count · sunday
+  let rcpStock = null;           // Stock 화면: 서버 stock (레시피별 합계·위치·배치·하루 평균)
   const rcpPhotos = new Map();
   const MULTS = [0.5, 1, 2, 3];
 
@@ -3504,6 +3583,7 @@
       }
       rcpData = r;
       store.set(RCP_STORE, JSON.stringify(r));
+      syncStockTabs();
       rcpRedraw();
       if (currentView === 'recipes' && rcpOpen) { loadProd(); rcAwake(true); }
       return r;
@@ -3515,7 +3595,7 @@
 
   function rcpRedraw() {
     if (currentView === 'recipes') {
-      if (!rcpOpen) return rcpState.tab === 'stock' ? loadStock() : renderRcpList();
+      if (!rcpOpen) return renderRcpList();
       const r = rcpData.recipes.find((x) => x.id === rcpOpen);
       if (!r) { toast('This recipe was removed.'); return showRcpList(); }
       if (!rcpShown || rcpShown.ver !== r.ver || rcpShown.boxes !== JSON.stringify(rcpData.boxes)) {
@@ -3524,6 +3604,7 @@
         window.scrollTo(0, y);
       }
     } else if (currentView === 'redit' && !reDraft) renderReList();
+    else if (currentView === 'stock' && stTab === 'stock' && rcpStock) renderStock(); // 짧은 주소·박스 용량이 바뀌었을 수 있음
   }
 
   async function openRecipes() {
@@ -3542,7 +3623,6 @@
     $('rc-list-box').classList.remove('hidden');
     $('rc-q').value = rcpState.q;
     if (rcpData) renderRcpList();
-    setRcpTab(rcpState.tab);
   }
 
   function rcpItem(r, onClick, warn) {
@@ -3734,13 +3814,17 @@
   function entryRow(e, withRecipe) {
     const row = el('div', 'rc-entry'), w = el('span', 'w'), bx = rcpBox(e.box), acts = el('span', 'acts');
     if (withRecipe) w.append(el('b', null, e.recipe), ' · ');
-    w.append(el('b', null, e.boxes + ' × ' + ((bx && bx.capacity) || e.box)), ' · ' + e.madeBy + ' · ' + dayLabel(e.date) + ' ' + e.time);
+    const n = e.left < e.boxes ? fmtB(e.left) + ' of ' + fmtB(e.boxes) : fmtB(e.boxes);
+    w.append(el('b', null, (e.left > 0 ? n : 'used up · ' + fmtB(e.boxes)) + ' × ' + ((bx && bx.capacity) || e.box)),
+             ' · ' + e.madeBy + ' · ' + dayLabel(e.date) + (e.time ? ' ' + e.time : ''));
     if (withRecipe && e.useBy) w.append(' · use by ' + isoLabel(e.useBy));
     w.append(el('span', 'where', e.place ? '📍 ' + e.place + (e.movedBy ? ' (moved by ' + e.movedBy + ')' : '') : '📍 No place yet'));
-    const mv = el('button', 'link move', 'Move');
-    mv.type = 'button';
-    mv.addEventListener('click', () => openMoveSheet(e));
-    acts.append(mv);
+    if (e.left > 0) {
+      const mv = el('button', 'link move', 'Move');
+      mv.type = 'button';
+      mv.addEventListener('click', () => openMoveSheet(e));
+      acts.append(mv);
+    }
     if (e.canDelete) {
       const del = el('button', 'link', 'Delete');
       del.type = 'button';
@@ -3768,16 +3852,15 @@
       return out;
     };
     rcpProd.entries = fix(rcpProd.entries);
-    if (rcpStock) rcpStock = fix(rcpStock);
     renderProd();
-    if (rcpState.tab === 'stock' && !rcpOpen) renderStock();
+    if (currentView === 'stock' && stTab === 'stock') loadStock(); else rcpStock = null;
   }
 
   // ---------------------------------------------------------------- 저장 위치 고르기 (층 → 냉장고/선반 → 자리)
   const PLACE_TYPES = { Fridge: 'Fridge / freezer', Shelf: 'Shelf (room temp)' };
   function placePicker(initial, onChange, noneLabel) {
     const places = (rcpData && rcpData.places) || [];
-    let cur = places.find((p) => p.label === initial) || null, floor = cur ? cur.floor : '', type = cur ? cur.type : '';
+    let cur = places.find((p) => p.label === initial) || null, floor = cur ? cur.floor : '', type = cur ? cur.group : '';
     const box = el('div', 'rc-place');
     const seg = (opts, val, pick) => {
       const g = el('div', 'seg');
@@ -3796,15 +3879,15 @@
         floor = v; type = ''; set(null);
       })];
       if (floor) {
-        const types = [...new Set(places.filter((p) => p.floor === floor).map((p) => p.type))];
+        const types = [...new Set(places.filter((p) => p.floor === floor).map((p) => p.group))];
         parts.push(seg(types.map((t) => [t, PLACE_TYPES[t] || t]), type, (v) => {
           if (v === type) return;
           type = v;
-          const spots = places.filter((p) => p.floor === floor && p.type === type);
+          const spots = places.filter((p) => p.floor === floor && p.group === type);
           set(spots.length === 1 ? spots[0] : null); // 자리가 하나뿐이면 바로 (예: 지하 선반 = Fermentation shelf)
         }));
       }
-      const spots = places.filter((p) => p.floor === floor && p.type === type);
+      const spots = places.filter((p) => p.floor === floor && p.group === type);
       if (spots.length > 1) {
         const g = el('div', 'rc-spots');
         for (const p of spots) {
@@ -3834,24 +3917,24 @@
     sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
     const head = el('div');
     head.append(el('div', 'oc-pos', 'Move'), el('h2', null, e.recipe),
-                el('div', 'meta', e.boxes + ' × ' + ((bx && bx.capacity) || e.box) + ' · ' + dayLabel(e.date) + ' ' + e.time),
+                el('div', 'meta', fmtB(e.left) + ' × ' + ((bx && bx.capacity) || e.box) + ' · made ' + dayLabel(e.date)),
                 el('div', 'meta', 'Now: ' + (e.place || 'no place')));
     // 몇 통을 옮기나 (기본 = 전부). 일부만이면 서버가 기록을 둘로 나눔.
     const stp = el('div', 'rc-stepper'), minus = el('button', null, '−'), plus = el('button', null, '+'), inp = el('input');
     minus.type = 'button'; plus.type = 'button';
     minus.setAttribute('aria-label', 'One box less'); plus.setAttribute('aria-label', 'One box more');
-    inp.id = 'rc-move-n'; inp.type = 'text'; inp.inputMode = 'decimal'; inp.value = String(e.boxes);
+    inp.id = 'rc-move-n'; inp.type = 'text'; inp.inputMode = 'decimal'; inp.value = fmtB(e.left);
     inp.setAttribute('aria-label', 'Boxes to move');
-    const step = (d) => { const n = rcpNum(inp.value) || 0; inp.value = String(Math.min(e.boxes, Math.max(0, Math.round((n + d) * 10) / 10))); };
+    const step = (d) => { const n = rcpNum(inp.value) || 0; inp.value = String(Math.min(e.left, Math.max(0, Math.round((n + d) * 10) / 10))); };
     minus.addEventListener('click', () => step(-1));
     plus.addEventListener('click', () => step(1));
-    stp.append(minus, inp, plus, el('span', 'meta', 'of ' + e.boxes));
+    stp.append(minus, inp, plus, el('span', 'meta', 'of ' + fmtB(e.left)));
     const msg = el('p', 'err'), row = el('div', 'row'), cancel = el('button', 'secondary', 'Cancel'), save = el('button', null, 'Move here');
     cancel.type = 'button'; save.type = 'button';
     cancel.addEventListener('click', closeRcSheet);
     save.addEventListener('click', async () => {
       const raw = inp.value.trim(), n = rcpNum(raw);
-      if (!/^\d+([.,]\d)?$/.test(raw) || !(n > 0) || n > e.boxes) { msg.textContent = 'Boxes to move: between 0.1 and ' + e.boxes + '.'; return inp.focus(); }
+      if (!/^\d+([.,]\d)?$/.test(raw) || !(n > 0) || n > e.left) { msg.textContent = 'Boxes to move: between 0.1 and ' + fmtB(e.left) + '.'; return inp.focus(); }
       if (!place) { msg.textContent = 'Choose the new place.'; return; }
       if (place === e.place) return closeRcSheet();
       save.disabled = true; msg.textContent = '';
@@ -3861,10 +3944,10 @@
         if (!r.ok) { msg.textContent = serverMsg(r); save.disabled = false; return; }
         closeRcSheet();
         if (r.moved) {
-          toast('✓ Moved ' + r.moved.boxes + ' of ' + e.boxes + ' · ' + e.recipe + ' → ' + r.moved.place + ' (' + r.entry.boxes + ' stay)');
+          toast('✓ Moved ' + fmtB(r.moved.left) + ' of ' + fmtB(e.left) + ' · ' + e.recipe + ' → ' + shortOf(r.moved.place) + ' (' + fmtB(r.entry.left) + ' stay)');
           prodChanged(r.entry, false, r.moved);
         } else {
-          toast('✓ Moved · ' + e.recipe + ' → ' + r.entry.place);
+          toast('✓ Moved · ' + e.recipe + ' → ' + shortOf(r.entry.place));
           prodChanged(r.entry);
         }
       } catch (err) {
@@ -3877,54 +3960,484 @@
     openRcSheet(sheet);
   }
 
-  // ---------------------------------------------------------------- Storage 화면 (어디에 무엇이 있나)
-  function setRcpTab(t) {
-    rcpState.tab = t;
-    $('rc-tabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
-    $('rc-recipes-box').classList.toggle('hidden', t !== 'recipes');
-    $('rc-stock').classList.toggle('hidden', t !== 'stock');
-    if (t === 'stock') { renderStock(); loadStock(); }
+  // ---------------------------------------------------------------- Stock 앱 (홈 아이콘): Stock(종합본) · Count(매일) · Sunday(일요일 조사)
+  /** Count·Sunday 탭은 Admin 이상에게만. */
+  function syncStockTabs() {
+    const canCount = !!(rcpData && rcpData.canCount);
+    if ((stTab === 'count' || stTab === 'sunday') && rcpData && !canCount) stTab = 'stock';
+    $('st-tabs').querySelectorAll('button').forEach((b) => {
+      b.classList.toggle('on', b.dataset.t === stTab);
+      if (b.dataset.t === 'count' || b.dataset.t === 'sunday') b.classList.toggle('hidden', !canCount);
+    });
   }
 
+  function setStockTab(t) {
+    stTab = t;
+    syncStockTabs();
+    t = stTab;
+    $('rc-stock').classList.toggle('hidden', t !== 'stock');
+    $('rc-count').classList.toggle('hidden', t === 'stock');
+    if (t === 'stock') { renderStock(); loadStock(); }
+    else openCount(t === 'sunday' ? 'sunday' : 'daily');
+  }
+  $('st-tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { setStockTab(b.dataset.t); window.scrollTo(0, 0); } });
+
+  async function openStock() {
+    rcpSaved();
+    show('stock');
+    setStockTab(stTab);
+    loadRecipes(); // 위치 목록·권한·레시피 (Missing batch 용)
+  }
+  $('b-stock').addEventListener('click', () => openStock());
+  $('b-st-back').addEventListener('click', () => goHome());
+
+  const placeOf = (label) => ((rcpData && rcpData.places) || []).find((p) => p.label === label);
+  const shortOf = (label) => (placeOf(label) || {}).short || label || '?';
+  const fmtB = (n) => String(Math.round(n * 10) / 10);
+  /** 보관 통 = 박스 용량 (없으면 박스 이름). */
+  const unitOf = (box) => (box === 'mixed' ? 'mixed' : (rcpBox(box) || {}).capacity || box || '');
+
+  // ---------------------------------------------------------------- Stock (종합본): 레시피마다 한 줄
   async function loadStock() {
     try {
-      const r = await api({ action: 'prodStock', token: token() });
+      const r = await api({ action: 'stock', token: token() });
       if (r.code === 'AUTH') return logout(r.error);
       if (!r.ok) { if (!rcpStock) $('rc-stock').replaceChildren(el('p', 'err', serverMsg(r))); return; }
-      rcpStock = r.entries;
-      if (currentView === 'recipes' && !rcpOpen && rcpState.tab === 'stock') renderStock();
+      rcpStock = r;
+      if (currentView === 'stock' && stTab === 'stock') renderStock();
+      if (!$('rc-scrim').classList.contains('hidden') && stockSheetFor) openStockItem(stockSheetFor, true);
     } catch (e) {
       if (!rcpStock) $('rc-stock').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
     }
   }
 
+  /** '언제까지' = 오늘 + 남은 일수 → 'Tue 13' (오늘 안이면 'today'). */
+  function untilLabel(days) {
+    if (days == null) return '';
+    if (days < 1) return 'today';
+    const [y, m, d] = parisNow().slice(0, 10).split('-').map(Number);
+    return isoLabel(new Date(Date.UTC(y, m - 1, d + Math.floor(days), 12)).toISOString().slice(0, 10), { month: undefined });
+  }
+
   function renderStock() {
     const box = $('rc-stock');
     if (!rcpStock) return box.replaceChildren(el('p', 'hint', 'Loading…'));
-    const places = (rcpData && rcpData.places) || [], floors = ['All', ...new Set(places.map((p) => p.floor))];
-    const fl = el('div', 'chips rc-cats');
-    for (const f of floors) {
-      const b = el('button', 'chip' + (f === rcpState.floor ? ' on' : ''), f);
+    const head = el('div', 'st-head');
+    head.append(el('h2', 'feed-title', 'Stock'), el('span', 'meta', rcpStock.lastCount.daily ? 'counted ' + rcpStock.lastCount.daily.replace(/^\d{4}-/, '') : 'not counted yet'));
+    const list = el('div', 'st-list');
+    for (const it of rcpStock.items) {
+      const b = el('button', 'st-item'), nm = el('span', 'nm'), name = el('b', null, it.recipe), where = el('span', 'where');
       b.type = 'button';
-      b.addEventListener('click', () => { rcpState.floor = f; renderStock(); });
-      fl.append(b);
+      if (it.expired) name.append(el('span', 'st-dot'));
+      const units = [...new Set(it.places.map((p) => p.box))];
+      it.places.forEach((p, i) => {
+        if (i) where.append(' · ');
+        where.append(el('em', null, shortOf(p.place)), ' ' + fmtB(p.left) + (units.length > 1 ? ' ' + unitOf(p.box) : ''));
+      });
+      nm.append(name, where);
+      const left = el('span', 'left' + (it.daysLeft != null && it.daysLeft < 2 ? ' low' : ''));
+      if (it.daysLeft != null) left.append(el('b', null, untilLabel(it.daysLeft)), fmtB(it.daysLeft) + ' days');
+      else left.append(el('b', null, '–'), it.avg === 0 ? 'no use yet' : 'not counted');
+      const tot = el('span', 'tot', fmtB(it.total));
+      tot.append(el('small', null, units.length > 1 ? 'mixed' : unitOf(units[0])));
+      b.append(nm, tot, left);
+      b.addEventListener('click', () => openStockItem(it.recipeId));
+      list.append(b);
     }
-    const floorOf = (label) => (places.find((p) => p.label === label) || {}).floor || '';
-    const list = rcpStock.filter((e) => rcpState.floor === 'All' || floorOf(e.place) === rcpState.floor);
-    const order = places.map((p) => p.label);
-    const groups = [...new Set(list.map((e) => e.place))]
-      .sort((a, b) => (order.indexOf(a) < 0 ? 999 : order.indexOf(a)) - (order.indexOf(b) < 0 ? 999 : order.indexOf(b)));
-    const out = [fl, el('p', 'meta', 'Not past the use-by date. Moved something? Tap Move so everyone can find it.')];
-    for (const g of groups) {
-      const items = list.filter((e) => e.place === g), h = el('div', 'rc-group'), card = el('div', 'rc-stock-list');
-      h.append(g ? '📍 ' + g : 'No place yet', el('span', null, items.length + (items.length > 1 ? ' entries' : ' entry')));
-      card.append(...items.map((e) => entryRow(e, true)));
-      out.push(h, card);
-    }
-    if (!groups.length) out.push(el('p', 'hint', 'Nothing stored here.'));
+    const out = [head, rcpStock.items.length ? list : el('p', 'hint', 'Nothing in stock.')];
+    const codes = ((rcpData && rcpData.places) || []).map((p) => p.short + ' ' + p.spot).join(' · ');
+    if (codes) out.push(el('p', 'st-codes', codes));
     box.replaceChildren(...out);
   }
-  $('rc-tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setRcpTab(b.dataset.t); });
+
+  let stockSheetFor = null;
+  /** 품목 하나: 위치별 배치 (Move · Correct · Delete) + 빠진 배치 추가. */
+  function openStockItem(recipeId, refresh) {
+    const it = rcpStock && rcpStock.items.find((x) => x.recipeId === recipeId);
+    const r = rcpData && rcpData.recipes.find((x) => x.id === recipeId);
+    if (!it && !r) { if (refresh) closeRcSheet(); return; }
+    stockSheetFor = recipeId;
+    const admin = !!rcpData.canCount, sheet = el('div', 'oc-sheet rc-sheet'), head = el('div');
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    head.append(el('div', 'oc-pos', it ? fmtB(it.total) + ' boxes' + (it.avg ? ' · uses about ' + fmtB(it.avg) + ' a day' : '') : 'Not in stock'),
+                el('h2', null, it ? it.recipe : r.name));
+    const lots = el('div');
+    const order = (rcpData.places || []).map((p) => p.label);
+    (it ? it.lots.slice() : []).sort((a, b) => (order.indexOf(a.place) + 1 || 99) - (order.indexOf(b.place) + 1 || 99) || (a.date < b.date ? -1 : 1))
+      .forEach((e) => {
+        const row = el('div', 'st-lot'), w = el('span', 'w'), acts = el('span', 'acts');
+        w.append(el('b', null, shortOf(e.place)), ' ', el('span', 'meta', e.place));
+        const sub = el('span', 'meta st-sub');
+        sub.append('made ' + isoLabel(e.date) + (e.madeBy ? ' · ' + e.madeBy : '') + ' · ');
+        sub.append(e.expired ? el('span', 'err', 'past use-by') : e.useBy ? 'use by ' + isoLabel(e.useBy) : 'no use-by');
+        w.append(sub);
+        const mk = (label, cls, fn) => { const x = el('button', 'link ' + cls, label); x.type = 'button'; x.addEventListener('click', fn); acts.append(x); };
+        mk('Move', 'move', () => openMoveSheet(e));
+        if (admin) mk('Correct', 'move', () => openCorrectSheet(e));
+        if (e.canDelete) mk('Delete', '', () => deleteProd(e, acts.lastChild));
+        const n = el('span', 'n', fmtB(e.left));
+        n.append(el('small', 'meta', ' ' + unitOf(e.box)));
+        row.append(w, n, acts);
+        lots.append(row);
+      });
+    sheet.append(head, lots);
+    if (admin && r) {
+      const add = el('button', 'secondary', '+ Missing batch');
+      add.type = 'button';
+      add.addEventListener('click', () => openMissingSheet(r));
+      sheet.append(add);
+    }
+    const done = el('button', null, 'Close');
+    done.type = 'button';
+    done.addEventListener('click', () => { stockSheetFor = null; closeRcSheet(); });
+    sheet.append(done);
+    openRcSheet(sheet);
+  }
+
+  /** 숫자 입력 한 줄 (박스, 소수 1자리). */
+  function boxesInput(id, value, label) {
+    const inp = el('input');
+    inp.id = id; inp.type = 'text'; inp.inputMode = 'decimal'; inp.value = value == null ? '' : String(value);
+    inp.setAttribute('aria-label', label);
+    inp.className = 'st-num';
+    return inp;
+  }
+  const boxesOk = (raw, allowZero) => /^\d+([.,]\d)?$/.test(raw.trim()) && (allowZero ? rcpNum(raw) >= 0 : rcpNum(raw) > 0);
+
+  function openCorrectSheet(e) {
+    const sheet = el('div', 'oc-sheet rc-sheet'), head = el('div'), inp = boxesInput('st-correct', e.left, 'Boxes left');
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    head.append(el('div', 'oc-pos', 'Correct'), el('h2', null, e.recipe), el('div', 'meta', shortOf(e.place) + ' · made ' + isoLabel(e.date) + ' · app says ' + fmtB(e.left)));
+    const msg = el('p', 'err'), row = el('div', 'row'), cancel = el('button', 'secondary', 'Cancel'), save = el('button', null, 'Save');
+    cancel.type = 'button'; save.type = 'button';
+    cancel.addEventListener('click', () => openStockItem(e.recipeId));
+    save.addEventListener('click', async () => {
+      if (!boxesOk(inp.value, true)) { msg.textContent = 'Boxes: a number, one decimal at most.'; return; }
+      save.disabled = true;
+      try {
+        const r = await api({ action: 'prodCorrect', token: token(), entry: e.id, left: rcpNum(inp.value) });
+        if (r.code === 'AUTH') return logout(r.error);
+        if (!r.ok) { msg.textContent = serverMsg(r); save.disabled = false; return; }
+        toast('✓ Corrected · ' + e.recipe + ' ' + shortOf(e.place) + ' = ' + fmtB(r.entry.left) + ' (not counted as use)');
+        await loadStock();
+        openStockItem(e.recipeId);
+      } catch (err) { msg.textContent = 'Network problem.' + detail(err); save.disabled = false; }
+    });
+    row.append(cancel, save);
+    const lab = el('label', null, 'Boxes really there');
+    lab.htmlFor = inp.id;
+    sheet.append(head, lab, inp, el('p', 'meta', 'Use this when the app is wrong. It is not counted as use.'), msg, row);
+    openRcSheet(sheet);
+  }
+
+  /** 'Made on' 날짜 칸 (Admin). 오늘 ~ 60일 전. */
+  function madeOnInput(id) {
+    const d = el('input'), today = parisNow().slice(0, 10), [y, m, dd] = today.split('-').map(Number);
+    d.id = id; d.type = 'date'; d.value = today; d.max = today;
+    d.min = new Date(Date.UTC(y, m - 1, dd - 60, 12)).toISOString().slice(0, 10);
+    d.className = 'st-date';
+    return d;
+  }
+
+  function openMissingSheet(r) {
+    let place = r.place || '';
+    const sheet = el('div', 'oc-sheet rc-sheet'), head = el('div'), inp = boxesInput('st-miss', 1, 'Boxes'), date = madeOnInput('st-miss-date');
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    head.append(el('div', 'oc-pos', 'Missing batch'), el('h2', null, r.name), el('div', 'meta', 'Made but not logged. Not counted as use.'));
+    const msg = el('p', 'err'), row = el('div', 'row'), cancel = el('button', 'secondary', 'Cancel'), save = el('button', null, 'Add');
+    cancel.type = 'button'; save.type = 'button';
+    cancel.addEventListener('click', () => openStockItem(r.id));
+    save.addEventListener('click', async () => {
+      if (!boxesOk(inp.value)) { msg.textContent = 'Boxes: a number, one decimal at most.'; return; }
+      if (!place) { msg.textContent = 'Choose where it is.'; return; }
+      save.disabled = true;
+      try {
+        const res = await api({ action: 'prodLog', token: token(), id: r.id, missing: true, boxes: rcpNum(inp.value), place, madeOn: date.value, box: r.box });
+        if (res.code === 'AUTH') return logout(res.error);
+        if (!res.ok) { msg.textContent = serverMsg(res); save.disabled = false; return; }
+        toast('✓ Added · ' + r.name + ' ' + fmtB(res.entry.boxes) + ' at ' + shortOf(place));
+        await loadStock();
+        openStockItem(r.id);
+      } catch (err) { msg.textContent = 'Network problem.' + detail(err); save.disabled = false; }
+    });
+    row.append(cancel, save);
+    const l1 = el('label', null, 'Boxes'), l2 = el('label', null, 'Made on');
+    l1.htmlFor = inp.id; l2.htmlFor = date.id;
+    sheet.append(head, l1, inp, l2, date, el('div', 'rc-lab', 'Where'), placePicker(place, (v) => { place = v; }), msg, row);
+    openRcSheet(sheet);
+  }
+
+  // ---------------------------------------------------------------- Count (매일 저녁) / Sunday (일요일) — Admin 이상
+  // 냉장고 하나 = 화면 하나, 품목 한 줄 = 이름 + 숫자. 숫자는 앱이 아는 양(흐리게), 다를 때만 눌러서 숫자 패드로.
+  // 저장 전 확인 화면 = 바뀐 것만 + "옮긴 것 같아요" (같은 품목이 한 곳은 줄고 다른 곳은 늘었을 때).
+  let cnt = null;  // { kind, places, step, val: {key: n}, waste: {key}, added: [], moves: [], review, pairs, done }
+  const cKey = (place, id) => place + '\n' + id;
+
+  async function openCount(kind) {
+    if (cnt && cnt.kind === kind && !cnt.done) return renderCount();
+    cnt = { kind, places: null, step: 0, val: {}, waste: {}, added: [], moves: [], review: false, pairs: [], done: null };
+    renderCount();
+    try {
+      const [r, s] = await Promise.all([api({ action: 'countView', token: token(), kind }), rcpStock ? Promise.resolve(rcpStock) : api({ action: 'stock', token: token() })]);
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) return $('rc-count').replaceChildren(el('p', 'err', serverMsg(r)));
+      if (s && s.ok) rcpStock = s;
+      if (!cnt || cnt.kind !== kind) return;
+      cnt.places = r.places.filter((p) => kind === 'daily' || p.items.length || (placeOf(p.place) || {}).count === 'sunday');
+      cnt.recipes = r.recipes;
+      cnt.last = r.last;
+      renderCount();
+    } catch (e) {
+      $('rc-count').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
+    }
+  }
+
+  function renderCount() {
+    const box = $('rc-count');
+    if (!cnt || !cnt.places) return box.replaceChildren(el('p', 'hint', 'Loading…'));
+    const title = cnt.kind === 'sunday' ? 'Sunday count' : 'Evening count';
+    if (cnt.done) return box.replaceChildren(...countDone());
+    if (!cnt.places.length) return box.replaceChildren(el('h2', 'feed-title', title), el('p', 'hint', 'Nothing to count.'));
+    if (cnt.review) return box.replaceChildren(...countReview(title));
+    const p = cnt.places[cnt.step], next = cnt.places[cnt.step + 1];
+    const top = el('div', 'cn-top');
+    top.append(el('h2', null, (placeOf(p.place) || {}).spot || p.place),
+               el('span', 'meta', p.short + ' · ' + (p.floor || '') + ' · ' + (cnt.step + 1) + ' / ' + cnt.places.length));
+    const bar = el('div', 'cn-bar'), fill = el('i');
+    fill.style.width = ((cnt.step + 1) / cnt.places.length * 100) + '%';
+    bar.append(fill);
+    const list = el('div', 'st-list');
+    for (const x of p.items) {
+      const k = cKey(p.place, x.recipeId), v = cnt.waste[k] ? 0 : cnt.val[k], changed = v != null && v !== x.left;
+      const b = el('button', 'cn-row' + (v != null ? ' set' : '') + (changed ? ' diff' : '')), nm = el('span', 'nm', x.recipe);
+      b.type = 'button';
+      if (x.expired) nm.append(el('span', 'st-dot'));
+      b.append(nm);
+      if (changed) b.append(el('span', 'was', fmtB(x.left)));
+      b.append(el('span', 'v', cnt.waste[k] ? '🗑 0' : fmtB(v != null ? v : x.left)), el('span', 'u', unitOf(x.box)));
+      b.addEventListener('click', () => openPad(p, x));
+      list.append(b);
+    }
+    const add = el('button', 'cn-add', '+ Not in the list');
+    add.type = 'button';
+    add.addEventListener('click', () => openNotListed(p));
+    list.append(add);
+    const nav = el('div', 'cn-nav');
+    if (cnt.step) { const back = el('button', 'secondary', '←'); back.type = 'button'; back.addEventListener('click', () => { cnt.step--; renderCount(); window.scrollTo(0, 0); }); nav.append(back); }
+    const go = el('button', 'go', next ? 'Next: ' + ((placeOf(next.place) || {}).short || next.short) + ' →' : 'Check & save →');
+    go.type = 'button';
+    go.addEventListener('click', () => {
+      if (next) cnt.step++; else { cnt.review = true; cnt.pairs = findMoves(); }
+      renderCount();
+      window.scrollTo(0, 0);
+    });
+    nav.append(go);
+    box.replaceChildren(top, bar, list, el('p', 'cn-hint', 'Tap a number only if it is different.'), nav);
+  }
+
+  /** 숫자 패드: 센 양 입력 (소수 1자리). 사용기한이 지난 것만 '버렸음'. */
+  function openPad(p, x) {
+    const k = cKey(p.place, x.recipeId);
+    let buf = '';
+    const sheet = el('div', 'oc-sheet cn-pad'), t = el('div', 'cn-pad-t'), disp = el('div', 'cn-disp');
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    t.append(el('b', null, x.recipe), el('span', 'meta', 'app says ' + fmtB(x.left) + ' ' + unitOf(x.box)));
+    const show = () => { disp.replaceChildren(buf || el('small', null, 'boxes')); };
+    show();
+    const keys = el('div', 'cn-keys');
+    for (const key of ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫']) {
+      const b = el('button', null, key);
+      b.type = 'button';
+      b.addEventListener('click', () => {
+        if (key === '⌫') buf = buf.slice(0, -1);
+        else if (key === '.') { if (!buf.includes('.')) buf = (buf || '0') + '.'; }
+        else if (!/\.\d$/.test(buf) && buf.length < 5) buf = buf === '0' ? key : buf + key;
+        show();
+      });
+      keys.append(b);
+    }
+    const ok = el('button', 'ok', 'OK');
+    ok.type = 'button';
+    ok.addEventListener('click', () => {
+      if (buf !== '' && buf !== '.') { cnt.val[k] = Math.round(Number(buf) * 10) / 10; delete cnt.waste[k]; }
+      closeRcSheet(); renderCount();
+    });
+    keys.append(ok);
+    sheet.append(t, disp);
+    if (x.expired) {
+      const w = el('button', 'cn-waste', '🗑 Past use-by · thrown away');
+      w.type = 'button';
+      w.addEventListener('click', () => { cnt.waste[k] = true; cnt.val[k] = 0; closeRcSheet(); renderCount(); });
+      sheet.append(w);
+    }
+    if (cnt.val[k] != null || cnt.waste[k]) {
+      const u = el('button', 'link', 'Undo (as the app says)');
+      u.type = 'button';
+      u.addEventListener('click', () => { delete cnt.val[k]; delete cnt.waste[k]; closeRcSheet(); renderCount(); });
+      sheet.append(u);
+    }
+    sheet.append(keys);
+    openRcSheet(sheet);
+  }
+
+  /** '+ Not in the list': 이 냉장고에서 찾은 품목. 앱에 다른 곳에 있으면 '거기서 옮긴 것', 아니면 '안 적은 배치'. */
+  function openNotListed(p) {
+    let recipeId = '', boxes = '', from = '';
+    const sheet = el('div', 'oc-sheet rc-sheet'), head = el('div'), sel = el('select'), inp = boxesInput('cn-nl-n', '', 'Boxes');
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    head.append(el('div', 'oc-pos', 'Not in the list · ' + p.short), el('h2', null, 'What did you find?'));
+    sel.id = 'cn-nl-r';
+    sel.append(Object.assign(el('option', null, 'Choose…'), { value: '' }));
+    (cnt.recipes || []).slice().sort((a, b) => (a.name < b.name ? -1 : 1))
+      .filter((r) => !p.items.some((x) => x.recipeId === r.id))
+      .forEach((r) => { const o = el('option', null, r.name); o.value = r.id; sel.append(o); });
+    const how = el('div'), date = madeOnInput('cn-nl-date');
+    const drawHow = () => {
+      how.replaceChildren();
+      if (!recipeId) return;
+      const it = rcpStock && rcpStock.items.find((x) => x.recipeId === recipeId);
+      const elsewhere = it ? it.places.filter((q) => q.place !== p.place) : [];
+      how.append(el('div', 'rc-lab', 'Where does it come from?'));
+      const opt = (val, label) => {
+        const b = el('button', 'rc-pick-box' + (from === val ? ' on' : ''), label);
+        b.type = 'button';
+        b.addEventListener('click', () => { from = val; drawHow(); });
+        how.append(b);
+      };
+      elsewhere.forEach((q) => opt(q.place, 'Moved from ' + shortOf(q.place) + ' (app: ' + fmtB(q.left) + ' there)'));
+      opt('new', 'Not logged — made on a day');
+      if (from === 'new') { const l = el('label', null, 'Made on'); l.htmlFor = date.id; how.append(l, date); }
+    };
+    sel.addEventListener('change', () => { recipeId = sel.value; from = ''; drawHow(); });
+    const msg = el('p', 'err'), row = el('div', 'row'), cancel = el('button', 'secondary', 'Cancel'), save = el('button', null, 'Add here');
+    cancel.type = 'button'; save.type = 'button';
+    cancel.addEventListener('click', closeRcSheet);
+    save.addEventListener('click', () => {
+      if (!recipeId) { msg.textContent = 'Choose the prep.'; return; }
+      if (!boxesOk(inp.value)) { msg.textContent = 'Boxes: a number, one decimal at most.'; return; }
+      if (!from) { msg.textContent = 'Where does it come from?'; return; }
+      boxes = Math.round(rcpNum(inp.value) * 10) / 10;
+      const r = cnt.recipes.find((x) => x.id === recipeId);
+      if (from === 'new') cnt.added.push({ place: p.place, recipeId, boxes, madeOn: date.value });
+      else {
+        cnt.moves.push({ recipeId, from, to: p.place, boxes });
+        // 옮겨 온 곳이 이 조사에 있으면 그곳의 '앱이 아는 양'도 줄여서 보여 줌
+        const src = cnt.places.find((q) => q.place === from), sx = src && src.items.find((x) => x.recipeId === recipeId);
+        if (sx) sx.left = Math.max(0, Math.round((sx.left - boxes) * 10) / 10);
+      }
+      p.items.push({ place: p.place, recipeId, recipe: r.name, left: boxes, expired: false, box: r.box, found: from === 'new' ? 'new' : 'moved' });
+      closeRcSheet();
+      renderCount();
+    });
+    row.append(cancel, save);
+    const l1 = el('label', null, 'Prep'), l2 = el('label', null, 'Boxes here');
+    l1.htmlFor = sel.id; l2.htmlFor = inp.id;
+    sheet.append(head, l1, sel, l2, inp, how, msg, row);
+    openRcSheet(sheet);
+  }
+
+  /** 같은 품목이 한 곳은 줄고(센 양 < 앱) 다른 곳은 늘었으면(센 양 > 앱) = 옮긴 것 같음. */
+  function findMoves() {
+    const down = {}, up = {}, pairs = [];
+    for (const p of cnt.places) for (const x of p.items) {
+      const k = cKey(p.place, x.recipeId);
+      if (cnt.waste[k] || cnt.val[k] == null) continue;
+      const d = Math.round((cnt.val[k] - x.left) * 10) / 10;
+      if (d < 0) (down[x.recipeId] = down[x.recipeId] || []).push({ place: p.place, n: -d, recipe: x.recipe });
+      if (d > 0) (up[x.recipeId] = up[x.recipeId] || []).push({ place: p.place, n: d, recipe: x.recipe });
+    }
+    for (const id of Object.keys(up)) {
+      for (const u of up[id]) {
+        for (const d of down[id] || []) {
+          const n = Math.round(Math.min(u.n, d.n) * 10) / 10;
+          if (n <= 0) continue;
+          pairs.push({ recipeId: id, recipe: u.recipe, from: d.place, to: u.place, boxes: n, on: true });
+          u.n -= n; d.n -= n;
+        }
+      }
+    }
+    return pairs;
+  }
+
+  function countReview(title) {
+    const out = [el('h2', 'feed-title', 'Check before saving'), el('p', 'meta', title + ' · only what changed. Everything else = as the app says.')];
+    if (cnt.pairs.length) {
+      const box = el('div', 'cn-rev');
+      for (const m of cnt.pairs) {
+        const b = el('button', 'cn-move' + (m.on ? ' on' : ''));
+        b.type = 'button';
+        b.append(el('span', null, (m.on ? '☑ ' : '☐ ') + m.recipe + ': ' + fmtB(m.boxes) + ' moved ' + shortOf(m.from) + ' → ' + shortOf(m.to) + '?'),
+                 el('small', null, m.on ? 'Saved as a move, not use' : 'Saved as use + extra'));
+        b.addEventListener('click', () => { m.on = !m.on; renderCount(); });
+        box.append(b);
+      }
+      out.push(el('div', 'rc-lab', 'Looks like a move'), box);
+    }
+    const lines = [], moved = {};  // 옮김으로 처리한 양은 used / more 에서 뺌
+    for (const m of cnt.pairs) if (m.on) {
+      moved[cKey(m.from, m.recipeId)] = (moved[cKey(m.from, m.recipeId)] || 0) - m.boxes;
+      moved[cKey(m.to, m.recipeId)] = (moved[cKey(m.to, m.recipeId)] || 0) + m.boxes;
+    }
+    for (const p of cnt.places) for (const x of p.items) {
+      const k = cKey(p.place, x.recipeId), v = cnt.val[k] != null ? Math.round((cnt.val[k] - (moved[k] || 0)) * 10) / 10 : null;
+      const line = (label, cls) => { const d = el('div'); d.append(el('span', null, x.recipe + ' · ' + p.short), el('b', cls, label)); lines.push(d); };
+      if (x.found === 'new') line('+' + fmtB(x.left) + ' not logged', 'up');
+      else if (x.found === 'moved') line('+' + fmtB(x.left) + ' moved here', 'up');
+      if (cnt.waste[k]) line('thrown away ' + fmtB(x.left), 'waste');
+      else if (v != null && v !== x.left) line(v < x.left ? 'used ' + fmtB(x.left - v) : '+' + fmtB(v - x.left) + ' more', v < x.left ? 'used' : 'up');
+    }
+    const rev = el('div', 'cn-rev');
+    if (lines.length) rev.append(...lines); else rev.append(el('div', null, 'Nothing changed.'));
+    const nav = el('div', 'cn-nav'), back = el('button', 'secondary', '←'), save = el('button', 'go', 'Save count');
+    back.type = 'button'; save.type = 'button';
+    back.addEventListener('click', () => { cnt.review = false; renderCount(); });
+    save.addEventListener('click', () => saveCount(save));
+    nav.append(back, save);
+    const msg = el('p', 'err');
+    msg.id = 'cn-msg';
+    out.push(el('div', 'rc-lab', 'Changes'), rev, msg, nav);
+    return out;
+  }
+
+  async function saveCount(btn) {
+    const counts = [];
+    for (const p of cnt.places) for (const x of p.items) {
+      const k = cKey(p.place, x.recipeId);
+      counts.push({ place: p.place, recipeId: x.recipeId, boxes: cnt.waste[k] ? 0 : (cnt.val[k] != null ? cnt.val[k] : x.left), waste: !!cnt.waste[k] });
+    }
+    const moves = cnt.moves.concat(cnt.pairs.filter((m) => m.on).map(({ recipeId, from, to, boxes }) => ({ recipeId, from, to, boxes })));
+    btn.disabled = true;
+    try {
+      const r = await api({ action: 'countSave', token: token(), kind: cnt.kind, counts, moves, added: cnt.added });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) { btn.disabled = false; $('cn-msg').textContent = serverMsg(r); return; }
+      cnt.done = r;
+      rcpStock = null;
+      renderCount();
+      window.scrollTo(0, 0);
+    } catch (e) {
+      btn.disabled = false;
+      $('cn-msg').textContent = 'Network problem. Nothing was saved. Please try again.' + detail(e);
+    }
+  }
+
+  function countDone() {
+    const r = cnt.done, used = r.used.filter((x) => x.used || x.wasted || x.corrected);
+    const rev = el('div', 'cn-rev');
+    for (const x of used) {
+      const d = el('div'), parts = [];
+      if (x.used) parts.push('used ' + fmtB(x.used));
+      if (x.wasted) parts.push('thrown ' + fmtB(x.wasted));
+      if (x.corrected) parts.push('+' + fmtB(x.corrected));
+      d.append(el('span', null, x.recipe), el('b', x.used ? 'used' : 'waste', parts.join(' · ')));
+      rev.append(d);
+    }
+    if (!used.length) rev.append(el('div', null, 'No use recorded (everything as the app said).'));
+    const go = el('button', null, 'See stock');
+    go.type = 'button';
+    go.addEventListener('click', () => { cnt = null; setStockTab('stock'); window.scrollTo(0, 0); });
+    return [el('h2', 'feed-title', '✓ ' + (r.kind === 'sunday' ? 'Sunday count' : 'Count') + ' saved'), el('p', 'meta', 'Tonight’s use is in the Use tab of the Production Log.'), rev, go];
+  }
 
   async function deleteProd(e, btn) {
     if (!confirm('Delete this entry from the production log?\n\n' + e.boxes + ' × ' + e.box + ' · ' + e.madeBy + ' · ' + e.date + ' ' + e.time)) return;
@@ -4017,7 +4530,9 @@
     }
     const dl = el('dl', 'oc-facts');
     if (!maker) dl.append(el('dt', null, 'Made by'), el('dd', null, store.get('wt_name')));
-    dl.append(el('dt', null, 'Date'), el('dd', null, 'Today, ' + parisNow().slice(11)));
+    let madeOn = null;
+    if (rcpData.canPickMaker) { madeOn = madeOnInput('rc-made-on'); parts.push(el('div', 'rc-lab', 'Made on'), madeOn); }
+    else dl.append(el('dt', null, 'Date'), el('dd', null, 'Today, ' + parisNow().slice(11)));
     if (r.keepDays != null) dl.append(el('dt', null, 'Use by'), el('dd', null, useByText(r.keepDays)));
     const msg = el('p', 'err'), row = el('div', 'row'), cancel = el('button', 'secondary', 'Cancel'), save = el('button', null, 'Add to log');
     cancel.type = 'button'; save.type = 'button';
@@ -4029,6 +4544,7 @@
       if (!place) { msg.textContent = 'Choose where it is stored.'; return; }
       const body = { action: 'prodLog', token: token(), id: r.id, boxes: n, box: chosen, place };
       if (maker) body.madeBy = maker.value;
+      if (madeOn && madeOn.value) body.madeOn = madeOn.value;
       if (r.mode === 'percent') {
         const bv = rcpState.bases[r.id] || [];
         body.bases = r.items.filter((x) => x.t === 'base').map((_, j) => { const v = rcpNum(bv[j]); return v > 0 ? v : 0; });
@@ -4041,7 +4557,7 @@
         closeRcSheet();
         if (!r.place) store.set('wt_rcp_place', place); // 기본 위치가 없는 레시피: 다음에 이 폰에서 같은 곳을 먼저
         const e = res.entry, eb = rcpBox(e.box);
-        if (rcpStock) rcpStock.unshift(e);
+        rcpStock = null;
         toast('✓ Logged · ' + e.boxes + ' × ' + ((eb && eb.capacity) || e.box) + ' · ' + e.place + (e.madeBy !== rcpData.me ? ' · by ' + e.madeBy : ''));
         if (rcpProd.id !== r.id) rcpProd = { id: r.id, entries: [] };
         rcpProd.entries.unshift(e);
@@ -4263,7 +4779,8 @@
       reLabeled('Grams per box (for “about N boxes”)', reInput(d.fill, 'Grams per box', (v) => { d.fill = v; }, { mode: 'decimal', ph: 'e.g. 1700' })),
       reLabeled('Storage', reInput(d.keepNote, 'Storage', (v) => { d.keepNote = v; }, { ph: 'e.g. Fridge 0–3 °C' })),
       reLabeled('Keeps for (days)', reInput(d.keepDays, 'Days', (v) => { d.keepDays = v; }, { mode: 'numeric', ph: 'e.g. 5' })),
-      el('label', null, 'Usual place (pre-selected when logging)'), placePicker(d.place || '', (v) => { d.place = v; reDirty(); }, 'No usual place'));
+      el('label', null, 'Usual place (pre-selected when logging)'), placePicker(d.place || '', (v) => { d.place = v; reDirty(); }, 'No usual place'),
+      el('label', null, 'Stock count'), reCountSeg(d));
     out.push(st);
 
     const extra = [];
@@ -4276,6 +4793,24 @@
     out.push(...reDock(reSave, extra));
     $('re-form').replaceChildren(...out);
     renderReLines();
+  }
+
+  /** 재고 조사: Daily (매일 저녁, 냉장고) / Sunday (일요일 조사만). */
+  function reCountSeg(d) {
+    const g = el('div', 'seg'), hint = el('p', 'meta'), box = el('div');
+    const draw = () => {
+      g.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.c === (d.count || 'daily')));
+      hint.textContent = d.count === 'sunday' ? 'Counted only in the Sunday count.' : 'Counted every evening when it is in a fridge (shelves and freezers: Sunday).';
+    };
+    for (const [c, label] of [['daily', 'Every evening'], ['sunday', 'Sunday only']]) {
+      const b = el('button', null, label);
+      b.type = 'button'; b.dataset.c = c;
+      b.addEventListener('click', () => { d.count = c; reDirty(); draw(); });
+      g.append(b);
+    }
+    draw();
+    box.append(g, hint);
+    return box;
   }
 
   function renderReLines() {
@@ -4325,6 +4860,7 @@
     if (dr.uploads) return reMsg('Please wait until the photo is uploaded.', 'err');
     const d = dr.d;
     const recipe = { name: d.name, mode: d.mode, cat: d.cat, box: d.box, fill: d.fill ?? '', keepNote: d.keepNote, keepDays: d.keepDays ?? '', place: d.place || '',
+                     count: d.count === 'sunday' ? 'sunday' : 'daily',
                      items: d.items.map(({ k, ...x }) => x) };
     btn.disabled = true;
     reMsg('Saving…', 'meta');
@@ -4467,6 +5003,7 @@
       if (currentView === 'team') return openTeam();
       if (currentView === 'org') return openOrg();
       if (currentView === 'recipes') return loadRecipes();
+      if (currentView === 'stock') { if (stTab === 'stock') loadStock(); return loadRecipes(); }
       if (currentView === 'chat') return chatRefresh();
       if (currentView === 'receipt' && !rcNew.length) return openReceipt(rcReturn);
       if (currentView === 'schedule') {

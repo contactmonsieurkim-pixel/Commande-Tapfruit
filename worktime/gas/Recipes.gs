@@ -13,31 +13,20 @@
 //     BOX      기본 보관 박스 이름 (Boxes 탭의 Name)
 //     FILL     | 박스 하나에 들어가는 대략 g (예상 박스 수 계산용)
 //     KEEP     보관 조건 | 보관 일수 (사용기한 = 만든 날 + 일수)
-//     PLACE    기본 저장 위치 (아래 PROD_PLACES 의 이름, 예: 'Ground floor · Fridge 4')
+//     PLACE    기본 저장 위치 (Places 탭의 이름, 예: 'Ground floor · Fridge 4')
+//     COUNT    재고 조사: Daily (매일 저녁, 기본) / Sunday (일요일 조사만)
 //   'Boxes' 탭: Name | Capacity | Photo | Note  (박스 목록. 앱에서는 용량 + 작은 사진)
+//   'Places' 탭: 저장 위치 목록 (Stock.gs 참고)
 //   'How to' 탭과 이름이 _ 로 시작하는 탭, 숨긴 탭은 레시피가 아님 (앱에서 지운 레시피 = 숨긴 탭, 숨김 해제로 복구).
-// "Production Log" 스프레드시트 (PROD_SHEET_ID) 'Log' 탭: 프렙 입고 기록. 보호하지 않음(손으로 고칠 수 있게).
+// "Production Log" 스프레드시트 (PROD_SHEET_ID): 프렙 입고 기록·재고·재고 조사 — Stock.gs.
 // 보는 사람 = Employees F열 Team 이 RECIPE_TEAMS(스크립트 속성, 기본 'Kitchen', 쉼표로 여러 팀)인 직원 + Supervisor.
 // 수정 = Supervisor 만. Made by 를 다른 사람으로 = Admin 또는 Supervisor.
-// 저장 위치(Location): 층 → 냉장고/선반 → 자리. 기록할 때 고르고, 옮기면 누구나 바로 고침(prodMove, Moved at/by 기록).
 
 var RECIPE_HEAD = ['Kind', 'Name / text', 'Amount', 'Unit / note'];
 var BOX_HEAD = ['Name', 'Capacity', 'Photo', 'Note'];
-var PROD_HEAD = ['ID', 'Date', 'Time', 'Recipe', 'Batch', 'Total (g)', 'Boxes', 'Box', 'Made by', 'Use by',
-                 'Logged by', 'Recipe ID', 'Location', 'Moved at', 'Moved by', 'Split from'];
-// 저장 위치: 층(floor) → 종류(type: Fridge = 냉장고·냉동고, Shelf = 상온 선반) → 자리(spot). 이름(label)이 기록에 들어감.
-// 바꾸려면 여기만 고치면 됨 (이미 기록된 이름은 그대로 남음).
-var PROD_PLACES = [
-  ['Ground floor', 'Fridge', ['Fridge 1', 'Fridge 4', 'Fridge 6', 'Fridge 7', 'Fridge 8', 'Freezer 9']],
-  ['Ground floor', 'Shelf', ['Pass', 'Behind kitchen']],
-  ['Basement', 'Fridge', ['Fridge Left', 'Fridge Right', 'Freezer Grand Congelo']],
-  ['Basement', 'Shelf', ['Fermentation shelf']],
-];
-var PROD_STOCK_DAYS = 14;        // 사용기한이 없는 기록은 만든 지 이 일수까지 'Storage' 화면에 보임
-var RECIPE_SKIP_TAB = /^(boxes|how to|_.*)$/i;
+var RECIPE_SKIP_TAB = /^(boxes|places|how to|_.*)$/i;
 var RECIPE_CACHE_SEC = 60;       // 시트에서 직접 고친 것은 최대 1분 뒤 앱에 보임 (앱에서 고친 것은 바로)
 var RECIPE_MAX_ITEMS = 300;
-var PROD_SCAN_ROWS = 1000;       // 최근 기록을 찾을 때 Log 탭 끝에서 읽는 줄 수
 
 // ------------------------------------------------------------------ setup
 
@@ -57,11 +46,13 @@ function ensureRecipes_() {
       ['BASE | base ingredient (Percent only; weighed at prep time; several BASE rows = their total is 100%)'],
       ['STEP | what to do                    PHOTO | file name in the Recipe Photos folder | | caption'],
       ['BOX | box name from the Boxes tab    FILL | | grams per box    KEEP | storage | days'],
-      ['Hidden tabs, this tab, the Boxes tab and tabs starting with _ are not recipes.'],
+      ['PLACE | usual place (name from the Places tab)    COUNT | Daily (default) or Sunday'],
+      ['Hidden tabs, this tab, the Boxes and Places tabs and tabs starting with _ are not recipes.'],
     ];
     h.getRange(1, 1, lines.length, 1).setValues(lines);
   }
   recipePhotoFolder_();
+  ensurePlaces_(ss);
   prodSheet_();
   return ss;
 }
@@ -83,26 +74,6 @@ function recipePhotoFolder_() {
   var f = folder_().createFolder('Recipe Photos');
   props_.setProperty('RECIPE_PHOTO_FOLDER_ID', f.getId());
   return f;
-}
-
-function prodSheet_() {
-  var id = props_.getProperty('PROD_SHEET_ID'), ss;
-  if (id) {
-    ss = SpreadsheetApp.openById(id);
-  } else {
-    ss = SpreadsheetApp.create('Production Log');
-    DriveApp.getFileById(ss.getId()).moveTo(folder_());
-    ss.getSheets()[0].setName('Log');
-    props_.setProperty('PROD_SHEET_ID', ss.getId());
-  }
-  var sh = ss.getSheetByName('Log') || ss.insertSheet('Log');
-  if (!sh.getRange('A1').getValue()) {
-    sh.getRange(1, 1, 1, PROD_HEAD.length).setValues([PROD_HEAD]).setFontWeight('bold');
-    sh.setFrozenRows(1);
-  } else if (!sh.getRange(1, PROD_HEAD.length).getValue()) {
-    sh.getRange(1, 1, 1, PROD_HEAD.length).setValues([PROD_HEAD]).setFontWeight('bold'); // 나중에 추가된 열 (Location …)
-  }
-  return sh;
 }
 
 // ------------------------------------------------------------------ 권한
@@ -152,7 +123,8 @@ function recipeNum_(v) {
 
 /** 탭의 행 → { name, mode, cat, items: [{t: ing|base|step|photo, …}], box, fill, keepNote, keepDays, warnings }. */
 function parseRecipe_(tab, rows) {
-  var r = { name: '', mode: 'fixed', cat: '', items: [], box: '', fill: null, keepNote: '', keepDays: null, place: '', warnings: [] };
+  var r = { name: '', mode: 'fixed', cat: '', items: [], box: '', fill: null, keepNote: '', keepDays: null, place: '', count: 'daily',
+           warnings: [] };
   var warn = function (i, msg) { r.warnings.push('Row ' + (i + 1) + ': ' + msg); };
   rows.forEach(function (row, i) {
     var k = String(row[0] == null ? '' : row[0]).trim().toUpperCase();
@@ -188,6 +160,9 @@ function parseRecipe_(tab, rows) {
     } else if (k === 'PLACE') {
       if (prodPlace_(b)) r.place = prodPlace_(b).label;
       else if (b) warn(i, 'Unknown place “' + b + '”. Use a name from the app, e.g. “Ground floor · Fridge 4”.');
+    } else if (k === 'COUNT') {
+      if (!/^(daily|sunday|weekly)$/i.test(b)) warn(i, 'COUNT must be Daily or Sunday.');
+      r.count = /^(sunday|weekly)$/i.test(b) ? 'sunday' : 'daily';
     } else warn(i, 'Unknown kind “' + k + '”.');
   });
   if (!r.name) r.name = tab;
@@ -258,7 +233,8 @@ function bumpRecipes_() {
 
 function recipesView_(req) {
   var emp = recipeUser_(req), all = recipesAll_(), sup = !!emp.supervisor, admin = emp.admin || sup;
-  var out = { ok: true, me: emp.name, canEdit: sup, canPickMaker: admin, boxes: all.boxes, today: todayStamp_(), places: prodPlaces_(),
+  var out = { ok: true, me: emp.name, canEdit: sup, canPickMaker: admin, canCount: admin, boxes: all.boxes, today: todayStamp_(),
+              places: prodPlaces_(),
               recipes: all.recipes.map(function (r) {
                 var x = JSON.parse(JSON.stringify(r));
                 if (!sup) delete x.warnings;
@@ -376,6 +352,7 @@ function recipeRows_(r) {
     if (!prodPlace_(r.place)) fail_('Unknown place: ' + r.place);
     rows.push(['PLACE', prodPlace_(r.place).label, '', '']);
   }
+  if (r.count === 'sunday') rows.push(['COUNT', 'Sunday', '', '']);
   return { name: name, rows: rows };
 }
 
@@ -476,197 +453,6 @@ function boxSave_(req) {
   }
   var all = recipesAll_();
   return { ok: true, boxes: all.boxes, boxesVer: all.boxesVer };
-}
-
-// ------------------------------------------------------------------ Production log
-
-function fmtGrams_(g) {
-  var v = g < 10 ? Math.round(g * 10) / 10 : Math.round(g);
-  return String(v);
-}
-
-function addDaysIso_(iso, days) {
-  var p = iso.split('-');
-  return Utilities.formatDate(new Date(Date.UTC(+p[0], +p[1] - 1, +p[2] + days, 12)), 'UTC', 'yyyy-MM-dd');
-}
-
-/** [{ floor, type, spot, label }] — 화면의 위치 고르기와 검사에 씀. */
-function prodPlaces_() {
-  var out = [];
-  PROD_PLACES.forEach(function (g) {
-    g[2].forEach(function (spot) {
-      var label = g[0] + ' · ' + (g[1] === 'Shelf' && !/shelf/i.test(spot) ? 'Shelf · ' : '') + spot;
-      out.push({ floor: g[0], type: g[1], spot: spot, label: label });
-    });
-  });
-  return out;
-}
-
-function prodPlace_(label) {
-  var want = String(label || '').trim().toLowerCase();
-  return want ? prodPlaces_().filter(function (p) { return p.label.toLowerCase() === want; })[0] || null : null;
-}
-
-/** 이번 배치: 정량 = 배수(mult), 비율 = 기준 재료 무게(bases). → { batch: 글자, total: g }. */
-function prodBatch_(r, req) {
-  var ings = r.items.filter(function (x) { return x.t === 'ing'; });
-  var sum = ings.reduce(function (n, x) { return n + x.q; }, 0);
-  if (r.mode === 'percent') {
-    var want = r.items.filter(function (x) { return x.t === 'base'; }).length;
-    var bases = Array.isArray(req.bases) ? req.bases.map(recipeNum_) : [];
-    if (!want || bases.length !== want || bases.some(function (b) { return b === null || isNaN(b) || b < 0 || b > 1000000; })) {
-      fail_('Please enter the weight of the base ingredient.');
-    }
-    var baseTotal = bases.reduce(function (n, b) { return n + b; }, 0);
-    if (!(baseTotal > 0)) fail_('Please enter the weight of the base ingredient.');
-    return { batch: 'base ' + fmtGrams_(baseTotal) + ' g', total: Math.round(baseTotal + baseTotal * sum / 100) };
-  }
-  var mult = recipeNum_(req.mult);
-  if (mult === null || isNaN(mult) || mult <= 0 || mult > 100) fail_('Please choose the batch size.');
-  mult = Math.round(mult * 1000) / 1000;
-  return { batch: '×' + mult, total: Math.round(sum * mult) };
-}
-
-function prodLog_(req) {
-  var emp = recipeUser_(req), all = recipesAll_();
-  var r = all.recipes.filter(function (x) { return x.id === String(req.id); })[0];
-  if (!r) fail_('This recipe is not in the list any more.');
-  var boxes = recipeNum_(req.boxes);
-  if (boxes === null || isNaN(boxes) || boxes <= 0 || boxes > 999) fail_('Please enter how many boxes.');
-  if (Math.abs(boxes * 10 - Math.round(boxes * 10)) > 1e-6) fail_('Boxes: one decimal at most (e.g. 2.5).');
-  boxes = Math.round(boxes * 10) / 10;
-  var box = String(req.box || r.box || '').trim();
-  if (!box) fail_('Please choose the box.');
-  var known = all.boxes.some(function (b) { return b.name === box; }) || box === r.box;
-  if (!known) fail_('Unknown box: ' + box);
-  var maker = emp.name;
-  if (req.madeBy && String(req.madeBy).trim().toLowerCase() !== emp.name.toLowerCase()) {
-    if (!(emp.admin || emp.supervisor)) fail_('Only managers can log for someone else.');
-    var other = findEmployee_(req.madeBy);
-    if (!other) fail_('Unknown person: ' + req.madeBy);
-    maker = other.name;
-  }
-  var place = prodPlace_(req.place);
-  if (!place) fail_(req.place ? 'Unknown place: ' + req.place : 'Please choose where it is stored.');
-  var b = prodBatch_(r, req);
-  var now = new Date(), date = Utilities.formatDate(now, TZ, 'yyyy-MM-dd'), time = Utilities.formatDate(now, TZ, 'HH:mm');
-  var useBy = r.keepDays != null ? addDaysIso_(date, r.keepDays) : '';
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  var entry;
-  try {
-    var seq = Number(props_.getProperty('PROD_SEQ') || 0) + 1;
-    var id = 'P' + ('00000' + seq).slice(-6);
-    var sh = prodSheet_(), row = sh.getLastRow() + 1;
-    var cells = [id, date, time, r.name, b.batch, b.total, boxes, box, maker, useBy, emp.name, r.id, place.label, '', '', ''];
-    sh.getRange(row, 1, 1, 5).setNumberFormat('@'); // Total, Boxes(F·G) 는 숫자로 둠 (시트에서 합계 가능)
-    sh.getRange(row, 8, 1, 9).setNumberFormat('@');
-    sh.getRange(row, 1, 1, cells.length).setValues([cells.map(function (v) {
-      return typeof v === 'string' && /^[=+\-@']/.test(v) ? "'" + v : v;
-    })]);
-    props_.setProperty('PROD_SEQ', String(seq));
-    entry = prodEntry_(cells, emp);
-  } finally {
-    lock.releaseLock();
-  }
-  return { ok: true, entry: entry };
-}
-
-function prodEntry_(c, emp) {
-  var today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
-  return { id: String(c[0]), date: String(c[1]), time: String(c[2]), recipe: String(c[3]), batch: String(c[4]),
-           total: Number(c[5]) || 0, boxes: Number(c[6]) || 0, box: String(c[7]), madeBy: String(c[8]),
-           useBy: String(c[9]), loggedBy: String(c[10]), recipeId: String(c[11]),
-           place: String(c[12] || ''), movedAt: String(c[13] || ''), movedBy: String(c[14] || ''), splitFrom: String(c[15] || ''),
-           canDelete: !!emp.supervisor || (String(c[10]) === emp.name && String(c[1]) === today) };
-}
-
-function prodRecent_() {
-  var sh = prodSheet_(), last = sh.getLastRow(), n = Math.min(last - 1, PROD_SCAN_ROWS);
-  if (n < 1) return { sh: sh, first: 2, rows: [] };
-  return { sh: sh, first: last - n + 1, rows: sh.getRange(last - n + 1, 1, n, PROD_HEAD.length).getValues() };
-}
-
-/** 이 레시피의 최근 기록 10개 (최신이 위). 내가 오늘 적은 것은 지울 수 있음 (Supervisor 는 모두). */
-function prodList_(req) {
-  var emp = recipeUser_(req), id = String(req.id || '');
-  var rows = prodRecent_().rows.filter(function (c) { return String(c[11]) === id; });
-  return { ok: true, entries: rows.slice(-10).reverse().map(function (c) { return prodEntry_(c, emp); }) };
-}
-
-function prodDelete_(req) {
-  var emp = recipeUser_(req), id = String(req.entry || '');
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
-    var rec = prodRecent_(), i = -1;
-    for (var j = rec.rows.length - 1; j >= 0; j--) if (String(rec.rows[j][0]) === id) { i = j; break; }
-    if (!id || i < 0) fail_('This entry is not in the log any more.');
-    if (!prodEntry_(rec.rows[i], emp).canDelete) fail_('You can only delete what you logged today.');
-    rec.sh.deleteRow(rec.first + i);
-  } finally {
-    lock.releaseLock();
-  }
-  return { ok: true, entry: id };
-}
-
-/**
- * 위치 옮기기: 누구나 (레시피를 볼 수 있는 사람). Location 을 바꾸고 Moved at / Moved by 를 남김.
- * boxes 가 그 기록보다 적으면 = 일부만 옮김: 원래 줄은 남은 박스 수로 줄이고(Total 도 비율대로),
- * 옮긴 만큼은 새 줄(새 ID, Split from = 원래 ID)로. 합계(Boxes·Total)는 그대로라 생산량이 두 번 세어지지 않음.
- */
-function prodMove_(req) {
-  var emp = recipeUser_(req), id = String(req.entry || ''), place = prodPlace_(req.place);
-  if (!place) fail_('Please choose the new place.');
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  var entry, moved;
-  try {
-    var rec = prodRecent_(), i = -1;
-    for (var j = rec.rows.length - 1; j >= 0; j--) if (String(rec.rows[j][0]) === id) { i = j; break; }
-    if (!id || i < 0) fail_('This entry is not in the log any more.');
-    var row = rec.rows[i].slice(), at = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
-    var have = Number(row[6]) || 0, n = req.boxes == null || req.boxes === '' ? have : recipeNum_(req.boxes);
-    if (n === null || isNaN(n) || n <= 0 || n > have + 1e-9) fail_('Boxes to move: between 0.1 and ' + have + '.');
-    if (Math.abs(n * 10 - Math.round(n * 10)) > 1e-6) fail_('Boxes: one decimal at most (e.g. 2.5).');
-    n = Math.round(n * 10) / 10;
-    if (n >= have) {
-      row[12] = place.label; row[13] = at; row[14] = emp.name;
-      rec.sh.getRange(rec.first + i, 13, 1, 3).setNumberFormat('@').setValues([[place.label, at, emp.name]]);
-      entry = prodEntry_(row, emp);
-    } else {
-      if (place.label === String(row[12])) fail_('It is already there. Choose another place.');
-      var total = Number(row[5]) || 0, left = Math.round((have - n) * 10) / 10, keepTotal = Math.round(total * left / have);
-      row[5] = keepTotal; row[6] = left;
-      rec.sh.getRange(rec.first + i, 6, 1, 2).setValues([[keepTotal, left]]);
-      var seq = Number(props_.getProperty('PROD_SEQ') || 0) + 1, nid = 'P' + ('00000' + seq).slice(-6);
-      var cells = [nid].concat(rec.rows[i].slice(1, 5), [total - keepTotal, n], rec.rows[i].slice(7, 12).map(String),
-                               [place.label, at, emp.name, id]);
-      var r2 = rec.sh.getLastRow() + 1;
-      rec.sh.getRange(r2, 1, 1, 5).setNumberFormat('@');
-      rec.sh.getRange(r2, 8, 1, 9).setNumberFormat('@');
-      rec.sh.getRange(r2, 1, 1, cells.length).setValues([cells.map(function (v) {
-        return typeof v === 'string' && /^[=+\-@']/.test(v) ? "'" + v : v;
-      })]);
-      props_.setProperty('PROD_SEQ', String(seq));
-      entry = prodEntry_(row, emp);
-      moved = prodEntry_(cells, emp);
-    }
-  } finally {
-    lock.releaseLock();
-  }
-  return { ok: true, entry: entry, moved: moved || null };
-}
-
-/** 'Storage' 화면: 아직 쓸 수 있는 것(사용기한이 오늘 이후, 기한이 없으면 만든 지 PROD_STOCK_DAYS 일 안), 최신이 위. */
-function prodStock_(req) {
-  var emp = recipeUser_(req), today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
-  var since = addDaysIso_(today, -PROD_STOCK_DAYS);
-  var rows = prodRecent_().rows.filter(function (c) {
-    var useBy = String(c[9] || ''), date = String(c[1] || '');
-    return /^P\d+$/.test(String(c[0])) && (useBy ? useBy >= today : date >= since);
-  });
-  return { ok: true, today: today, entries: rows.reverse().slice(0, 300).map(function (c) { return prodEntry_(c, emp); }) };
 }
 
 /** 편집기에서 실행: 레시피 탭마다 읽은 결과와 문제(경고)를 실행 로그에. */

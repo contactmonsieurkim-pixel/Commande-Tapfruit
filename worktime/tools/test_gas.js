@@ -202,7 +202,7 @@ function makeEnv(propsInit) {
     },
   };
   vm.createContext(ctx);
-  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs', 'Rules.gs', 'Schedule.gs', 'Receipts.gs', 'Chat.gs', 'Recipes.gs']) {
+  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs', 'Rules.gs', 'Schedule.gs', 'Receipts.gs', 'Chat.gs', 'Recipes.gs', 'Stock.gs']) {
     vm.runInContext(fs.readFileSync(path.join(GAS, f), 'utf8'), ctx, { filename: f });
   }
   ctx.setup();
@@ -2056,25 +2056,25 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.deepStrictEqual([m.moved.boxes, m.moved.place, m.moved.splitFrom, m.moved.movedBy, m.moved.madeBy, m.moved.recipe, m.moved.date],
                            [2, 'Ground floor · Fridge 1', e.id, 'Chef Admin', 'Yuna', 'Napa cabbage kimchi', e.date]);
     assert.strictEqual(m.entry.total + m.moved.total, e.total, 'total grams not counted twice');
-    const stock = C.call({ action: 'prodStock', token: yu }).entries.filter((x) => x.id === e.id || x.splitFrom === e.id);
-    assert.deepStrictEqual(stock.map((x) => [x.boxes, x.place]).sort(), [[2, 'Ground floor · Fridge 1'], [4, 'Basement · Fermentation shelf']]);
+    const it = C.call({ action: 'stock', token: yu }).items.find((x) => x.recipeId === k.id);
+    const lots = it.lots.filter((x) => x.id === e.id || x.splitFrom === e.id);
+    assert.deepStrictEqual(lots.map((x) => [x.left, x.place]).sort(), [[2, 'Ground floor · Fridge 1'], [4, 'Basement · Fermentation shelf']]);
     const all = C.call({ action: 'prodMove', token: yu, entry: m.moved.id, boxes: 2, place: 'Basement · Fermentation shelf' });
     assert.deepStrictEqual([all.entry.boxes, all.entry.place, all.moved], [2, 'Basement · Fermentation shelf', null], 'all boxes = plain move');
   });
 
-  test('production log: Storage = still usable (before use-by, or recent without use-by)', () => {
-    const ids = (t) => C.call({ action: 'prodStock', token: t }).entries.map((x) => x.recipe);
-    assert.ok(ids(yu).includes('Napa cabbage kimchi'), 'no use-by -> shown while recent');
-    assert.strictEqual(C.call({ action: 'prodStock', token: waiter }).ok, false);
-    const bul = C.call({ action: 'prodLog', token: yu, id: bulgogi().id, mult: 1, boxes: 1, place: 'Ground floor · Shelf · Pass' }).entry;
-    assert.strictEqual(bul.useBy, '2026-10-14');
-    assert.ok(ids(yu).includes('Bulgogi sauce'));
-    C.clock.days = 6;
-    assert.ok(!ids(yu).includes('Bulgogi sauce'), 'past use-by');
-    C.clock.days = 20;
-    assert.ok(!ids(yu).includes('Napa cabbage kimchi'), 'old without use-by');
-    C.clock.days = 0;
-    assert.ok(C.call({ action: 'prodDelete', token: sup, entry: bul.id }).ok);
+  test('stock: one line per recipe, where it is (in Places order), anyone in the kitchen', () => {
+    assert.strictEqual(C.call({ action: 'stock', token: waiter }).ok, false);
+    const v = C.call({ action: 'stock', token: yu });
+    assert.ok(v.ok, JSON.stringify(v));
+    const k = v.items.find((x) => x.recipe === 'Napa cabbage kimchi');
+    assert.deepStrictEqual(k.places.map((p) => p.place), ['Ground floor · Fridge 4', 'Basement · Fridge Left', 'Basement · Fermentation shelf']);
+    assert.strictEqual(k.total, k.places.reduce((a, p) => a + p.left, 0));
+    assert.strictEqual(k.daysLeft, null, 'no count yet -> no average');
+    const places = view(yu).places;
+    assert.deepStrictEqual(places.slice(0, 2).map((p) => [p.short, p.count, p.group]), [['F1', 'daily', 'Fridge'], ['F4', 'daily', 'Fridge']]);
+    assert.deepStrictEqual(places.find((p) => p.spot === 'Freezer 9').group, 'Fridge');
+    assert.deepStrictEqual(places.find((p) => p.spot === 'Pass').count, 'sunday');
   });
 
   test('recipes: default place (PLACE row) saved from the app and read back', () => {
@@ -2084,6 +2084,105 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.ok(r.ok, JSON.stringify(r));
     assert.strictEqual(r.recipe.place, 'Basement · Fermentation shelf');
     assert.strictEqual(C.call({ action: 'recipeSave', token: sup, id: k.id, ver: r.recipe.ver, recipe: Object.assign({}, recipe, { place: 'Attic' }) }).ok, false);
+  });
+
+  // ---------------------------------------------------------------- stock + count
+  const G = (s) => 'Ground floor · ' + s, B = (s) => 'Basement · ' + s;
+  let soup;
+  const soupLot = (t, place, boxes, extra) => C.call(Object.assign({ action: 'prodLog', token: t, id: soup, mult: 1, boxes, place }, extra));
+  const soupStock = () => C.call({ action: 'stock', token: yu }).items.find((x) => x.recipeId === soup);
+  const useRows = () => tabRows(C.files[C.props.PROD_SHEET_ID].getSheetByName('Use')).length;
+  const movesTab = () => { const sh = C.files[C.props.PROD_SHEET_ID].getSheetByName('Stock moves'); return Array.from({ length: sh.getLastRow() - 1 }, (_, i) => sh.getRange(i + 2, 1, 1, 10).getValues()[0]); };
+
+  test('count: only managers (Admin / Supervisor); daily = fridges, Sunday = shelves, freezers', () => {
+    const r = C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Soup', mode: 'fixed', items: [{ t: 'ing', name: 'Water', q: 1000 }], box: 'Bac 5 L', keepDays: 3 } });
+    soup = r.recipe.id;
+    assert.ok(soupLot(yu, G('Fridge 6'), 3).ok);
+    assert.ok(soupLot(yu, B('Fridge Right'), 2).ok);
+    assert.ok(soupLot(yu, G('Shelf · Pass'), 1).ok);
+    assert.strictEqual(C.call({ action: 'countView', token: yu }).ok, false);
+    const d = C.call({ action: 'countView', token: chef, kind: 'daily' });
+    assert.ok(d.ok, JSON.stringify(d));
+    assert.deepStrictEqual(d.places.map((p) => p.short), ['F1', 'F4', 'F6', 'F7', 'F8', 'B·L', 'B·R']);
+    assert.deepStrictEqual(d.places.find((p) => p.short === 'F6').items.find((x) => x.recipeId === soup).left, 3);
+    const w = C.call({ action: 'countView', token: sup, kind: 'sunday' });
+    assert.deepStrictEqual(w.places.map((p) => p.short), ['F1', 'F4', 'F6', 'F7', 'F8', 'Z9', 'Pass', 'Back', 'B·L', 'B·R', 'B·GC', 'B·Ferm']);
+    assert.strictEqual(w.places.find((p) => p.short === 'Pass').items[0].left, 1);
+    assert.ok(!w.places.find((p) => p.short === 'F6').items.some((x) => x.recipeId === soup), 'daily recipe in a fridge is not in Sunday');
+  });
+
+  test('count: less than the app = used (oldest batch first); Use tab row; average and days left', () => {
+    const before = useRows();
+    const r = C.call({ action: 'countSave', token: chef, kind: 'daily', counts: [
+      { place: G('Fridge 6'), recipeId: soup, boxes: 1.5 }, { place: B('Fridge Right'), recipeId: soup, boxes: 2 }] });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.deepStrictEqual(r.used.map((x) => [x.used, x.before, x.counted]), [[1.5, 5, 3.5]]);
+    assert.strictEqual(useRows(), before + 1);
+    const st = soupStock();
+    assert.deepStrictEqual([st.total, st.avg, st.daysLeft], [4.5, 1.5, 3]);
+    assert.ok(movesTab().some((m) => m[1] === 'COUNT' && +m[5] === -1.5 && +m[6] === 1.5));
+    assert.strictEqual(C.call({ action: 'countSave', token: yu, kind: 'daily', counts: [] }).ok, false);
+  });
+
+  test('count: found more than the app = correction (not use); expired thrown away = waste (not use)', () => {
+    assert.ok(soupLot(chef, G('Fridge 7'), 2, { madeOn: '2026-09-30' }).ok, 'admin can log for an earlier day');
+    const old = soupStock().lots.find((x) => x.place === G('Fridge 7'));
+    assert.deepStrictEqual([old.useBy, old.expired, /Logged late/.test(old.note)], ['2026-10-03', true, true]);
+    assert.match(soupLot(yu, G('Fridge 7'), 1, { madeOn: '2026-09-30' }).error, /managers/);
+    const r = C.call({ action: 'countSave', token: chef, kind: 'daily', counts: [
+      { place: G('Fridge 6'), recipeId: soup, boxes: 2 }, { place: G('Fridge 7'), recipeId: soup, boxes: 0, waste: true }] });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.deepStrictEqual(r.used.map((x) => [x.used, x.wasted, x.corrected]), [[0, 2, 0.5]]);
+    assert.strictEqual(soupStock().total, 5);
+    assert.ok(movesTab().some((m) => m[1] === 'WASTE' && +m[5] === -2));
+    assert.ok(movesTab().some((m) => m[1] === 'CORRECT' && +m[5] === 0.5));
+  });
+
+  test('count: a move found at the count and a missing batch are not use', () => {
+    const r = C.call({ action: 'countSave', token: chef, kind: 'daily',
+      added: [{ place: G('Fridge 1'), recipeId: soup, boxes: 2, madeOn: '2026-10-08' }],
+      moves: [{ recipeId: soup, from: G('Fridge 6'), to: G('Fridge 8'), boxes: 1 }],
+      counts: [{ place: G('Fridge 6'), recipeId: soup, boxes: 1 }, { place: G('Fridge 8'), recipeId: soup, boxes: 1 },
+               { place: G('Fridge 1'), recipeId: soup, boxes: 2 }] });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.deepStrictEqual(r.used.map((x) => [x.used, x.corrected]), [[0, 0]]);
+    const st = soupStock();
+    assert.deepStrictEqual(st.places.map((p) => [p.place, p.left]), [[G('Fridge 1'), 2], [G('Fridge 6'), 1], [G('Fridge 8'), 1], [G('Shelf · Pass'), 1], [B('Fridge Right'), 2]]);
+    const found = st.lots.find((x) => x.place === G('Fridge 1'));
+    assert.deepStrictEqual([found.batch, found.useBy, /Found at daily count/.test(found.note)], ['added at count', '2026-10-11', true]);
+    assert.strictEqual(st.lots.find((x) => x.place === G('Fridge 8')).splitFrom !== '', true);
+  });
+
+  test('stock: managers can correct a batch and add a missing batch; staff cannot', () => {
+    const lot = soupStock().lots.find((x) => x.place === G('Shelf · Pass'));
+    assert.strictEqual(C.call({ action: 'prodCorrect', token: yu, entry: lot.id, left: 0.5 }).ok, false);
+    const before = useRows();
+    const r = C.call({ action: 'prodCorrect', token: chef, entry: lot.id, left: 0.5 });
+    assert.deepStrictEqual([r.ok, r.entry.left], [true, 0.5]);
+    assert.strictEqual(useRows(), before, 'a correction is not use');
+    assert.match(C.call({ action: 'prodLog', token: yu, id: soup, boxes: 1, place: G('Fridge 4'), missing: true }).error, /managers/);
+    const m = C.call({ action: 'prodLog', token: sup, id: soup, boxes: 1, place: G('Fridge 4'), missing: true, madeOn: '2026-10-07' });
+    assert.deepStrictEqual([m.ok, m.entry.batch, m.entry.total, m.entry.date], [true, 'added later', 0, '2026-10-07']);
+  });
+
+  test('places: short names and daily/Sunday are read from the Places tab', () => {
+    const sh = book().getSheetByName('Places');
+    const rows = tabRows(sh);
+    const i = rows.findIndex((r) => r[2] === 'Fridge 1') + 1;
+    sh.getRange(i, 4, 1, 2).setValues([['K1', 'Sunday']]);
+    C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Bump', items: [{ t: 'ing', name: 'x', q: 1 }] } }); // 앱 편집 = 캐시 갱신
+    const p = view(yu).places.find((x) => x.spot === 'Fridge 1');
+    assert.deepStrictEqual([p.short, p.count], ['K1', 'sunday']);
+    assert.ok(!C.call({ action: 'countView', token: chef, kind: 'daily' }).places.some((x) => x.short === 'K1'));
+    assert.ok(C.call({ action: 'countView', token: chef, kind: 'sunday' }).places.find((x) => x.short === 'K1').items.length);
+  });
+
+  test('recipes: COUNT Sunday -> counted only on Sunday, even in a fridge', () => {
+    const full = view(sup).recipes.find((x) => x.id === soup);
+    const r = C.call({ action: 'recipeSave', token: sup, id: soup, ver: full.ver, recipe: Object.assign({}, full, { count: 'sunday' }) });
+    assert.strictEqual(r.recipe.count, 'sunday');
+    assert.ok(!C.call({ action: 'countView', token: chef, kind: 'daily' }).places.some((p) => p.items.some((x) => x.recipeId === soup)));
+    assert.ok(C.call({ action: 'countView', token: chef, kind: 'sunday' }).places.find((p) => p.short === 'F6').items.some((x) => x.recipeId === soup));
   });
 
   test('recipes: delete = hidden tab (not in the list, still in the file)', () => {

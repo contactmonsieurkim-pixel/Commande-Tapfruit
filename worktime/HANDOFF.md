@@ -1,6 +1,6 @@
 # 인수인계 메모 (새 세션은 이 파일부터 읽기)
 
-> 마지막 정리: 2026-10-11 · Recipes(레시피 + Recipe editor + Production log + 저장 위치) 추가
+> 마지막 정리: 2026-10-11 · Recipes(레시피 + Recipe editor + Production log) + Stock(재고 종합본 · 저녁/일요일 재고 조사 · 소비량) 추가
 > 설치·사용법은 `README.md`, 이 파일은 **구조 · 결정한 이유 · 작업 방식 · 남은 일**.
 
 ## 1. 한눈에 보기
@@ -22,7 +22,7 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 - `Announcement Photos` 폴더 (비공개, 앱에는 API 로 base64 전달)
 - **Recipes** 스프레드시트 (레시피마다 탭 1개 + `Boxes` + `How to`), `Recipe Photos` 폴더, **Production Log** 스프레드시트(`Log` 탭, 보호 안 함)
 
-## 2. 서버 파일 (Apps Script 에 같은 이름으로 10개 + appsscript.json)
+## 2. 서버 파일 (Apps Script 에 같은 이름으로 11개 + appsscript.json)
 
 | 파일 | 내용 | `setup` 잘림 검사 표식(파일 마지막 함수) |
 |---|---|---|
@@ -35,11 +35,12 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 | `Schedule.gs` | 스케줄 시트 읽기(주 단위), 주별 읽고 동의(내용 지문), 2주 전 화요일 알림, 변경 감지 | `checkSchedule` |
 | `Receipts.gs` | 교통카드 영수증: 업로드·삭제·보기, 1~5일 알림, Supervisor 현황, 회계사 메일(미리보기 → Confirm) | `notifyReceipts_` |
 | `Chat.gs` | 단체 채팅(전체 방 + 팀별 방): 메시지·사진·삭제·알림 끄기, 방별 캐시, 모아서 보내는 푸시(`chatPushRun`) | `chatPushRun` |
-| `Recipes.gs` | 레시피 읽기(시트 탭 → 레시피)·저장(앱 편집기)·사진·박스 목록, Production log 기록·목록·삭제, 편집기용 점검 `checkRecipes` | `checkRecipes` |
+| `Recipes.gs` | 레시피 읽기(시트 탭 → 레시피)·저장(앱 편집기)·사진·박스 목록, 편집기용 점검 `checkRecipes` | `checkRecipes` |
+| `Stock.gs` | 저장 위치(Places 탭), Production log(배치)·옮기기·나누기·정정·빠진 배치, 재고 종합본, 재고 조사(Count/Sunday)·소비량(Use 탭), 편집기용 `checkStock` | `checkStock` |
 
-API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend chat chatSend chatDelete chatPhoto chatMute org recipes recipePhoto recipePhotoUpload recipeSave recipeDelete boxSave prodLog prodList prodDelete prodMove prodStock`
+API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend chat chatSend chatDelete chatPhoto chatMute org recipes recipePhoto recipePhotoUpload recipeSave recipeDelete boxSave prodLog prodList prodDelete prodMove prodCorrect stock countView countSave`
 
-스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음), `RECIPE_TEAMS`(선택, 레시피를 보는 팀, 기본 `Kitchen`, 쉼표로 여러 팀) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID RECEIPT_FOLDER_ID ACCOUNTANT_EMAIL RECEIPT_NOTIFIED RECIPE_SHEET_ID RECIPE_PHOTO_FOLDER_ID PROD_SHEET_ID RCP_VER PROD_SEQ LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE CHAT_SEQ CHAT_VER_<방> CHAT_PUSH_AT chatr_<이름> chatn_<이름> chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
+스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음), `RECIPE_TEAMS`(선택, 레시피를 보는 팀, 기본 `Kitchen`, 쉼표로 여러 팀) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID RECEIPT_FOLDER_ID ACCOUNTANT_EMAIL RECEIPT_NOTIFIED RECIPE_SHEET_ID RECIPE_PHOTO_FOLDER_ID PROD_SHEET_ID RCP_VER PROD_SEQ COUNT_LAST_daily COUNT_LAST_sunday LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE CHAT_SEQ CHAT_VER_<방> CHAT_PUSH_AT chatr_<이름> chatn_<이름> chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
 
 트리거: `scheduleMorning`(매일 07시대) → 그날 09:00 정각 1회용 `morningRun` 예약. `checkScheduleChanges`(30분마다, 조용한 시간엔 건너뜀).
 `chatPushRun`: 채팅 메시지가 오면 약 1분 뒤 1회용으로 자동 예약(동시에 하나만, 자기 자신을 지움). setup 에서 만들 필요 없음.
@@ -127,20 +128,38 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - 재료 줄을 누르면 체크(계량 끝, 폰 메모리에만). 레시피를 보는 동안 화면 꺼짐 방지(Wake Lock, 안 되는 기기는 무시).
 - 마지막 **Store in**: 기본 박스(용량이 크게 + 작은 사진, 누르면 크게), 박스당 g(FILL) → "about N boxes", 보관 조건·일수 → Use by.
 - **Log production**: 박스 수(소수 1자리까지, 예상값이 미리 채워짐), 박스(레시피 기본값, *Use another box* 로 다른 박스), Made by(기본 = 폰 사용자, **Admin(E열)·Supervisor 는 다른 사람 선택**). 서버가 배치(×2 / base 8000 g)와 총 g 을 레시피로 다시 계산해 기록.
-  기록 = **Production Log** 시트 `Log` 탭: `ID | Date | Time | Recipe | Batch | Total (g) | Boxes | Box | Made by | Use by | Logged by | Recipe ID | Location | Moved at | Moved by | Split from` (Total·Boxes 는 숫자 → 시트에서 합계 가능). 보호하지 않음(실수는 시트에서 고칠 수 있게, HMAC 체인 아님).
+  기록 = **Production Log** 시트 `Log` 탭: `ID | Date | Time | Recipe | Batch | Total (g) | Boxes | Box | Made by | Use by | Logged by | Recipe ID | Location | Moved at | Moved by | Split from | Left | Note` (Total·Boxes 는 숫자 → 시트에서 합계 가능). 보호하지 않음(실수는 시트에서 고칠 수 있게, HMAC 체인 아님).
   레시피 화면 아래 *Recently logged* (그 레시피 최근 10개). **내가 오늘 적은 것은 Delete 가능, Supervisor 는 모두**(행 삭제).
 - **저장 위치(Location)**: 기록할 때 필수. 층(Ground floor / Basement) → Fridge / freezer 또는 Shelf (room temp) → 자리.
   지상 냉장 = Fridge 1·4·6·7·8, Freezer 9 / 지상 선반 = Pass, Behind kitchen / 지하 냉장 = Fridge Left·Right, Freezer Grand Congelo / 지하 선반 = Fermentation shelf 하나(고르면 바로).
-  목록은 `Recipes.gs` 맨 위 `PROD_PLACES` (바꾸려면 거기만, 이미 기록된 이름은 그대로). 기록 이름 예: `Ground floor · Fridge 4`, `Ground floor · Shelf · Pass`, `Basement · Fermentation shelf`.
+  목록은 Recipes 시트의 **Places 탭**(아래 Stock 참고). 기록 이름 예: `Ground floor · Fridge 4`, `Ground floor · Shelf · Pass`, `Basement · Fermentation shelf`.
   레시피마다 기본 위치(PLACE 줄, 편집기 'Usual place') → 미리 선택. 없으면 이 폰에서 마지막으로 고른 곳.
   **일부만 옮기기**: Move 에서 박스 수를 줄이면 원래 줄은 남은 수로 줄고(Total 도 비율대로) 옮긴 만큼은 새 줄(새 ID, `Split from` = 원래 ID). 합계는 그대로 → 생산량이 두 번 세어지지 않음.
-  **Move = 누구나**(레시피를 볼 수 있는 사람): 레시피 화면 *Recently logged* 또는 Recipes 화면의 **Storage** 탭(위치별 묶음, 층 필터) → Location 을 바꾸고 Moved at / Moved by 기록.
-  Storage 탭 = 사용기한이 오늘 이후인 기록(기한 없는 레시피는 만든 지 14일 안, `PROD_STOCK_DAYS`). 다 쓴 것을 지우는 기능은 없음(사용기한으로 사라짐).
+  **Move = 누구나**(레시피를 볼 수 있는 사람): 레시피 화면 *Recently logged* 또는 Stock 앱에서 품목을 눌러 → Location 을 바꾸고 Moved at / Moved by 기록.
 - **Recipe editor** (Manager 폴더, Supervisor 만): 레시피 목록 → 편집(이름·분류·Fixed/Percent·줄 추가/순서/삭제·보관) → Save = 그 탭을 통째로 다시 씀(탭 이름도 레시피 이름으로). 
   열어 둔 사이에 시트에서 바뀌었으면 `CHANGED` 로 거절(덮어쓰지 않음, 다시 열기). **Delete = 탭 숨기기**(시트에서 숨김 해제하면 복구, Production log 는 그대로).
   사진: 고르는 즉시 줄여서(1280px) `Recipe Photos` 폴더에 `<레시피이름>-yyyyMMdd-HHmmss.jpg` 로 올리고 그 파일 이름을 PHOTO 줄에 넣음. 사장님이 Drive 에 직접 올리고 파일 이름을 적어도 됨.
   **Boxes**: 박스 목록(Capacity·Name·Note·사진) 편집 = `Boxes` 탭을 다시 씀. 박스 이름을 바꾸면 그 박스를 쓰던 레시피에서 다시 골라야 함(이름으로 연결).
 - 캐시: 서버 60초(`rcp_all_<RCP_VER>`, 앱에서 고치면 바로 새로), 폰 `wt_rcp_v1`(열면 바로 + 뒤에서 갱신), 사진은 폰 IndexedDB `rph:<파일 이름>` → **같은 파일 이름으로 사진을 바꾸면 폰에는 옛 사진이 남음** (새 이름 사용).
+
+**Stock (재고 종합본 · 재고 조사 · 소비량)** (2026-10-11)
+- 홈 아이콘 **Stock** (Recipes 와 별도 앱, 보는 사람은 Recipes 와 같음 = Kitchen 팀 + Supervisor). 탭: **Stock** · **Count**(매일 저녁) · **Sunday**(일요일 조사). Count·Sunday 탭 = **Admin(E열) 이상**.
+  Recipes 앱은 레시피 보기 + Log production 만 (사장님: "레시피 탭 = 보면서 프렙 → 끝나면 Production log").
+- **배치(lot) 구조**: Log 의 한 줄 = 한 배치. `Left` = 지금 남은 박스(빈칸이면 Boxes). 0 이 되면 재고에서 빠짐.
+  재고 변동은 모두 **Stock moves** 탭에 한 줄: PRODUCE · MOVE · CORRECT(정정) · COUNT(조사로 줄어듦) · WASTE(버림) · DELETE.
+  **소비량은 COUNT 에서만** — 늦게 적은 생산, 이동, 정정은 소비량이 아님. 조사마다 **Use** 탭에 레시피별 한 줄(Days · Before · Counted · Used · Wasted · Corrected).
+- **Stock 탭**: 레시피마다 한 줄 = 이름 · 짧은 주소별 분량(`F4 3 · B·L 4`) · 합계(옆에 작고 흐리게 보관 통 용량, 통이 섞이면 `mixed`) · **언제까지**(요일 + 남은 일수 = 합계 ÷ 하루 평균, 2일 이내 빨강).
+  빨리 떨어지는 순서 = 프렙 순서. 하루 평균 = 최근 28일 Use 기록의 Used 합 ÷ 그 기간. 'not counted' = 조사 기록 없음, 'no use yet' = 조사했지만 소비 0. 사용기한 지난 배치 = 이름 옆 빨간 점.
+  줄을 누르면 위치별 배치: Move(누구나) · **Correct**(Admin, 남은 박스 바로잡기 = CORRECT) · Delete · **+ Missing batch**(Admin, 만든 날짜 지정, 배치 크기 없이).
+- **Count / Sunday**: 위치 하나 = 화면 하나(Places 탭 순서), 품목 한 줄 = 이름 + 숫자(앱이 아는 양이 흐리게) + 통 용량. 다를 때만 눌러 숫자 패드(소수 1자리). 사용기한 지난 품목만 패드에 'thrown away'.
+  **Daily** = Places 의 Count 가 Daily 인 위치(냉장고) × 레시피 COUNT 가 Daily. **Sunday** = 나머지 전부(선반·냉동고 + COUNT Sunday 레시피). 빈 위치도 Daily 는 나옴(+ Not in the list 용), Sunday 는 Sunday 위치만.
+  **+ Not in the list**: 앱에 없는 품목을 찾았을 때 → 다른 곳에 있으면 'Moved from F4'(이동), 아니면 'Not logged — made on'(빠진 배치). 둘 다 소비량 아님.
+  저장 전 확인 화면 = 바뀐 것만 + **Looks like a move**(같은 품목이 한 곳은 줄고 다른 곳은 늘었으면 자동 제안, 기본 체크 = 이동으로 저장).
+  센 양 < 앱 = 오래된 배치(사용기한, 만든 날 순)부터 줄임. 센 양 > 앱 = 그 위치 최신 배치에 CORRECT(+).
+- **Places 탭**(Recipes 시트): `Floor | Type(Fridge/Freezer/Shelf) | Spot | Short | Count(Daily/Sunday)`. setup 이 기본값으로 만듦, **시트에서 언제든 수정**(짧은 주소·매일/일요일). 기록에 들어가는 이름 = `Floor · Spot`(선반은 `Floor · Shelf · Spot`).
+  위치 이름(Spot)을 바꾸면 이미 그 이름으로 기록된 배치는 Count 화면 맨 끝에 옛 이름으로 나옴 → Move 로 새 위치로.
+- 레시피 COUNT 줄(편집기 'Stock count': Every evening / Sunday only). Log production 에 Admin 이상만 **Made on**(지난 60일 안, 사용기한도 그 날 기준).
+- Log 탭을 끝에서 3000줄만 읽음(`PROD_SCAN_ROWS`). 몇 년 쓰면 오래된 줄을 다른 탭으로 옮기는 것을 검토.
 
 ## 4. 작업 방식 (사장님과 합의된 흐름)
 
@@ -160,7 +179,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 129개, python 의 pycryptodome 필요)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 136개, python 의 pycryptodome 필요)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```
