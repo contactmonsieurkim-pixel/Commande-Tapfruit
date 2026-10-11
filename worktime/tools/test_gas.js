@@ -2204,6 +2204,18 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.ok(!v.recipes.some((x) => x.name === 'Ingredients'), 'the tab is not a recipe');
   });
 
+  test('recipes: yield (finished weight %) is saved, read back and used for the logged total; homemade names follow the recipe name', () => {
+    const r = C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Beef broth', items: [{ t: 'ing', name: 'Bones', q: 3000 }, { t: 'ing', name: 'Water', q: 7000 }],
+      yieldPct: 55, yieldNote: 'after straining', box: 'Bac 5 L' } });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.deepStrictEqual([r.recipe.yieldPct, r.recipe.yieldNote], [55, 'after straining']);
+    assert.strictEqual(C.call({ action: 'recipeSave', token: sup, recipe: { name: 'X', items: [{ t: 'ing', name: 'a', q: 1 }], yieldPct: 'lots' } }).ok, false);
+    const log = C.call({ action: 'prodLog', token: yu, id: r.recipe.id, mult: 2, boxes: 3, place: 'Ground floor · Fridge 4' });
+    assert.deepStrictEqual([log.entry.batch, log.entry.total], ['×2', 11000], 'raw 20 000 g × 55%');
+    const s2 = C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Ramen soup', items: [{ t: 'ing', name: 'BEEF  BROTH', q: 500 }] } });
+    assert.strictEqual(s2.recipe.items[0].name, 'Beef broth', 'written exactly like the recipe it comes from');
+  });
+
   test('recipes: delete = hidden tab (not in the list, still in the file)', () => {
     const id = bulgogi().id;
     assert.strictEqual(C.call({ action: 'recipeDelete', token: yu, id }).ok, false);
