@@ -1,6 +1,6 @@
 # 인수인계 메모 (새 세션은 이 파일부터 읽기)
 
-> 마지막 정리: 2026-10-10 · Our Team(조직도) 추가
+> 마지막 정리: 2026-10-11 · Recipes(레시피 + Recipe editor + Production log) 추가
 > 설치·사용법은 `README.md`, 이 파일은 **구조 · 결정한 이유 · 작업 방식 · 남은 일**.
 
 ## 1. 한눈에 보기
@@ -20,8 +20,9 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 - **Announcement Records** (보호 + HMAC 체인): `Announcements`, `Confirmations`, `Notifications`, `Logins`, `Our Rules`, `Requests`, `Deleted`, `Receipts`, `Receipt Mails`, `Chat`
 - `Transport Receipts` 폴더 (영수증 `이름 yyyy-MM.jpg`, 회계사에게 보내면 휴지통으로)
 - `Announcement Photos` 폴더 (비공개, 앱에는 API 로 base64 전달)
+- **Recipes** 스프레드시트 (레시피마다 탭 1개 + `Boxes` + `How to`), `Recipe Photos` 폴더, **Production Log** 스프레드시트(`Log` 탭, 보호 안 함)
 
-## 2. 서버 파일 (Apps Script 에 같은 이름으로 9개 + appsscript.json)
+## 2. 서버 파일 (Apps Script 에 같은 이름으로 10개 + appsscript.json)
 
 | 파일 | 내용 | `setup` 잘림 검사 표식(파일 마지막 함수) |
 |---|---|---|
@@ -34,10 +35,11 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 | `Schedule.gs` | 스케줄 시트 읽기(주 단위), 주별 읽고 동의(내용 지문), 2주 전 화요일 알림, 변경 감지 | `checkSchedule` |
 | `Receipts.gs` | 교통카드 영수증: 업로드·삭제·보기, 1~5일 알림, Supervisor 현황, 회계사 메일(미리보기 → Confirm) | `notifyReceipts_` |
 | `Chat.gs` | 단체 채팅(전체 방 + 팀별 방): 메시지·사진·삭제·알림 끄기, 방별 캐시, 모아서 보내는 푸시(`chatPushRun`) | `chatPushRun` |
+| `Recipes.gs` | 레시피 읽기(시트 탭 → 레시피)·저장(앱 편집기)·사진·박스 목록, Production log 기록·목록·삭제, 편집기용 점검 `checkRecipes` | `checkRecipes` |
 
-API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend chat chatSend chatDelete chatPhoto chatMute org`
+API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend chat chatSend chatDelete chatPhoto chatMute org recipes recipePhoto recipePhotoUpload recipeSave recipeDelete boxSave prodLog prodList prodDelete`
 
-스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID RECEIPT_FOLDER_ID ACCOUNTANT_EMAIL RECEIPT_NOTIFIED LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE CHAT_SEQ CHAT_VER_<방> CHAT_PUSH_AT chatr_<이름> chatn_<이름> chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
+스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음), `RECIPE_TEAMS`(선택, 레시피를 보는 팀, 기본 `Kitchen`, 쉼표로 여러 팀) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID RECEIPT_FOLDER_ID ACCOUNTANT_EMAIL RECEIPT_NOTIFIED RECIPE_SHEET_ID RECIPE_PHOTO_FOLDER_ID PROD_SHEET_ID RCP_VER PROD_SEQ LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE CHAT_SEQ CHAT_VER_<방> CHAT_PUSH_AT chatr_<이름> chatn_<이름> chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
 
 트리거: `scheduleMorning`(매일 07시대) → 그날 09:00 정각 1회용 `morningRun` 예약. `checkScheduleChanges`(30분마다, 조용한 시간엔 건너뜀).
 `chatPushRun`: 채팅 메시지가 오면 약 1분 뒤 1회용으로 자동 예약(동시에 하나만, 자기 자신을 지움). setup 에서 만들 필요 없음.
@@ -117,6 +119,22 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - 폰 저장: `wt_chat_v1`(방 목록 + 방마다 최근 60개) → 열면 바로 보이고 뒤에서 갱신. 컴퓨터(마우스)에서는 Enter = 보내기, 폰은 Enter = 줄바꿈.
 - 무결성: Chat 도 HMAC 체인이라 관리자 화면의 `verifyRecords` 대상. 메시지가 아주 많아지면(수천 줄) 그 검사가 느려질 수 있음 → 그때는 Chat 을 검사에서 빼거나 월별로 나누는 것을 검토.
 
+**Recipes (레시피 · Production log)** (2026-10-11)
+- 홈 아이콘 **Recipes** = Employees F열 Team 이 `Kitchen`(스크립트 속성 `RECIPE_TEAMS` 로 바꿀 수 있음)인 직원 + Supervisor 만 보임(`me.recipes`). 서버도 같은 기준으로 막음.
+- 레시피 = **Recipes** 스프레드시트의 탭 하나. A열 종류: `RECIPE MODE CATEGORY ING BASE STEP PHOTO BOX FILL KEEP` (자세한 형식은 `Recipes.gs` 맨 위, 시트의 `How to` 탭). 위→아래 순서 그대로 화면에 그림(재료 묶음·과정·사진이 섞임).
+  숫자는 '1 000', '1,5', '4%' 도 읽음. 모르는 종류·빠진 양은 **경고**(Supervisor 의 편집기 목록에 ⚠ 숫자, 편집 화면 위에 내용). 편집기에서 `checkRecipes` 실행 = 탭마다 OK/CHECK 로그.
+- 두 형식: **Fixed** = 1 batch g, 화면에서 ×½ ×1 ×2 ×3 또는 직접 입력(1.5 등). **Percent** = BASE(기준 재료)를 잰 g 입력 → 나머지 = 기준 총중량 × %. BASE 여러 줄이면 합계가 100%. 계산은 화면에서(10 g 미만 소수 1자리, 나머지 정수).
+- 재료 줄을 누르면 체크(계량 끝, 폰 메모리에만). 레시피를 보는 동안 화면 꺼짐 방지(Wake Lock, 안 되는 기기는 무시).
+- 마지막 **Store in**: 기본 박스(용량이 크게 + 작은 사진, 누르면 크게), 박스당 g(FILL) → "about N boxes", 보관 조건·일수 → Use by.
+- **Log production**: 박스 수(소수 1자리까지, 예상값이 미리 채워짐), 박스(레시피 기본값, *Use another box* 로 다른 박스), Made by(기본 = 폰 사용자, **Admin(E열)·Supervisor 는 다른 사람 선택**). 서버가 배치(×2 / base 8000 g)와 총 g 을 레시피로 다시 계산해 기록.
+  기록 = **Production Log** 시트 `Log` 탭: `ID | Date | Time | Recipe | Batch | Total (g) | Boxes | Box | Made by | Use by | Logged by | Recipe ID` (Total·Boxes 는 숫자 → 시트에서 합계 가능). 보호하지 않음(실수는 시트에서 고칠 수 있게, HMAC 체인 아님).
+  레시피 화면 아래 *Recently logged* (그 레시피 최근 10개). **내가 오늘 적은 것은 Delete 가능, Supervisor 는 모두**(행 삭제).
+- **Recipe editor** (Manager 폴더, Supervisor 만): 레시피 목록 → 편집(이름·분류·Fixed/Percent·줄 추가/순서/삭제·보관) → Save = 그 탭을 통째로 다시 씀(탭 이름도 레시피 이름으로). 
+  열어 둔 사이에 시트에서 바뀌었으면 `CHANGED` 로 거절(덮어쓰지 않음, 다시 열기). **Delete = 탭 숨기기**(시트에서 숨김 해제하면 복구, Production log 는 그대로).
+  사진: 고르는 즉시 줄여서(1280px) `Recipe Photos` 폴더에 `<레시피이름>-yyyyMMdd-HHmmss.jpg` 로 올리고 그 파일 이름을 PHOTO 줄에 넣음. 사장님이 Drive 에 직접 올리고 파일 이름을 적어도 됨.
+  **Boxes**: 박스 목록(Capacity·Name·Note·사진) 편집 = `Boxes` 탭을 다시 씀. 박스 이름을 바꾸면 그 박스를 쓰던 레시피에서 다시 골라야 함(이름으로 연결).
+- 캐시: 서버 60초(`rcp_all_<RCP_VER>`, 앱에서 고치면 바로 새로), 폰 `wt_rcp_v1`(열면 바로 + 뒤에서 갱신), 사진은 폰 IndexedDB `rph:<파일 이름>` → **같은 파일 이름으로 사진을 바꾸면 폰에는 옛 사진이 남음** (새 이름 사용).
+
 ## 4. 작업 방식 (사장님과 합의된 흐름)
 
 - 사장님: 한국어, Mac + iPhone(Chrome/Safari), Supervisor = **Kim namheon**.
@@ -135,7 +153,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 111개, python 의 pycryptodome 필요)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 124개, python 의 pycryptodome 필요)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```
