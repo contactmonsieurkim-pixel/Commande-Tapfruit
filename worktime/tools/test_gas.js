@@ -1847,8 +1847,8 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.ok(book().getSheetByName('Boxes') && book().getSheetByName('How to'));
     assert.deepStrictEqual(book().getSheetByName('Boxes').getRange(1, 1, 1, 4).getValues()[0], ['Name', 'Capacity', 'Photo', 'Note']);
     const log = C.files[C.props.PROD_SHEET_ID].getSheetByName('Log');
-    assert.strictEqual(log.getRange(1, 1, 1, 15).getValues()[0].join('|'),
-      'ID|Date|Time|Recipe|Batch|Total (g)|Boxes|Box|Made by|Use by|Logged by|Recipe ID|Location|Moved at|Moved by');
+    assert.strictEqual(log.getRange(1, 1, 1, 16).getValues()[0].join('|'),
+      'ID|Date|Time|Recipe|Batch|Total (g)|Boxes|Box|Made by|Use by|Logged by|Recipe ID|Location|Moved at|Moved by|Split from');
     assert.ok(C.props.RECIPE_PHOTO_FOLDER_ID);
     C.ctx.setup(); // 다시 실행해도 안전
     assert.strictEqual(book().sheets.filter((x) => x.name === 'Boxes').length, 1);
@@ -2042,6 +2042,24 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     const n = tabRows(sh).findIndex((x) => x[0] === e.id) + 1;
     assert.deepStrictEqual(sh.getRange(n, 13, 1, 3).getValues()[0], ['Basement · Fridge Left', '2026-10-09 12:00', 'Yuna']);
     assert.strictEqual(C.call({ action: 'prodList', token: yu, id: k.id }).entries[0].place, 'Basement · Fridge Left');
+  });
+
+  test('production log: move only some boxes -> the entry is split, totals stay the same', () => {
+    const k = kimchi();
+    const e = C.call({ action: 'prodLog', token: yu, id: k.id, bases: [6000], boxes: 6, place: 'Basement · Fermentation shelf' }).entry;
+    assert.match(C.call({ action: 'prodMove', token: chef, entry: e.id, boxes: 7, place: 'Ground floor · Fridge 1' }).error, /between/);
+    assert.match(C.call({ action: 'prodMove', token: chef, entry: e.id, boxes: 1.25, place: 'Ground floor · Fridge 1' }).error, /one decimal/);
+    assert.match(C.call({ action: 'prodMove', token: chef, entry: e.id, boxes: 2, place: 'Basement · Fermentation shelf' }).error, /already/);
+    const m = C.call({ action: 'prodMove', token: chef, entry: e.id, boxes: 2, place: 'Ground floor · Fridge 1' });
+    assert.ok(m.ok, JSON.stringify(m));
+    assert.deepStrictEqual([m.entry.id, m.entry.boxes, m.entry.place], [e.id, 4, 'Basement · Fermentation shelf']);
+    assert.deepStrictEqual([m.moved.boxes, m.moved.place, m.moved.splitFrom, m.moved.movedBy, m.moved.madeBy, m.moved.recipe, m.moved.date],
+                           [2, 'Ground floor · Fridge 1', e.id, 'Chef Admin', 'Yuna', 'Napa cabbage kimchi', e.date]);
+    assert.strictEqual(m.entry.total + m.moved.total, e.total, 'total grams not counted twice');
+    const stock = C.call({ action: 'prodStock', token: yu }).entries.filter((x) => x.id === e.id || x.splitFrom === e.id);
+    assert.deepStrictEqual(stock.map((x) => [x.boxes, x.place]).sort(), [[2, 'Ground floor · Fridge 1'], [4, 'Basement · Fermentation shelf']]);
+    const all = C.call({ action: 'prodMove', token: yu, entry: m.moved.id, boxes: 2, place: 'Basement · Fermentation shelf' });
+    assert.deepStrictEqual([all.entry.boxes, all.entry.place, all.moved], [2, 'Basement · Fermentation shelf', null], 'all boxes = plain move');
   });
 
   test('production log: Storage = still usable (before use-by, or recent without use-by)', () => {

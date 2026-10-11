@@ -3761,8 +3761,12 @@
   }
 
   /** 기록이 바뀌면(옮김·지움) 레시피 화면 목록과 Storage 화면 둘 다 고침. */
-  function prodChanged(e, gone) {
-    const fix = (list) => (gone ? list.filter((x) => x.id !== e.id) : list.map((x) => (x.id === e.id ? e : x)));
+  function prodChanged(e, gone, added) {
+    const fix = (list) => {
+      const out = gone ? list.filter((x) => x.id !== e.id) : list.map((x) => (x.id === e.id ? e : x));
+      if (added) out.splice(Math.max(0, out.findIndex((x) => x.id === e.id)), 0, added); // 나눈 줄은 원래 줄 바로 위
+      return out;
+    };
     rcpProd.entries = fix(rcpProd.entries);
     if (rcpStock) rcpStock = fix(rcpStock);
     renderProd();
@@ -3832,27 +3836,44 @@
     head.append(el('div', 'oc-pos', 'Move'), el('h2', null, e.recipe),
                 el('div', 'meta', e.boxes + ' × ' + ((bx && bx.capacity) || e.box) + ' · ' + dayLabel(e.date) + ' ' + e.time),
                 el('div', 'meta', 'Now: ' + (e.place || 'no place')));
+    // 몇 통을 옮기나 (기본 = 전부). 일부만이면 서버가 기록을 둘로 나눔.
+    const stp = el('div', 'rc-stepper'), minus = el('button', null, '−'), plus = el('button', null, '+'), inp = el('input');
+    minus.type = 'button'; plus.type = 'button';
+    minus.setAttribute('aria-label', 'One box less'); plus.setAttribute('aria-label', 'One box more');
+    inp.id = 'rc-move-n'; inp.type = 'text'; inp.inputMode = 'decimal'; inp.value = String(e.boxes);
+    inp.setAttribute('aria-label', 'Boxes to move');
+    const step = (d) => { const n = rcpNum(inp.value) || 0; inp.value = String(Math.min(e.boxes, Math.max(0, Math.round((n + d) * 10) / 10))); };
+    minus.addEventListener('click', () => step(-1));
+    plus.addEventListener('click', () => step(1));
+    stp.append(minus, inp, plus, el('span', 'meta', 'of ' + e.boxes));
     const msg = el('p', 'err'), row = el('div', 'row'), cancel = el('button', 'secondary', 'Cancel'), save = el('button', null, 'Move here');
     cancel.type = 'button'; save.type = 'button';
     cancel.addEventListener('click', closeRcSheet);
     save.addEventListener('click', async () => {
+      const raw = inp.value.trim(), n = rcpNum(raw);
+      if (!/^\d+([.,]\d)?$/.test(raw) || !(n > 0) || n > e.boxes) { msg.textContent = 'Boxes to move: between 0.1 and ' + e.boxes + '.'; return inp.focus(); }
       if (!place) { msg.textContent = 'Choose the new place.'; return; }
       if (place === e.place) return closeRcSheet();
       save.disabled = true; msg.textContent = '';
       try {
-        const r = await api({ action: 'prodMove', token: token(), entry: e.id, place });
+        const r = await api({ action: 'prodMove', token: token(), entry: e.id, place, boxes: n });
         if (r.code === 'AUTH') return logout(r.error);
         if (!r.ok) { msg.textContent = serverMsg(r); save.disabled = false; return; }
         closeRcSheet();
-        toast('✓ Moved · ' + e.recipe + ' → ' + r.entry.place);
-        prodChanged(r.entry);
+        if (r.moved) {
+          toast('✓ Moved ' + r.moved.boxes + ' of ' + e.boxes + ' · ' + e.recipe + ' → ' + r.moved.place + ' (' + r.entry.boxes + ' stay)');
+          prodChanged(r.entry, false, r.moved);
+        } else {
+          toast('✓ Moved · ' + e.recipe + ' → ' + r.entry.place);
+          prodChanged(r.entry);
+        }
       } catch (err) {
         msg.textContent = 'Network problem. Please try again.' + detail(err);
         save.disabled = false;
       }
     });
     row.append(cancel, save);
-    sheet.append(head, el('div', 'rc-lab', 'New place'), placePicker('', (v) => { place = v; }), msg, row);
+    sheet.append(head, el('div', 'rc-lab', 'How many boxes'), stp, el('div', 'rc-lab', 'New place'), placePicker('', (v) => { place = v; }), msg, row);
     openRcSheet(sheet);
   }
 

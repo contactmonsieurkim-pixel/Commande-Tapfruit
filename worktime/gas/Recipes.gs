@@ -24,7 +24,7 @@
 var RECIPE_HEAD = ['Kind', 'Name / text', 'Amount', 'Unit / note'];
 var BOX_HEAD = ['Name', 'Capacity', 'Photo', 'Note'];
 var PROD_HEAD = ['ID', 'Date', 'Time', 'Recipe', 'Batch', 'Total (g)', 'Boxes', 'Box', 'Made by', 'Use by',
-                 'Logged by', 'Recipe ID', 'Location', 'Moved at', 'Moved by'];
+                 'Logged by', 'Recipe ID', 'Location', 'Moved at', 'Moved by', 'Split from'];
 // 저장 위치: 층(floor) → 종류(type: Fridge = 냉장고·냉동고, Shelf = 상온 선반) → 자리(spot). 이름(label)이 기록에 들어감.
 // 바꾸려면 여기만 고치면 됨 (이미 기록된 이름은 그대로 남음).
 var PROD_PLACES = [
@@ -558,9 +558,9 @@ function prodLog_(req) {
     var seq = Number(props_.getProperty('PROD_SEQ') || 0) + 1;
     var id = 'P' + ('00000' + seq).slice(-6);
     var sh = prodSheet_(), row = sh.getLastRow() + 1;
-    var cells = [id, date, time, r.name, b.batch, b.total, boxes, box, maker, useBy, emp.name, r.id, place.label, '', ''];
+    var cells = [id, date, time, r.name, b.batch, b.total, boxes, box, maker, useBy, emp.name, r.id, place.label, '', '', ''];
     sh.getRange(row, 1, 1, 5).setNumberFormat('@'); // Total, Boxes(F·G) 는 숫자로 둠 (시트에서 합계 가능)
-    sh.getRange(row, 8, 1, 8).setNumberFormat('@');
+    sh.getRange(row, 8, 1, 9).setNumberFormat('@');
     sh.getRange(row, 1, 1, cells.length).setValues([cells.map(function (v) {
       return typeof v === 'string' && /^[=+\-@']/.test(v) ? "'" + v : v;
     })]);
@@ -577,7 +577,7 @@ function prodEntry_(c, emp) {
   return { id: String(c[0]), date: String(c[1]), time: String(c[2]), recipe: String(c[3]), batch: String(c[4]),
            total: Number(c[5]) || 0, boxes: Number(c[6]) || 0, box: String(c[7]), madeBy: String(c[8]),
            useBy: String(c[9]), loggedBy: String(c[10]), recipeId: String(c[11]),
-           place: String(c[12] || ''), movedAt: String(c[13] || ''), movedBy: String(c[14] || ''),
+           place: String(c[12] || ''), movedAt: String(c[13] || ''), movedBy: String(c[14] || ''), splitFrom: String(c[15] || ''),
            canDelete: !!emp.supervisor || (String(c[10]) === emp.name && String(c[1]) === today) };
 }
 
@@ -610,25 +610,52 @@ function prodDelete_(req) {
   return { ok: true, entry: id };
 }
 
-/** 위치 옮기기: 누구나 (레시피를 볼 수 있는 사람). Location 을 바꾸고 Moved at / Moved by 를 남김. */
+/**
+ * 위치 옮기기: 누구나 (레시피를 볼 수 있는 사람). Location 을 바꾸고 Moved at / Moved by 를 남김.
+ * boxes 가 그 기록보다 적으면 = 일부만 옮김: 원래 줄은 남은 박스 수로 줄이고(Total 도 비율대로),
+ * 옮긴 만큼은 새 줄(새 ID, Split from = 원래 ID)로. 합계(Boxes·Total)는 그대로라 생산량이 두 번 세어지지 않음.
+ */
 function prodMove_(req) {
   var emp = recipeUser_(req), id = String(req.entry || ''), place = prodPlace_(req.place);
   if (!place) fail_('Please choose the new place.');
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
-  var entry;
+  var entry, moved;
   try {
     var rec = prodRecent_(), i = -1;
     for (var j = rec.rows.length - 1; j >= 0; j--) if (String(rec.rows[j][0]) === id) { i = j; break; }
     if (!id || i < 0) fail_('This entry is not in the log any more.');
     var row = rec.rows[i].slice(), at = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
-    row[12] = place.label; row[13] = at; row[14] = emp.name;
-    rec.sh.getRange(rec.first + i, 13, 1, 3).setNumberFormat('@').setValues([[place.label, at, emp.name]]);
-    entry = prodEntry_(row, emp);
+    var have = Number(row[6]) || 0, n = req.boxes == null || req.boxes === '' ? have : recipeNum_(req.boxes);
+    if (n === null || isNaN(n) || n <= 0 || n > have + 1e-9) fail_('Boxes to move: between 0.1 and ' + have + '.');
+    if (Math.abs(n * 10 - Math.round(n * 10)) > 1e-6) fail_('Boxes: one decimal at most (e.g. 2.5).');
+    n = Math.round(n * 10) / 10;
+    if (n >= have) {
+      row[12] = place.label; row[13] = at; row[14] = emp.name;
+      rec.sh.getRange(rec.first + i, 13, 1, 3).setNumberFormat('@').setValues([[place.label, at, emp.name]]);
+      entry = prodEntry_(row, emp);
+    } else {
+      if (place.label === String(row[12])) fail_('It is already there. Choose another place.');
+      var total = Number(row[5]) || 0, left = Math.round((have - n) * 10) / 10, keepTotal = Math.round(total * left / have);
+      row[5] = keepTotal; row[6] = left;
+      rec.sh.getRange(rec.first + i, 6, 1, 2).setValues([[keepTotal, left]]);
+      var seq = Number(props_.getProperty('PROD_SEQ') || 0) + 1, nid = 'P' + ('00000' + seq).slice(-6);
+      var cells = [nid].concat(rec.rows[i].slice(1, 5), [total - keepTotal, n], rec.rows[i].slice(7, 12).map(String),
+                               [place.label, at, emp.name, id]);
+      var r2 = rec.sh.getLastRow() + 1;
+      rec.sh.getRange(r2, 1, 1, 5).setNumberFormat('@');
+      rec.sh.getRange(r2, 8, 1, 9).setNumberFormat('@');
+      rec.sh.getRange(r2, 1, 1, cells.length).setValues([cells.map(function (v) {
+        return typeof v === 'string' && /^[=+\-@']/.test(v) ? "'" + v : v;
+      })]);
+      props_.setProperty('PROD_SEQ', String(seq));
+      entry = prodEntry_(row, emp);
+      moved = prodEntry_(cells, emp);
+    }
   } finally {
     lock.releaseLock();
   }
-  return { ok: true, entry: entry };
+  return { ok: true, entry: entry, moved: moved || null };
 }
 
 /** 'Storage' 화면: 아직 쓸 수 있는 것(사용기한이 오늘 이후, 기한이 없으면 만든 지 PROD_STOCK_DAYS 일 안), 최신이 위. */

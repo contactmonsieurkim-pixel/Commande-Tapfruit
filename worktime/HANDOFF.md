@@ -127,12 +127,13 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - 재료 줄을 누르면 체크(계량 끝, 폰 메모리에만). 레시피를 보는 동안 화면 꺼짐 방지(Wake Lock, 안 되는 기기는 무시).
 - 마지막 **Store in**: 기본 박스(용량이 크게 + 작은 사진, 누르면 크게), 박스당 g(FILL) → "about N boxes", 보관 조건·일수 → Use by.
 - **Log production**: 박스 수(소수 1자리까지, 예상값이 미리 채워짐), 박스(레시피 기본값, *Use another box* 로 다른 박스), Made by(기본 = 폰 사용자, **Admin(E열)·Supervisor 는 다른 사람 선택**). 서버가 배치(×2 / base 8000 g)와 총 g 을 레시피로 다시 계산해 기록.
-  기록 = **Production Log** 시트 `Log` 탭: `ID | Date | Time | Recipe | Batch | Total (g) | Boxes | Box | Made by | Use by | Logged by | Recipe ID | Location | Moved at | Moved by` (Total·Boxes 는 숫자 → 시트에서 합계 가능). 보호하지 않음(실수는 시트에서 고칠 수 있게, HMAC 체인 아님).
+  기록 = **Production Log** 시트 `Log` 탭: `ID | Date | Time | Recipe | Batch | Total (g) | Boxes | Box | Made by | Use by | Logged by | Recipe ID | Location | Moved at | Moved by | Split from` (Total·Boxes 는 숫자 → 시트에서 합계 가능). 보호하지 않음(실수는 시트에서 고칠 수 있게, HMAC 체인 아님).
   레시피 화면 아래 *Recently logged* (그 레시피 최근 10개). **내가 오늘 적은 것은 Delete 가능, Supervisor 는 모두**(행 삭제).
 - **저장 위치(Location)**: 기록할 때 필수. 층(Ground floor / Basement) → Fridge / freezer 또는 Shelf (room temp) → 자리.
   지상 냉장 = Fridge 1·4·6·7·8, Freezer 9 / 지상 선반 = Pass, Behind kitchen / 지하 냉장 = Fridge Left·Right, Freezer Grand Congelo / 지하 선반 = Fermentation shelf 하나(고르면 바로).
   목록은 `Recipes.gs` 맨 위 `PROD_PLACES` (바꾸려면 거기만, 이미 기록된 이름은 그대로). 기록 이름 예: `Ground floor · Fridge 4`, `Ground floor · Shelf · Pass`, `Basement · Fermentation shelf`.
   레시피마다 기본 위치(PLACE 줄, 편집기 'Usual place') → 미리 선택. 없으면 이 폰에서 마지막으로 고른 곳.
+  **일부만 옮기기**: Move 에서 박스 수를 줄이면 원래 줄은 남은 수로 줄고(Total 도 비율대로) 옮긴 만큼은 새 줄(새 ID, `Split from` = 원래 ID). 합계는 그대로 → 생산량이 두 번 세어지지 않음.
   **Move = 누구나**(레시피를 볼 수 있는 사람): 레시피 화면 *Recently logged* 또는 Recipes 화면의 **Storage** 탭(위치별 묶음, 층 필터) → Location 을 바꾸고 Moved at / Moved by 기록.
   Storage 탭 = 사용기한이 오늘 이후인 기록(기한 없는 레시피는 만든 지 14일 안, `PROD_STOCK_DAYS`). 다 쓴 것을 지우는 기능은 없음(사용기한으로 사라짐).
 - **Recipe editor** (Manager 폴더, Supervisor 만): 레시피 목록 → 편집(이름·분류·Fixed/Percent·줄 추가/순서/삭제·보관) → Save = 그 탭을 통째로 다시 씀(탭 이름도 레시피 이름으로). 
@@ -159,7 +160,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 128개, python 의 pycryptodome 필요)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 129개, python 의 pycryptodome 필요)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```
