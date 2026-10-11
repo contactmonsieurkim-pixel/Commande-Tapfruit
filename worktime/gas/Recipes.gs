@@ -13,16 +13,27 @@
 //     BOX      기본 보관 박스 이름 (Boxes 탭의 Name)
 //     FILL     | 박스 하나에 들어가는 대략 g (예상 박스 수 계산용)
 //     KEEP     보관 조건 | 보관 일수 (사용기한 = 만든 날 + 일수)
+//     PLACE    기본 저장 위치 (아래 PROD_PLACES 의 이름, 예: 'Ground floor · Fridge 4')
 //   'Boxes' 탭: Name | Capacity | Photo | Note  (박스 목록. 앱에서는 용량 + 작은 사진)
 //   'How to' 탭과 이름이 _ 로 시작하는 탭, 숨긴 탭은 레시피가 아님 (앱에서 지운 레시피 = 숨긴 탭, 숨김 해제로 복구).
 // "Production Log" 스프레드시트 (PROD_SHEET_ID) 'Log' 탭: 프렙 입고 기록. 보호하지 않음(손으로 고칠 수 있게).
 // 보는 사람 = Employees F열 Team 이 RECIPE_TEAMS(스크립트 속성, 기본 'Kitchen', 쉼표로 여러 팀)인 직원 + Supervisor.
 // 수정 = Supervisor 만. Made by 를 다른 사람으로 = Admin 또는 Supervisor.
+// 저장 위치(Location): 층 → 냉장고/선반 → 자리. 기록할 때 고르고, 옮기면 누구나 바로 고침(prodMove, Moved at/by 기록).
 
 var RECIPE_HEAD = ['Kind', 'Name / text', 'Amount', 'Unit / note'];
 var BOX_HEAD = ['Name', 'Capacity', 'Photo', 'Note'];
 var PROD_HEAD = ['ID', 'Date', 'Time', 'Recipe', 'Batch', 'Total (g)', 'Boxes', 'Box', 'Made by', 'Use by',
-                 'Logged by', 'Recipe ID'];
+                 'Logged by', 'Recipe ID', 'Location', 'Moved at', 'Moved by'];
+// 저장 위치: 층(floor) → 종류(type: Fridge = 냉장고·냉동고, Shelf = 상온 선반) → 자리(spot). 이름(label)이 기록에 들어감.
+// 바꾸려면 여기만 고치면 됨 (이미 기록된 이름은 그대로 남음).
+var PROD_PLACES = [
+  ['Ground floor', 'Fridge', ['Fridge 1', 'Fridge 4', 'Fridge 6', 'Fridge 7', 'Fridge 8', 'Freezer 9']],
+  ['Ground floor', 'Shelf', ['Pass', 'Behind kitchen']],
+  ['Basement', 'Fridge', ['Fridge Left', 'Fridge Right', 'Freezer Grand Congelo']],
+  ['Basement', 'Shelf', ['Fermentation shelf']],
+];
+var PROD_STOCK_DAYS = 14;        // 사용기한이 없는 기록은 만든 지 이 일수까지 'Storage' 화면에 보임
 var RECIPE_SKIP_TAB = /^(boxes|how to|_.*)$/i;
 var RECIPE_CACHE_SEC = 60;       // 시트에서 직접 고친 것은 최대 1분 뒤 앱에 보임 (앱에서 고친 것은 바로)
 var RECIPE_MAX_ITEMS = 300;
@@ -88,6 +99,8 @@ function prodSheet_() {
   if (!sh.getRange('A1').getValue()) {
     sh.getRange(1, 1, 1, PROD_HEAD.length).setValues([PROD_HEAD]).setFontWeight('bold');
     sh.setFrozenRows(1);
+  } else if (!sh.getRange(1, PROD_HEAD.length).getValue()) {
+    sh.getRange(1, 1, 1, PROD_HEAD.length).setValues([PROD_HEAD]).setFontWeight('bold'); // 나중에 추가된 열 (Location …)
   }
   return sh;
 }
@@ -139,7 +152,7 @@ function recipeNum_(v) {
 
 /** 탭의 행 → { name, mode, cat, items: [{t: ing|base|step|photo, …}], box, fill, keepNote, keepDays, warnings }. */
 function parseRecipe_(tab, rows) {
-  var r = { name: '', mode: 'fixed', cat: '', items: [], box: '', fill: null, keepNote: '', keepDays: null, warnings: [] };
+  var r = { name: '', mode: 'fixed', cat: '', items: [], box: '', fill: null, keepNote: '', keepDays: null, place: '', warnings: [] };
   var warn = function (i, msg) { r.warnings.push('Row ' + (i + 1) + ': ' + msg); };
   rows.forEach(function (row, i) {
     var k = String(row[0] == null ? '' : row[0]).trim().toUpperCase();
@@ -172,6 +185,9 @@ function parseRecipe_(tab, rows) {
       r.keepNote = b;
       if (n !== null && (isNaN(n) || n < 0)) warn(i, 'KEEP days must be a number.');
       else if (n !== null) r.keepDays = Math.round(n);
+    } else if (k === 'PLACE') {
+      if (prodPlace_(b)) r.place = prodPlace_(b).label;
+      else if (b) warn(i, 'Unknown place “' + b + '”. Use a name from the app, e.g. “Ground floor · Fridge 4”.');
     } else warn(i, 'Unknown kind “' + k + '”.');
   });
   if (!r.name) r.name = tab;
@@ -242,7 +258,7 @@ function bumpRecipes_() {
 
 function recipesView_(req) {
   var emp = recipeUser_(req), all = recipesAll_(), sup = !!emp.supervisor, admin = emp.admin || sup;
-  var out = { ok: true, me: emp.name, canEdit: sup, canPickMaker: admin, boxes: all.boxes, today: todayStamp_(),
+  var out = { ok: true, me: emp.name, canEdit: sup, canPickMaker: admin, boxes: all.boxes, today: todayStamp_(), places: prodPlaces_(),
               recipes: all.recipes.map(function (r) {
                 var x = JSON.parse(JSON.stringify(r));
                 if (!sup) delete x.warnings;
@@ -356,6 +372,10 @@ function recipeRows_(r) {
     days = String(Math.round(days));
   } else days = '';
   if (keepNote || days) rows.push(['KEEP', keepNote, days, days ? 'days' : '']);
+  if (r.place) {
+    if (!prodPlace_(r.place)) fail_('Unknown place: ' + r.place);
+    rows.push(['PLACE', prodPlace_(r.place).label, '', '']);
+  }
   return { name: name, rows: rows };
 }
 
@@ -470,6 +490,23 @@ function addDaysIso_(iso, days) {
   return Utilities.formatDate(new Date(Date.UTC(+p[0], +p[1] - 1, +p[2] + days, 12)), 'UTC', 'yyyy-MM-dd');
 }
 
+/** [{ floor, type, spot, label }] — 화면의 위치 고르기와 검사에 씀. */
+function prodPlaces_() {
+  var out = [];
+  PROD_PLACES.forEach(function (g) {
+    g[2].forEach(function (spot) {
+      var label = g[0] + ' · ' + (g[1] === 'Shelf' && !/shelf/i.test(spot) ? 'Shelf · ' : '') + spot;
+      out.push({ floor: g[0], type: g[1], spot: spot, label: label });
+    });
+  });
+  return out;
+}
+
+function prodPlace_(label) {
+  var want = String(label || '').trim().toLowerCase();
+  return want ? prodPlaces_().filter(function (p) { return p.label.toLowerCase() === want; })[0] || null : null;
+}
+
 /** 이번 배치: 정량 = 배수(mult), 비율 = 기준 재료 무게(bases). → { batch: 글자, total: g }. */
 function prodBatch_(r, req) {
   var ings = r.items.filter(function (x) { return x.t === 'ing'; });
@@ -509,6 +546,8 @@ function prodLog_(req) {
     if (!other) fail_('Unknown person: ' + req.madeBy);
     maker = other.name;
   }
+  var place = prodPlace_(req.place);
+  if (!place) fail_(req.place ? 'Unknown place: ' + req.place : 'Please choose where it is stored.');
   var b = prodBatch_(r, req);
   var now = new Date(), date = Utilities.formatDate(now, TZ, 'yyyy-MM-dd'), time = Utilities.formatDate(now, TZ, 'HH:mm');
   var useBy = r.keepDays != null ? addDaysIso_(date, r.keepDays) : '';
@@ -519,9 +558,9 @@ function prodLog_(req) {
     var seq = Number(props_.getProperty('PROD_SEQ') || 0) + 1;
     var id = 'P' + ('00000' + seq).slice(-6);
     var sh = prodSheet_(), row = sh.getLastRow() + 1;
-    var cells = [id, date, time, r.name, b.batch, b.total, boxes, box, maker, useBy, emp.name, r.id];
+    var cells = [id, date, time, r.name, b.batch, b.total, boxes, box, maker, useBy, emp.name, r.id, place.label, '', ''];
     sh.getRange(row, 1, 1, 5).setNumberFormat('@'); // Total, Boxes(F·G) 는 숫자로 둠 (시트에서 합계 가능)
-    sh.getRange(row, 8, 1, 5).setNumberFormat('@');
+    sh.getRange(row, 8, 1, 8).setNumberFormat('@');
     sh.getRange(row, 1, 1, cells.length).setValues([cells.map(function (v) {
       return typeof v === 'string' && /^[=+\-@']/.test(v) ? "'" + v : v;
     })]);
@@ -537,7 +576,8 @@ function prodEntry_(c, emp) {
   var today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
   return { id: String(c[0]), date: String(c[1]), time: String(c[2]), recipe: String(c[3]), batch: String(c[4]),
            total: Number(c[5]) || 0, boxes: Number(c[6]) || 0, box: String(c[7]), madeBy: String(c[8]),
-           useBy: String(c[9]), loggedBy: String(c[10]),
+           useBy: String(c[9]), loggedBy: String(c[10]), recipeId: String(c[11]),
+           place: String(c[12] || ''), movedAt: String(c[13] || ''), movedBy: String(c[14] || ''),
            canDelete: !!emp.supervisor || (String(c[10]) === emp.name && String(c[1]) === today) };
 }
 
@@ -568,6 +608,38 @@ function prodDelete_(req) {
     lock.releaseLock();
   }
   return { ok: true, entry: id };
+}
+
+/** 위치 옮기기: 누구나 (레시피를 볼 수 있는 사람). Location 을 바꾸고 Moved at / Moved by 를 남김. */
+function prodMove_(req) {
+  var emp = recipeUser_(req), id = String(req.entry || ''), place = prodPlace_(req.place);
+  if (!place) fail_('Please choose the new place.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  var entry;
+  try {
+    var rec = prodRecent_(), i = -1;
+    for (var j = rec.rows.length - 1; j >= 0; j--) if (String(rec.rows[j][0]) === id) { i = j; break; }
+    if (!id || i < 0) fail_('This entry is not in the log any more.');
+    var row = rec.rows[i].slice(), at = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
+    row[12] = place.label; row[13] = at; row[14] = emp.name;
+    rec.sh.getRange(rec.first + i, 13, 1, 3).setNumberFormat('@').setValues([[place.label, at, emp.name]]);
+    entry = prodEntry_(row, emp);
+  } finally {
+    lock.releaseLock();
+  }
+  return { ok: true, entry: entry };
+}
+
+/** 'Storage' 화면: 아직 쓸 수 있는 것(사용기한이 오늘 이후, 기한이 없으면 만든 지 PROD_STOCK_DAYS 일 안), 최신이 위. */
+function prodStock_(req) {
+  var emp = recipeUser_(req), today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  var since = addDaysIso_(today, -PROD_STOCK_DAYS);
+  var rows = prodRecent_().rows.filter(function (c) {
+    var useBy = String(c[9] || ''), date = String(c[1] || '');
+    return /^P\d+$/.test(String(c[0])) && (useBy ? useBy >= today : date >= since);
+  });
+  return { ok: true, today: today, entries: rows.reverse().slice(0, 300).map(function (c) { return prodEntry_(c, emp); }) };
 }
 
 /** 편집기에서 실행: 레시피 탭마다 읽은 결과와 문제(경고)를 실행 로그에. */

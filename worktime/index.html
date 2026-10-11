@@ -483,7 +483,8 @@
     #v-recipes, #v-redit { padding-bottom: 80px; }
     .rc-search { margin: 0 0 10px; }
     .rc-cats { margin: 0 0 12px; }
-    .rc-cats .chip { font-size: 14px; padding: 6px 12px; }
+    .rc-cats .chip { width: auto; margin: 0; font-size: 14px; font-weight: 600; padding: 6px 12px; color: var(--text); }
+    .rc-cats .chip.on { color: var(--brand-ink); }
     .rc-item { display: flex; align-items: center; gap: 12px; width: 100%; margin: 0 0 8px; padding: 12px 14px; text-align: left;
                background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 14px; font-weight: 400; font-size: 16px; }
     .rc-item .t { flex: 1; min-width: 0; }
@@ -596,6 +597,23 @@
     .rc-dock button { margin: 0; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
     #v-redit.re-on { padding-bottom: 24px; }
     #v-redit.re-on .back-fab { display: none; }
+    /* 저장 위치: 층 → 냉장고/선반 → 자리 */
+    .rc-place { display: grid; gap: 8px; }
+    .rc-place .seg { margin: 0; }
+    .rc-spots { display: flex; flex-wrap: wrap; gap: 6px; }
+    .rc-spots .chip { width: auto; margin: 0; font-weight: 600; color: var(--text); }
+    .rc-spots .chip.on { color: var(--brand-ink); }
+    .rc-place-now { font-size: 15px; font-weight: 700; color: var(--brand); }
+    .rc-place-now.none { color: var(--muted); font-weight: 400; }
+    .rc-entry { flex-wrap: wrap; }
+    .rc-entry .where { display: block; color: var(--brand); font-weight: 600; font-size: 13px; }
+    .rc-entry .acts { display: flex; gap: 14px; flex: none; }
+    .rc-entry .acts .move { color: var(--brand); }
+    .rc-tabs { margin: 0 0 12px; }
+    .rc-group { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; font-weight: 700; margin: 16px 2px 2px; }
+    .rc-group span { color: var(--muted); font-weight: 400; font-size: 13px; }
+    .rc-stock-list { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 0 12px; }
+    .rc-stock-list .rc-entry:first-child { border-top: 0; }
   </style>
 </head>
 <body>
@@ -809,9 +827,13 @@
   <section id="v-recipes" class="hidden">
     <div id="rc-list-box">
       <h2 class="feed-title">Recipes</h2>
+      <div id="rc-tabs" class="seg rc-tabs"><button type="button" data-t="recipes" class="on">Recipes</button><button type="button" data-t="stock">Storage</button></div>
+      <div id="rc-stock" class="hidden"></div>
+      <div id="rc-recipes-box">
       <input id="rc-q" class="rc-search" type="search" placeholder="Search recipes" aria-label="Search recipes" autocomplete="off">
       <div id="rc-cats" class="chips rc-cats"></div>
       <div id="rc-list"><p class="hint">Loading…</p></div>
+      </div>
     </div>
     <div id="rc-detail" class="hidden"></div>
     <button id="b-rc-list-back" class="back-fab" type="button">← Back</button>
@@ -3340,7 +3362,8 @@
   let rcpOpen = null;            // 보고 있는 레시피 id (null = 목록)
   let rcpShown = null;           // 그려 둔 레시피의 버전 (바뀌었을 때만 다시 그림)
   let rcpProd = { id: null, entries: [] };
-  const rcpState = { q: '', cat: 'All', mult: {}, bases: {}, done: {} };
+  const rcpState = { q: '', cat: 'All', mult: {}, bases: {}, done: {}, tab: 'recipes', floor: 'All' };
+  let rcpStock = null;           // Storage 화면: 아직 쓸 수 있는 기록들 (서버 prodStock)
   const rcpPhotos = new Map();
   const MULTS = [0.5, 1, 2, 3];
 
@@ -3492,7 +3515,7 @@
 
   function rcpRedraw() {
     if (currentView === 'recipes') {
-      if (!rcpOpen) return renderRcpList();
+      if (!rcpOpen) return rcpState.tab === 'stock' ? loadStock() : renderRcpList();
       const r = rcpData.recipes.find((x) => x.id === rcpOpen);
       if (!r) { toast('This recipe was removed.'); return showRcpList(); }
       if (!rcpShown || rcpShown.ver !== r.ver || rcpShown.boxes !== JSON.stringify(rcpData.boxes)) {
@@ -3519,6 +3542,7 @@
     $('rc-list-box').classList.remove('hidden');
     $('rc-q').value = rcpState.q;
     if (rcpData) renderRcpList();
+    setRcpTab(rcpState.tab);
   }
 
   function rcpItem(r, onClick, warn) {
@@ -3664,6 +3688,7 @@
     if (r.fill) { add('Fill', 'about ' + fmtG(r.fill) + ' g per box'); add('This batch', '', 'rc-nbox'); }
     if (r.keepNote || r.keepDays != null) add('Keep', [r.keepNote, r.keepDays != null ? r.keepDays + ' days' : ''].filter(Boolean).join(' · '));
     if (r.keepDays != null) add('Use by', useByText(r.keepDays) + ' (if made today)');
+    if (r.place) add('Usually', '📍 ' + r.place);
     if (dl.children.length) st.append(dl);
     const logBtn = el('button', null, 'Log production');
     logBtn.type = 'button';
@@ -3705,26 +3730,180 @@
     } catch (e) { /* 오프라인이면 목록 없이 */ }
   }
 
+  /** 기록 한 줄: 몇 박스 × 박스 · 누가 · 언제 + 위치, [Move] [Delete]. withRecipe = Storage 화면(레시피 이름 먼저). */
+  function entryRow(e, withRecipe) {
+    const row = el('div', 'rc-entry'), w = el('span', 'w'), bx = rcpBox(e.box), acts = el('span', 'acts');
+    if (withRecipe) w.append(el('b', null, e.recipe), ' · ');
+    w.append(el('b', null, e.boxes + ' × ' + ((bx && bx.capacity) || e.box)), ' · ' + e.madeBy + ' · ' + dayLabel(e.date) + ' ' + e.time);
+    if (withRecipe && e.useBy) w.append(' · use by ' + isoLabel(e.useBy));
+    w.append(el('span', 'where', e.place ? '📍 ' + e.place + (e.movedBy ? ' (moved by ' + e.movedBy + ')' : '') : '📍 No place yet'));
+    const mv = el('button', 'link move', 'Move');
+    mv.type = 'button';
+    mv.addEventListener('click', () => openMoveSheet(e));
+    acts.append(mv);
+    if (e.canDelete) {
+      const del = el('button', 'link', 'Delete');
+      del.type = 'button';
+      del.addEventListener('click', () => deleteProd(e, del));
+      acts.append(del);
+    }
+    row.append(w, acts);
+    return row;
+  }
+
   function renderProd() {
     const box = $('rc-recent');
     if (!box) return;
     const list = rcpProd.id === rcpOpen ? rcpProd.entries : [];
     box.replaceChildren();
     if (!list.length) return;
-    box.append(el('div', 'rc-lab', 'Recently logged'));
-    for (const e of list) {
-      const row = el('div', 'rc-entry'), w = el('span', 'w'), bx = rcpBox(e.box);
-      w.append(el('b', null, e.boxes + ' × ' + ((bx && bx.capacity) || e.box)), ' · ' + e.madeBy + ' · ' + dayLabel(e.date) + ' ' + e.time);
-      row.append(w);
-      if (e.canDelete) {
-        const del = el('button', 'link', 'Delete');
-        del.type = 'button';
-        del.addEventListener('click', () => deleteProd(e, del));
-        row.append(del);
+    box.append(el('div', 'rc-lab', 'Recently logged'), ...list.map((e) => entryRow(e, false)));
+  }
+
+  /** 기록이 바뀌면(옮김·지움) 레시피 화면 목록과 Storage 화면 둘 다 고침. */
+  function prodChanged(e, gone) {
+    const fix = (list) => (gone ? list.filter((x) => x.id !== e.id) : list.map((x) => (x.id === e.id ? e : x)));
+    rcpProd.entries = fix(rcpProd.entries);
+    if (rcpStock) rcpStock = fix(rcpStock);
+    renderProd();
+    if (rcpState.tab === 'stock' && !rcpOpen) renderStock();
+  }
+
+  // ---------------------------------------------------------------- 저장 위치 고르기 (층 → 냉장고/선반 → 자리)
+  const PLACE_TYPES = { Fridge: 'Fridge / freezer', Shelf: 'Shelf (room temp)' };
+  function placePicker(initial, onChange, noneLabel) {
+    const places = (rcpData && rcpData.places) || [];
+    let cur = places.find((p) => p.label === initial) || null, floor = cur ? cur.floor : '', type = cur ? cur.type : '';
+    const box = el('div', 'rc-place');
+    const seg = (opts, val, pick) => {
+      const g = el('div', 'seg');
+      for (const [v, label] of opts) {
+        const b = el('button', v === val ? 'on' : null, label);
+        b.type = 'button';
+        b.addEventListener('click', () => { pick(v); draw(); });
+        g.append(b);
       }
-      box.append(row);
+      return g;
+    };
+    const set = (p) => { cur = p; onChange(p ? p.label : ''); };
+    const draw = () => {
+      const parts = [seg([...new Set(places.map((p) => p.floor))].map((f) => [f, f]), floor, (v) => {
+        if (v === floor) return;
+        floor = v; type = ''; set(null);
+      })];
+      if (floor) {
+        const types = [...new Set(places.filter((p) => p.floor === floor).map((p) => p.type))];
+        parts.push(seg(types.map((t) => [t, PLACE_TYPES[t] || t]), type, (v) => {
+          if (v === type) return;
+          type = v;
+          const spots = places.filter((p) => p.floor === floor && p.type === type);
+          set(spots.length === 1 ? spots[0] : null); // 자리가 하나뿐이면 바로 (예: 지하 선반 = Fermentation shelf)
+        }));
+      }
+      const spots = places.filter((p) => p.floor === floor && p.type === type);
+      if (spots.length > 1) {
+        const g = el('div', 'rc-spots');
+        for (const p of spots) {
+          const b = el('button', 'chip' + (cur === p ? ' on' : ''), p.spot);
+          b.type = 'button';
+          b.addEventListener('click', () => { set(p); draw(); });
+          g.append(b);
+        }
+        parts.push(g);
+      }
+      parts.push(el('div', 'rc-place-now' + (cur ? '' : ' none'), cur ? '📍 ' + cur.label : 'Choose the place'));
+      if (noneLabel && (cur || floor)) {
+        const n = el('button', 'link', noneLabel);
+        n.type = 'button';
+        n.addEventListener('click', () => { floor = ''; type = ''; set(null); draw(); });
+        parts.push(n);
+      }
+      box.replaceChildren(...parts);
+    };
+    draw();
+    return box;
+  }
+
+  function openMoveSheet(e) {
+    let place = '';
+    const sheet = el('div', 'oc-sheet rc-sheet'), bx = rcpBox(e.box);
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    const head = el('div');
+    head.append(el('div', 'oc-pos', 'Move'), el('h2', null, e.recipe),
+                el('div', 'meta', e.boxes + ' × ' + ((bx && bx.capacity) || e.box) + ' · ' + dayLabel(e.date) + ' ' + e.time),
+                el('div', 'meta', 'Now: ' + (e.place || 'no place')));
+    const msg = el('p', 'err'), row = el('div', 'row'), cancel = el('button', 'secondary', 'Cancel'), save = el('button', null, 'Move here');
+    cancel.type = 'button'; save.type = 'button';
+    cancel.addEventListener('click', closeRcSheet);
+    save.addEventListener('click', async () => {
+      if (!place) { msg.textContent = 'Choose the new place.'; return; }
+      if (place === e.place) return closeRcSheet();
+      save.disabled = true; msg.textContent = '';
+      try {
+        const r = await api({ action: 'prodMove', token: token(), entry: e.id, place });
+        if (r.code === 'AUTH') return logout(r.error);
+        if (!r.ok) { msg.textContent = serverMsg(r); save.disabled = false; return; }
+        closeRcSheet();
+        toast('✓ Moved · ' + e.recipe + ' → ' + r.entry.place);
+        prodChanged(r.entry);
+      } catch (err) {
+        msg.textContent = 'Network problem. Please try again.' + detail(err);
+        save.disabled = false;
+      }
+    });
+    row.append(cancel, save);
+    sheet.append(head, el('div', 'rc-lab', 'New place'), placePicker('', (v) => { place = v; }), msg, row);
+    openRcSheet(sheet);
+  }
+
+  // ---------------------------------------------------------------- Storage 화면 (어디에 무엇이 있나)
+  function setRcpTab(t) {
+    rcpState.tab = t;
+    $('rc-tabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.t === t));
+    $('rc-recipes-box').classList.toggle('hidden', t !== 'recipes');
+    $('rc-stock').classList.toggle('hidden', t !== 'stock');
+    if (t === 'stock') { renderStock(); loadStock(); }
+  }
+
+  async function loadStock() {
+    try {
+      const r = await api({ action: 'prodStock', token: token() });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) { if (!rcpStock) $('rc-stock').replaceChildren(el('p', 'err', serverMsg(r))); return; }
+      rcpStock = r.entries;
+      if (currentView === 'recipes' && !rcpOpen && rcpState.tab === 'stock') renderStock();
+    } catch (e) {
+      if (!rcpStock) $('rc-stock').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
     }
   }
+
+  function renderStock() {
+    const box = $('rc-stock');
+    if (!rcpStock) return box.replaceChildren(el('p', 'hint', 'Loading…'));
+    const places = (rcpData && rcpData.places) || [], floors = ['All', ...new Set(places.map((p) => p.floor))];
+    const fl = el('div', 'chips rc-cats');
+    for (const f of floors) {
+      const b = el('button', 'chip' + (f === rcpState.floor ? ' on' : ''), f);
+      b.type = 'button';
+      b.addEventListener('click', () => { rcpState.floor = f; renderStock(); });
+      fl.append(b);
+    }
+    const floorOf = (label) => (places.find((p) => p.label === label) || {}).floor || '';
+    const list = rcpStock.filter((e) => rcpState.floor === 'All' || floorOf(e.place) === rcpState.floor);
+    const order = places.map((p) => p.label);
+    const groups = [...new Set(list.map((e) => e.place))]
+      .sort((a, b) => (order.indexOf(a) < 0 ? 999 : order.indexOf(a)) - (order.indexOf(b) < 0 ? 999 : order.indexOf(b)));
+    const out = [fl, el('p', 'meta', 'Not past the use-by date. Moved something? Tap Move so everyone can find it.')];
+    for (const g of groups) {
+      const items = list.filter((e) => e.place === g), h = el('div', 'rc-group'), card = el('div', 'rc-stock-list');
+      h.append(g ? '📍 ' + g : 'No place yet', el('span', null, items.length + (items.length > 1 ? ' entries' : ' entry')));
+      card.append(...items.map((e) => entryRow(e, true)));
+      out.push(h, card);
+    }
+    if (!groups.length) out.push(el('p', 'hint', 'Nothing stored here.'));
+    box.replaceChildren(...out);
+  }
+  $('rc-tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setRcpTab(b.dataset.t); });
 
   async function deleteProd(e, btn) {
     if (!confirm('Delete this entry from the production log?\n\n' + e.boxes + ' × ' + e.box + ' · ' + e.madeBy + ' · ' + e.date + ' ' + e.time)) return;
@@ -3733,8 +3912,7 @@
       const r = await api({ action: 'prodDelete', token: token(), entry: e.id });
       if (r.code === 'AUTH') return logout(r.error);
       if (!r.ok) { btn.disabled = false; return toast(serverMsg(r)); }
-      rcpProd.entries = rcpProd.entries.filter((x) => x.id !== e.id);
-      renderProd();
+      prodChanged(e, true);
       toast('Deleted from the production log.');
     } catch (err) {
       btn.disabled = false;
@@ -3794,7 +3972,10 @@
     };
     drawBoxes(!chosen);
 
-    const parts = [head, el('div', 'rc-lab', 'Boxes'), stp, el('div', 'rc-lab', 'Box'), boxes];
+    let place = r.place || store.get('wt_rcp_place') || '';
+    if (!((rcpData.places || []).some((p) => p.label === place))) place = '';
+    const parts = [head, el('div', 'rc-lab', 'Boxes'), stp, el('div', 'rc-lab', 'Box'), boxes,
+                   el('div', 'rc-lab', 'Stored at'), placePicker(place, (v) => { place = v; })];
     let maker = null;
     if (rcpData.canPickMaker && rcpData.staff) {
       maker = el('select');
@@ -3824,7 +4005,8 @@
       const raw = inp.value.trim(), n = rcpNum(raw);
       if (!/^\d+([.,]\d)?$/.test(raw) || !(n > 0)) { msg.textContent = 'Enter the number of boxes, one decimal at most (e.g. 2.5).'; return inp.focus(); }
       if (!chosen) { msg.textContent = 'Choose the box.'; return; }
-      const body = { action: 'prodLog', token: token(), id: r.id, boxes: n, box: chosen };
+      if (!place) { msg.textContent = 'Choose where it is stored.'; return; }
+      const body = { action: 'prodLog', token: token(), id: r.id, boxes: n, box: chosen, place };
       if (maker) body.madeBy = maker.value;
       if (r.mode === 'percent') {
         const bv = rcpState.bases[r.id] || [];
@@ -3836,8 +4018,10 @@
         if (res.code === 'AUTH') return logout(res.error);
         if (!res.ok) { msg.textContent = serverMsg(res); save.disabled = false; return; }
         closeRcSheet();
+        if (!r.place) store.set('wt_rcp_place', place); // 기본 위치가 없는 레시피: 다음에 이 폰에서 같은 곳을 먼저
         const e = res.entry, eb = rcpBox(e.box);
-        toast('✓ Logged · ' + e.boxes + ' × ' + ((eb && eb.capacity) || e.box) + ' · ' + r.name + (e.madeBy !== rcpData.me ? ' · by ' + e.madeBy : ''));
+        if (rcpStock) rcpStock.unshift(e);
+        toast('✓ Logged · ' + e.boxes + ' × ' + ((eb && eb.capacity) || e.box) + ' · ' + e.place + (e.madeBy !== rcpData.me ? ' · by ' + e.madeBy : ''));
         if (rcpProd.id !== r.id) rcpProd = { id: r.id, entries: [] };
         rcpProd.entries.unshift(e);
         renderProd();
@@ -4057,7 +4241,8 @@
     st.append(reLabeled('Default box', sel), preview,
       reLabeled('Grams per box (for “about N boxes”)', reInput(d.fill, 'Grams per box', (v) => { d.fill = v; }, { mode: 'decimal', ph: 'e.g. 1700' })),
       reLabeled('Storage', reInput(d.keepNote, 'Storage', (v) => { d.keepNote = v; }, { ph: 'e.g. Fridge 0–3 °C' })),
-      reLabeled('Keeps for (days)', reInput(d.keepDays, 'Days', (v) => { d.keepDays = v; }, { mode: 'numeric', ph: 'e.g. 5' })));
+      reLabeled('Keeps for (days)', reInput(d.keepDays, 'Days', (v) => { d.keepDays = v; }, { mode: 'numeric', ph: 'e.g. 5' })),
+      el('label', null, 'Usual place (pre-selected when logging)'), placePicker(d.place || '', (v) => { d.place = v; reDirty(); }, 'No usual place'));
     out.push(st);
 
     const extra = [];
@@ -4118,7 +4303,7 @@
     const dr = reDraft;
     if (dr.uploads) return reMsg('Please wait until the photo is uploaded.', 'err');
     const d = dr.d;
-    const recipe = { name: d.name, mode: d.mode, cat: d.cat, box: d.box, fill: d.fill ?? '', keepNote: d.keepNote, keepDays: d.keepDays ?? '',
+    const recipe = { name: d.name, mode: d.mode, cat: d.cat, box: d.box, fill: d.fill ?? '', keepNote: d.keepNote, keepDays: d.keepDays ?? '', place: d.place || '',
                      items: d.items.map(({ k, ...x }) => x) };
     btn.disabled = true;
     reMsg('Saving…', 'meta');
