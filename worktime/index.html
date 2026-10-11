@@ -248,14 +248,15 @@
     .teamseg button.on { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
     .day { cursor: pointer; }
     /* 오전(16:30 전 시작) = 흰 바탕, 저녁(16:30 부터) = 짙은 바탕 — 시트와 같은 느낌 */
-    .shift.am, .zone.am { background: #ffffff; color: #1d2420; }
+    /* 낮 = 부드러운 노랑 (흰색은 저녁과 명도 차이가 커서 눈부심, 사장님 요청) */
+    .shift.am, .zone.am { background: #fdf3cf; color: #1d2420; }
     .shift.pm, .zone.pm { background: #3b403d; color: #ffffff; }
-    .shift.am { border: 1px solid #dfe4e1; border-left: 6px solid var(--c, #dfe4e1); }
+    .shift.am { border: 1px solid #eedf9f; border-left: 6px solid var(--c, #eedf9f); }
     .shift.pm .rolebig { background: #ffffff; color: #1d2420; }
     .shift.pm .brk, .zone.pm .brk { color: #c9d0cc; }
     .zone.am, .zone.pm { border-radius: 12px; padding: 2px 12px 6px; }
-    .zone.am { border: 1px solid #dfe4e1; }
-    .zone.am .zone-h { border-bottom-color: #dfe4e1; }
+    .zone.am { border: 1px solid #eedf9f; }
+    .zone.am .zone-h { border-bottom-color: #eedf9f; }
     .zone.pm .zone-h { border-bottom-color: #59605c; }
     .zone.am .role { color: #1d2420; border-color: #c8cfcb; }
     .zone.pm .role { color: #ffffff; border-color: #6b736f; }
@@ -494,6 +495,9 @@
     .rc-item .t { flex: 1; min-width: 0; }
     .rc-item b { display: block; overflow-wrap: anywhere; }
     .rc-item small { display: block; color: var(--muted); font-size: 13px; }
+    .rc-item .rc-subline { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+    .rc-qty { font-size: 12px; font-weight: 600; color: var(--text); background: var(--brand-soft); border-radius: 6px; padding: 0 7px;
+              font-variant-numeric: tabular-nums; white-space: nowrap; }
     .rc-item .chev { width: 9px; height: 9px; flex: none; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); }
     .rc-mode { flex: none; font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; padding: 2px 7px;
                border-radius: 6px; background: var(--brand-soft); color: var(--brand); white-space: nowrap; }
@@ -3653,12 +3657,27 @@
     if (rcpData) renderRcpList();
   }
 
+  /** 목록에 보이는 1 batch 분량 (통 수): '2.3 box / Batch'. 비율 레시피는 기준 재료 1 kg 당. 박스당 g(FILL)이 없으면 ''. */
+  function batchBoxes(r) {
+    const yf = r.yieldPct ? r.yieldPct / 100 : 1;
+    const sum = r.items.filter((x) => x.t === 'ing').reduce((a, x) => a + (x.q || 0), 0);
+    const g = r.mode === 'percent' ? 1000 * (1 + sum / 100) * yf : sum * yf; // 완성 무게
+    if (!r.fill || !(g > 0)) return '';
+    const n = Math.max(0.1, Math.round(g / r.fill * 10) / 10);
+    return n + (r.mode === 'percent' ? ' box / kg base' : ' box / Batch');
+  }
+
   function rcpItem(r, onClick, warn) {
     const b = el('button', 'rc-item'), t = el('span', 't'), bx = rcpBox(r.box);
     b.type = 'button';
     t.append(el('b', null, r.name));
-    const sub = [r.cat, bx && (bx.capacity || bx.name)].filter(Boolean).join(' · ');
-    if (sub) t.append(el('small', null, sub));
+    // 왼쪽 = 통 크기, 오른쪽 = 1 batch 통 수 (옅은 배경)
+    const sub = [r.cat, bx && (bx.capacity || bx.name)].filter(Boolean).join(' · '), qty = batchBoxes(r);
+    if (sub || qty) {
+      const line = el('small', 'rc-subline', sub);
+      if (qty) line.append(el('span', 'rc-qty', qty));
+      t.append(line);
+    }
     b.append(t);
     if (warn && r.warnings && r.warnings.length) b.append(el('span', 'rc-warn', '⚠ ' + r.warnings.length));
     b.append(el('span', 'rc-mode' + (r.mode === 'percent' ? ' pct' : ''), r.mode === 'percent' ? '%' : 'Fixed'), el('span', 'chev'));
