@@ -3861,7 +3861,7 @@
 
     const st = el('section', 'rc-store'), notStored = r.count === 'none', bx = notStored ? null : rcpBox(r.box);
     st.append(el('h3', null, notStored ? 'Not stored' : 'Store in'));
-    if (notStored) st.append(el('p', 'meta', 'Used right away — not kept in stock, nothing to log.'));
+    if (notStored) st.append(el('p', 'meta', 'Used right away — not kept in stock. Log it when it is made.'));
     else if (bx) { const row = el('div', 'rc-boxrow'); row.append(boxThumb(bx), boxText(bx)); st.append(row); }
     else st.append(el('p', 'meta', 'No box set for this recipe.'));
     const dl = el('dl', 'rc-facts');
@@ -3872,14 +3872,12 @@
     if (!notStored && r.keepDays != null) add('Use by', useByText(r.keepDays) + ' (if made today)');
     if (!notStored && r.place) add('Usually', '📍 ' + r.place);
     if (dl.children.length) st.append(dl);
-    if (!notStored) { // 재고로 두지 않는 레시피는 기록 없음
-      const logBtn = el('button', null, 'Log production');
-      logBtn.type = 'button';
-      logBtn.addEventListener('click', () => openProdSheet(r));
-      const recent = el('div', 'rc-recent');
-      recent.id = 'rc-recent';
-      st.append(logBtn, recent);
-    }
+    const logBtn = el('button', null, 'Log production');
+    logBtn.type = 'button';
+    logBtn.addEventListener('click', () => openProdSheet(r));
+    const recent = el('div', 'rc-recent');
+    recent.id = 'rc-recent';
+    st.append(logBtn, recent);
 
     $('rc-detail').replaceChildren(head, scale, flow, clear, st);
     rcpUpdate(r);
@@ -4573,6 +4571,7 @@
       $('rc-detail').querySelector('.rc-base input')?.focus();
       return;
     }
+    if (r.count === 'none') return openMadeSheet(r, c);
     const sheet = el('div', 'oc-sheet rc-sheet');
     sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
     const batch = r.mode === 'percent' ? 'base ' + fmtW(c.baseTotal) : '×' + multLabel(rcpMult(r));
@@ -4674,6 +4673,56 @@
     });
     row.append(cancel, save);
     sheet.append(...parts, dl, msg, row);
+    openRcSheet(sheet);
+  }
+
+  /** 재고로 두지 않는 레시피: 만든 것만 기록 (박스·위치 없음). Made by · Made on 은 Admin 이상. */
+  function openMadeSheet(r, c) {
+    const sheet = el('div', 'oc-sheet rc-sheet'), head = el('div');
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    const batch = r.mode === 'percent' ? 'base ' + fmtW(c.baseTotal) : '×' + multLabel(rcpMult(r));
+    head.append(el('div', 'oc-pos', 'Log production · not stored'), el('h2', null, r.name), el('div', 'meta', batch + ' · ' + fmtW(c.finished)));
+    const parts = [head, el('p', 'meta', 'Used right away. It is logged as made and does not go into Stock.')];
+    let maker = null, madeOn = null;
+    if (rcpData.canPickMaker && rcpData.staff) {
+      maker = el('select');
+      maker.id = 'rc-maker'; maker.setAttribute('aria-label', 'Made by');
+      for (const p of rcpData.staff) { const o = el('option', null, p.name); o.value = p.name; o.selected = p.name === rcpData.me; maker.append(o); }
+      madeOn = madeOnInput('rc-made-on');
+      parts.push(el('div', 'rc-lab', 'Made by'), maker, el('div', 'rc-lab', 'Made on'), madeOn);
+    } else {
+      const dl = el('dl', 'oc-facts');
+      dl.append(el('dt', null, 'Made by'), el('dd', null, store.get('wt_name')), el('dt', null, 'Date'), el('dd', null, 'Today, ' + parisNow().slice(11)));
+      parts.push(dl);
+    }
+    const msg = el('p', 'err'), row = el('div', 'row'), cancel = el('button', 'secondary', 'Cancel'), save = el('button', null, 'Add to log');
+    cancel.type = 'button'; save.type = 'button';
+    cancel.addEventListener('click', closeRcSheet);
+    save.addEventListener('click', async () => {
+      const body = { action: 'prodLog', token: token(), id: r.id };
+      if (maker) body.madeBy = maker.value;
+      if (madeOn && madeOn.value) body.madeOn = madeOn.value;
+      if (r.mode === 'percent') {
+        const bv = rcpState.bases[r.id] || [];
+        body.bases = r.items.filter((x) => x.t === 'base').map((_, j) => { const v = rcpNum(bv[j]); return v > 0 ? v : 0; });
+      } else body.mult = rcpMult(r);
+      save.disabled = true; msg.textContent = '';
+      try {
+        const res = await api(body);
+        if (res.code === 'AUTH') return logout(res.error);
+        if (!res.ok) { msg.textContent = serverMsg(res); save.disabled = false; return; }
+        closeRcSheet();
+        toast('✓ Logged · ' + r.name + ' (not stored)');
+        if (rcpProd.id !== r.id) rcpProd = { id: r.id, entries: [] };
+        rcpProd.entries.unshift(res.entry);
+        renderProd();
+      } catch (err) {
+        msg.textContent = 'Network problem. Please try again.' + detail(err);
+        save.disabled = false;
+      }
+    });
+    row.append(cancel, save);
+    sheet.append(...parts, msg, row);
     openRcSheet(sheet);
   }
 
@@ -4933,7 +4982,7 @@
     const draw = () => {
       g.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.c === (d.count || 'daily')));
       hint.textContent = d.count === 'sunday' ? 'Counted only in the Sunday count.'
-        : d.count === 'none' ? 'Used right away, not kept in stock: no Log production, never in Stock or the counts.'
+        : d.count === 'none' ? 'Used right away, not kept in stock: logged as made, never in Stock or the counts.'
         : 'Counted every evening when it is in a fridge (shelves and freezers: Sunday).';
     };
     for (const [c, label] of [['daily', 'Every evening'], ['sunday', 'Sunday only'], ['none', 'Not stored']]) {

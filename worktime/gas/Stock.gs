@@ -252,7 +252,7 @@ function prodRecipe_(id) {
  */
 function prodLog_(req) {
   var emp = recipeUser_(req), all = recipesAll_(), r = prodRecipe_(req.id), admin = emp.admin || emp.supervisor;
-  if (r.count === 'none') fail_('This recipe is not stored, so there is nothing to log.');
+  if (r.count === 'none' && !req.missing) return prodLogNotStored_(req, emp, r);
   var boxes = boxesNum_(req.boxes, 'Boxes');
   var box = String(req.box || r.box || '').trim();
   if (!box) fail_('Please choose the box.');
@@ -275,6 +275,25 @@ function prodLog_(req) {
   try {
     cells = writeLot_({ emp: emp, r: r, boxes: boxes, box: box, maker: maker, place: place, date: date,
                         batch: b.batch, total: b.total, note: note });
+  } finally {
+    lock.releaseLock();
+  }
+  return { ok: true, entry: prodEntry_(cells, emp) };
+}
+
+/**
+ * 재고로 두지 않는 레시피 (COUNT Not stored): 바로 써서 끝남 → 만든 기록만 (박스·위치 없음, Left 0 = 재고·조사에 안 나옴).
+ */
+function prodLogNotStored_(req, emp, r) {
+  var maker = prodMaker_(emp, req.madeBy), date = madeOn_(emp, req.madeOn), b = prodBatch_(r, req);
+  var note = 'Not stored (used right away)' + (date !== todayIsoParis_() ? ' · logged late ' + nowMinParis_() + ' by ' + emp.name : '');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  var cells;
+  try {
+    var time = date === todayIsoParis_() ? Utilities.formatDate(new Date(), TZ, 'HH:mm') : '';
+    cells = [nextLotId_(), date, time, r.name, b.batch, b.total, '', '', maker, '', emp.name, r.id, '', '', '', '', 0, note];
+    appendRows_(prodSheet_(), [cells], [[1, 5], [8, 10]]);
   } finally {
     lock.releaseLock();
   }
