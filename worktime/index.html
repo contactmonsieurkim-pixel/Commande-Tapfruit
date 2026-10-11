@@ -477,6 +477,213 @@
     .oc-facts dt { color: var(--muted); }
     .oc-facts dd { margin: 0; overflow-wrap: anywhere; }
     .oc-sheet button { margin: 4px 0 0; }
+    /* Recipes: Kitchen 팀 + Supervisor 가 보는 레시피, Supervisor 의 Recipe editor */
+    .ic-recipe { background: linear-gradient(160deg, #e8935a, #c0612b); }
+    .ic-redit { background: linear-gradient(160deg, #c98a5e, #8f5634); }
+    .ic-stock { background: linear-gradient(160deg, #5a8fd6, #2f5f9e); }
+    #v-stock { padding-bottom: 80px; }
+    .st-item .tot small, .cn-row .u { font-size: 11px; font-weight: 400; color: var(--muted); margin-left: 3px; white-space: nowrap; }
+    .cn-row .u { margin-left: -6px; min-width: 34px; }
+    #v-recipes, #v-redit { padding-bottom: 80px; }
+    .rc-search { margin: 0 0 10px; }
+    .rc-cats { margin: 0 0 12px; }
+    .rc-cats .chip { width: auto; margin: 0; font-size: 14px; font-weight: 600; padding: 6px 12px; color: var(--text); }
+    .rc-cats .chip.on { color: var(--brand-ink); }
+    .rc-item { display: flex; align-items: center; gap: 12px; width: 100%; margin: 0 0 8px; padding: 12px 14px; text-align: left;
+               background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 14px; font-weight: 400; font-size: 16px; }
+    .rc-item .t { flex: 1; min-width: 0; }
+    .rc-item b { display: block; overflow-wrap: anywhere; }
+    .rc-item small { display: block; color: var(--muted); font-size: 13px; }
+    .rc-item .chev { width: 9px; height: 9px; flex: none; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(-45deg); }
+    .rc-mode { flex: none; font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; padding: 2px 7px;
+               border-radius: 6px; background: var(--brand-soft); color: var(--brand); white-space: nowrap; }
+    .rc-mode.pct { background: var(--warn-bg); color: var(--warn-ink); }
+    .rc-warn { flex: none; font-size: 12px; font-weight: 700; color: var(--warn-ink); background: var(--warn-bg); border-radius: 8px; padding: 1px 7px; }
+    .rc-head .meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .rc-head h2 { font-size: 22px; margin: 4px 0 0; overflow-wrap: anywhere; }
+    .rc-scale { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; margin: 12px 0;
+                position: sticky; top: max(0px, env(safe-area-inset-top)); z-index: 3; box-shadow: 0 2px 8px rgba(0, 0, 0, .06); }
+    .rc-lab { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+    .rc-mult { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.4fr); gap: 6px; margin-top: 8px; }
+    .rc-mult button { margin: 0; padding: 9px 0; font-size: 16px; border-radius: 10px; background: var(--bg); color: var(--text);
+                      border: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+    .rc-mult button.on { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+    .rc-mult label { display: flex; align-items: center; gap: 2px; margin: 0; font-size: 15px; color: var(--muted); border: 1px solid var(--line);
+                     border-radius: 10px; padding: 0 0 0 8px; background: var(--bg); }
+    .rc-mult label.on { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+    .rc-mult input { min-width: 0; border: 0; background: transparent; padding: 8px 6px 8px 0; font-size: 16px; text-align: right; }
+    .rc-base { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; font-size: 15px; color: var(--text); }
+    .rc-base span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .rc-base input, .rc-num { width: 110px; flex: none; font-size: 17px; padding: 8px 10px; text-align: right; font-variant-numeric: tabular-nums; }
+    .rc-sum { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line);
+              font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .rc-sum b { color: var(--text); text-align: right; }
+    .rc-flow { display: grid; gap: 12px; }
+    .rc-ings { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .rc-ing { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-top: 1px solid var(--line); cursor: pointer; user-select: none; }
+    .rc-ing:first-child { border-top: 0; }
+    .rc-ing .box { width: 20px; height: 20px; flex: none; border: 2px solid var(--line); border-radius: 6px; display: grid; place-items: center; }
+    .rc-ing .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .rc-ing .nm small { display: block; color: var(--muted); font-size: 12px; }
+    .rc-ing .qty { font-weight: 700; font-size: 19px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .rc-ing .qty u { text-decoration: none; font-weight: 400; font-size: 14px; color: var(--muted); margin-left: 2px; }
+    .rc-ing.base { background: var(--brand-soft); }
+    .rc-ing.done .nm, .rc-ing.done .qty { opacity: .45; text-decoration: line-through; }
+    .rc-ing.done .box { background: var(--brand); border-color: var(--brand); }
+    .rc-ing.done .box::after { content: ''; width: 5px; height: 10px; border-right: 2px solid var(--brand-ink); border-bottom: 2px solid var(--brand-ink);
+                               transform: rotate(45deg) translate(-1px, -1px); }
+    .rc-step { display: flex; gap: 12px; }
+    .rc-step .n { flex: none; width: 26px; height: 26px; border-radius: 50%; background: var(--text); color: var(--bg); font-size: 14px; font-weight: 700;
+                  display: grid; place-items: center; margin-top: 1px; }
+    .rc-step p { margin: 0; flex: 1; min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .rc-photo { margin: 0; }
+    .rc-photo .ph, .rc-thumb { background: var(--line); border-radius: 12px; overflow: hidden; display: grid; place-items: center; color: var(--muted);
+                               font-size: 13px; text-align: center; }
+    .rc-photo .ph { min-height: 160px; cursor: zoom-in; }
+    .rc-photo img, .rc-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .rc-photo img { height: auto; max-height: 420px; object-fit: contain; background: #000; }
+    .rc-photo figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; }
+    .rc-store { background: var(--card); border: 2px solid var(--brand); border-radius: 16px; padding: 14px 16px; margin-top: 16px; }
+    .rc-store h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: var(--brand); margin: 0 0 8px; }
+    .rc-boxrow { display: flex; align-items: center; gap: 12px; }
+    .rc-thumb { width: 56px; height: 56px; flex: none; border-radius: 10px; cursor: zoom-in; font-size: 22px; }
+    .rc-boxrow .cap { font-size: 20px; font-weight: 700; display: block; line-height: 1.2; }
+    .rc-boxrow .bn { color: var(--muted); font-size: 14px; display: block; overflow-wrap: anywhere; }
+    .rc-facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 12px 0 0; font-size: 15px; }
+    .rc-facts dt { color: var(--muted); }
+    .rc-facts dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+    .rc-recent { margin-top: 14px; }
+    .rc-entry { display: flex; align-items: baseline; gap: 10px; padding: 8px 2px; border-top: 1px solid var(--line); font-size: 14px; }
+    .rc-entry .w { flex: 1; min-width: 0; }
+    .rc-entry .w b { font-variant-numeric: tabular-nums; }
+    .rc-entry button { color: var(--err); }
+    .rc-sheet { max-height: 92vh; overflow-y: auto; }
+    .rc-stepper { display: flex; align-items: center; gap: 10px; }
+    .rc-stepper button { width: 48px; height: 48px; margin: 0; padding: 0; border-radius: 50%; font-size: 24px; background: var(--bg); color: var(--text);
+                         border: 1px solid var(--line); flex: none; }
+    .rc-stepper input { width: 96px; font-size: 28px; font-weight: 700; text-align: center; padding: 6px; font-variant-numeric: tabular-nums; }
+    .rc-stepper span { color: var(--muted); }
+    .rc-pick-box { display: flex; align-items: center; gap: 12px; width: 100%; margin: 6px 0 0; padding: 8px 10px; text-align: left;
+                   background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 12px; font-weight: 400; font-size: 15px; }
+    .rc-pick-box.on { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+    .rc-pick-box .rc-thumb { width: 44px; height: 44px; font-size: 18px; }
+    .rc-pick-box .t { flex: 1; min-width: 0; }
+    .rc-pick-box .cap { font-weight: 700; display: block; }
+    .rc-pick-box .bn { color: var(--muted); font-size: 13px; display: block; }
+    .rc-sheet select { width: 100%; font-size: 17px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+    .rc-zoom { position: fixed; inset: 0; z-index: 30; background: rgba(0, 0, 0, .9); display: flex; align-items: center; justify-content: center;
+               padding: 16px; animation: fade .15s; }
+    .rc-zoom img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
+    /* Recipe editor */
+    .rc-tools { display: flex; gap: 8px; margin: 0 0 12px; }
+    .rc-tools button { margin: 0; }
+    .rc-line { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-bottom: 8px; }
+    .rc-line.k-step { border-left: 4px solid var(--text); }
+    .rc-line.k-photo { border-left: 4px solid var(--muted); }
+    .rc-line.k-base { background: var(--brand-soft); }
+    .rc-line-h { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; }
+    .rc-line-h b { flex: 1; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+    .rc-line-h button { width: 34px; height: 30px; margin: 0; padding: 0; font-size: 15px; background: var(--bg); color: var(--text);
+                        border: 1px solid var(--line); border-radius: 8px; }
+    .rc-line-h button.x { color: var(--err); }
+    .rc-line input, .rc-line textarea, #v-redit .card input, #v-redit .card select { font-size: 16px; padding: 9px 10px; }
+    .rc-line textarea { min-height: 80px; }
+    .rc-row { display: flex; gap: 8px; align-items: center; }
+    .rc-row > input:first-child { flex: 1; min-width: 0; }
+    .rc-row .unit { color: var(--muted); width: 18px; flex: none; }
+    .rc-line .rc-note { margin-top: 6px; font-size: 14px; padding: 7px 10px; }
+    .rc-line .rc-thumb { width: 72px; height: 72px; cursor: default; }
+    .rc-line .pick { margin: 0; padding: 9px 12px; font-size: 15px; flex: 1; }
+    .rc-add { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 4px 0 14px; }
+    .rc-add button { margin: 0; padding: 10px 6px; font-size: 15px; }
+    #v-redit select { width: 100%; font-size: 16px; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
+    .rc-dock { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); display: flex; gap: 8px; margin-top: 14px; z-index: 4; }
+    .rc-dock button { margin: 0; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
+    #v-redit.re-on { padding-bottom: 24px; }
+    #v-redit.re-on .back-fab { display: none; }
+    /* 저장 위치: 층 → 냉장고/선반 → 자리 */
+    .rc-place { display: grid; gap: 8px; }
+    .rc-place .seg { margin: 0; }
+    .rc-spots { display: flex; flex-wrap: wrap; gap: 6px; }
+    .rc-spots .chip { width: auto; margin: 0; font-weight: 600; color: var(--text); }
+    .rc-spots .chip.on { color: var(--brand-ink); }
+    .rc-place-now { font-size: 15px; font-weight: 700; color: var(--brand); }
+    .rc-place-now.none { color: var(--muted); font-weight: 400; }
+    .rc-entry { flex-wrap: wrap; }
+    .rc-entry .where { display: block; color: var(--brand); font-weight: 600; font-size: 13px; }
+    .rc-entry .acts { display: flex; gap: 14px; flex: none; }
+    .rc-entry .acts .move { color: var(--brand); }
+    .rc-tabs { margin: 0 0 12px; }
+    .rc-group { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; font-weight: 700; margin: 16px 2px 2px; }
+    .rc-group span { color: var(--muted); font-weight: 400; font-size: 13px; }
+    .rc-stock-list { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 0 12px; }
+    .rc-stock-list .rc-entry:first-child { border-top: 0; }
+    /* Stock (종합본): 레시피 한 줄 = 이름 · 위치(짧은 주소) · 합계 · 언제까지 */
+    .rc-tabs button { font-size: 13px; padding: 7px 2px; }
+    .st-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+    .st-head .feed-title { margin: 0; }
+    .st-list { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    .st-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; width: 100%; margin: 0;
+               border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; color: var(--text); text-align: left; padding: 9px 12px; font-weight: 400; }
+    .st-item:first-child { border-top: 0; }
+    .st-item .nm { min-width: 0; }
+    .st-item .nm b { display: block; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .st-item .where { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .st-item .where em { font-style: normal; font-weight: 700; color: var(--text); }
+    .st-item .tot { font-size: 18px; font-weight: 800; min-width: 34px; text-align: right; font-variant-numeric: tabular-nums; }
+    .st-item .left { font-size: 12px; text-align: right; min-width: 56px; color: var(--muted); line-height: 1.2; font-variant-numeric: tabular-nums; }
+    .st-item .left b { display: block; font-size: 14px; color: var(--text); }
+    .st-item .left.low b { color: var(--err); }
+    .st-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--err); margin-left: 6px; vertical-align: 2px; }
+    .st-codes { font-size: 12px; color: var(--muted); margin: 10px 2px 0; line-height: 1.6; }
+    .st-lot { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--line); padding: 10px 0; flex-wrap: wrap; }
+    .st-lot .w { flex: 1; min-width: 0; }
+    .st-lot .st-sub { display: block; }
+    .st-lot .n { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .st-lot .acts { display: flex; gap: 12px; width: 100%; justify-content: flex-end; }
+    .st-lot .acts .move { color: var(--brand); }
+    .st-lot .acts button:not(.move) { color: var(--err); }
+    .st-num { font-size: 22px; text-align: center; font-variant-numeric: tabular-nums; }
+    .st-date { font-size: 17px; }
+    /* Count: 냉장고 하나 = 화면 하나, 품목 한 줄 = 이름 + 숫자 */
+    .cn-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .cn-top h2 { font-size: 20px; margin: 0; }
+    .cn-top .meta { white-space: nowrap; }
+    .cn-bar { height: 4px; background: var(--line); border-radius: 2px; margin: 6px 0 12px; overflow: hidden; }
+    .cn-bar i { display: block; height: 100%; background: var(--brand); }
+    .cn-row { display: flex; align-items: center; gap: 10px; width: 100%; height: 52px; margin: 0; padding: 0 14px; border: 0; border-top: 1px solid var(--line);
+              border-radius: 0; background: none; color: var(--text); text-align: left; font-weight: 400; }
+    .cn-row:first-child { border-top: 0; }
+    .cn-row .nm { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 16px; }
+    .cn-row .v { font-size: 20px; color: var(--muted); min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+    .cn-row.set .v { color: var(--text); font-weight: 800; }
+    .cn-row.diff .v { color: var(--brand); }
+    .cn-row .was { font-size: 12px; color: var(--muted); text-decoration: line-through; font-variant-numeric: tabular-nums; }
+    .cn-add { display: block; width: 100%; margin: 0; padding: 12px 14px; border: 0; border-top: 1px solid var(--line); border-radius: 0;
+              background: none; color: var(--brand); text-align: left; font-size: 15px; font-weight: 600; }
+    .cn-hint { color: var(--muted); font-size: 13px; margin: 10px 2px 0; }
+    .cn-nav { display: flex; gap: 8px; margin-top: 14px; }
+    .cn-nav button { margin: 0; flex: 1; }
+    .cn-nav button.go { flex: 3; }
+    .cn-pad { gap: 8px; }
+    .cn-pad-t { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .cn-pad-t b { font-size: 17px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .cn-disp { font-size: 40px; font-weight: 800; text-align: center; min-height: 52px; font-variant-numeric: tabular-nums; }
+    .cn-disp small { font-size: 16px; color: var(--muted); font-weight: 400; }
+    .cn-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .cn-keys button { margin: 0; height: 52px; padding: 0; border-radius: 10px; background: var(--bg); color: var(--text); font-size: 22px; }
+    .cn-keys button.ok { grid-column: 1 / -1; background: var(--brand); color: var(--brand-ink); font-size: 17px; }
+    .cn-waste { margin: 0; background: none; color: var(--err); font-size: 15px; padding: 6px; }
+    .cn-rev { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 2px 12px; }
+    .cn-rev > div { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); font-size: 15px; }
+    .cn-rev > div:first-child { border-top: 0; }
+    .cn-rev b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .cn-rev b.used { color: var(--brand); } .cn-rev b.waste { color: var(--err); } .cn-rev b.up { color: #d68a00; }
+    .cn-move { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; margin: 0; padding: 10px 0; border: 0;
+               border-top: 1px solid var(--line); border-radius: 0; background: none; color: var(--text); text-align: left; font-size: 15px; font-weight: 600; }
+    .cn-move:first-child { border-top: 0; }
+    .cn-move small { color: var(--muted); font-weight: 400; font-size: 12px; }
+    .cn-move.on small { color: var(--brand); }
   </style>
 </head>
 <body>
@@ -525,6 +732,8 @@
       <button id="b-receipt" class="app" type="button"><span class="app-ic ic-receipt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4z"/><path d="M14 5v2M14 11v2M14 17v2"/></svg><span class="badge dot hidden"></span></span><span class="app-name">Pass receipt</span><small id="receipt-due" class="app-sub hidden"></small></button>
       <button id="b-request" class="app" type="button"><span class="app-ic ic-request"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg></span><span class="app-name">Request</span></button>
       <button id="b-org" class="app" type="button"><span class="app-ic ic-org"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="17" width="6" height="5" rx="1"/><rect x="16" y="17" width="6" height="5" rx="1"/><path d="M12 7v5M5 17v-3h14v3"/></svg></span><span class="app-name">Our Team</span></button>
+      <button id="b-recipes" class="app hidden" type="button"><span class="app-ic ic-recipe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><path d="M6 17h12"/></svg></span><span class="app-name">Recipes</span></button>
+      <button id="b-stock" class="app hidden" type="button"><span class="app-ic ic-stock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg></span><span class="app-name">Stock</span></button>
       <button id="b-folder" class="app hidden" type="button" aria-haspopup="dialog"><span id="folder-ic" class="app-ic folder-ic"></span><span class="app-name">Manager</span></button>
     </div>
   </section>
@@ -538,6 +747,7 @@
         <button id="b-inbox" class="app hidden" type="button"><span class="app-ic ic-inbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span><span class="app-name">Requests inbox</span></button>
         <button id="b-team" class="app hidden" type="button"><span class="app-ic ic-team"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="app-name">Team status</span></button>
         <button id="b-receipts" class="app hidden" type="button"><span class="app-ic ic-acct"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg></span><span class="app-name">To accountant</span></button>
+        <button id="b-redit" class="app hidden" type="button"><span class="app-ic ic-redit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4M2 10h4M2 14h4M2 18h4"/><path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/></svg></span><span class="app-name">Recipe editor</span></button>
       </div>
     </div>
   </div>
@@ -683,6 +893,41 @@
     <button id="b-org-back" class="back-fab" type="button">← Back</button>
   </section>
   <div id="org-scrim" class="oc-scrim hidden"></div>
+
+  <!-- Recipes: Kitchen 팀 + Supervisor (레시피 = 'Recipes' 스프레드시트, 탭마다 하나) -->
+  <section id="v-recipes" class="hidden">
+    <div id="rc-list-box">
+      <h2 class="feed-title">Recipes</h2>
+      <div id="rc-recipes-box">
+      <input id="rc-q" class="rc-search" type="search" placeholder="Search recipes" aria-label="Search recipes" autocomplete="off">
+      <div id="rc-cats" class="chips rc-cats"></div>
+      <div id="rc-list"><p class="hint">Loading…</p></div>
+      </div>
+    </div>
+    <div id="rc-detail" class="hidden"></div>
+    <button id="b-rc-list-back" class="back-fab" type="button">← Back</button>
+  </section>
+
+  <!-- Stock: 재고 종합본 (Kitchen 팀 + Supervisor) · Count / Sunday 재고 조사 (Admin 이상) -->
+  <section id="v-stock" class="hidden">
+    <div id="st-tabs" class="seg rc-tabs"><button type="button" data-t="stock" class="on">Stock</button><button type="button" data-t="count" class="hidden">Count</button><button type="button" data-t="sunday" class="hidden">Sunday</button></div>
+    <div id="rc-stock"></div>
+    <div id="rc-count" class="hidden"></div>
+    <button id="b-st-back" class="back-fab" type="button">← Back</button>
+  </section>
+
+  <!-- Supervisor 전용: Recipe editor (앱에서 고치면 시트 탭을 다시 씀) -->
+  <section id="v-redit" class="hidden">
+    <div id="re-list-box">
+      <h2 class="feed-title">Recipe editor</h2>
+      <div class="rc-tools"><button id="b-re-new" type="button">+ New recipe</button><button id="b-re-boxes" type="button" class="secondary">Boxes</button></div>
+      <p class="meta">Changes are saved to the Recipes sheet. You can also edit the sheet directly.</p>
+      <div id="re-list"><p class="hint">Loading…</p></div>
+    </div>
+    <div id="re-form" class="hidden"></div>
+    <button id="b-re-back" class="back-fab" type="button">← Back</button>
+  </section>
+  <div id="rc-scrim" class="oc-scrim hidden"></div>
 
   <!-- Supervisor 전용: 받은 요청 -->
   <section id="v-inbox" class="hidden">
@@ -835,7 +1080,7 @@
     }
   }
   const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed', 'request', 'inbox', 'schedule', 'team',
-                 'receipt', 'receipts', 'chat', 'org'];
+                 'receipt', 'receipts', 'chat', 'org', 'recipes', 'redit', 'stock'];
   let lastTap = null;
   let annReturn = 'home';
 
@@ -850,6 +1095,8 @@
     $('b-bell').classList.toggle('hidden', !name || view === 'login');
     closeFolder();
     closeOrgSheet();
+    closeRcSheet();
+    if (view !== 'recipes') rcAwake(false);
     syncManager();
     renderMe();
     if (view !== 'chat') stopChatPoll();
@@ -860,7 +1107,9 @@
   function syncManager() {
     const admin = store.get('wt_admin') === '1', sup = store.get('wt_sup') === '1';
     $('b-admin').classList.toggle('hidden', !admin);
-    for (const id of ['b-inbox', 'b-team', 'b-receipts']) $(id).classList.toggle('hidden', !sup);
+    for (const id of ['b-inbox', 'b-team', 'b-receipts', 'b-redit']) $(id).classList.toggle('hidden', !sup);
+    $('b-recipes').classList.toggle('hidden', store.get('wt_rcp') !== '1');
+    $('b-stock').classList.toggle('hidden', store.get('wt_rcp') !== '1');
     const inside = [...document.querySelectorAll('#folder .app:not(.hidden) .app-ic')];
     $('b-folder').classList.toggle('hidden', !inside.length);
     $('folder-ic').replaceChildren(...inside.slice(0, 4).map((ic) => {
@@ -1084,6 +1333,7 @@
         setSchedBadge(r.schedulePending || 0);
         setChatBadge(r.chatUnread || 0);
         store.set('wt_sup', r.supervisor ? '1' : '0');
+        store.set('wt_rcp', r.recipes ? '1' : '0');
         syncManager();
         setReceiptDue(r.receipt);
         saveClock(r.clock);
@@ -3180,9 +3430,1562 @@
   window.addEventListener('resize', () => { if (currentView === 'org') orgZoom(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('org-scrim').classList.contains('hidden')) closeOrgSheet(); });
 
+  // ------------------------------------------------------------------ Recipes (Kitchen 팀 + Supervisor)
+  // 서버는 'Recipes' 스프레드시트의 레시피(탭마다 하나)를 통째로 주고, 배수·기준 무게 계산은 여기서.
+  // - Fixed: ×½ ×1 ×2 ×3 또는 직접 입력 → 모든 재료 g 가 같이 바뀜
+  // - Percent: 기준 재료(BASE)를 잰 g 입력 → 나머지 = 기준 총중량 × %
+  // 폰 저장: wt_rcp_v1 (레시피 글) → 열면 바로 보이고 뒤에서 갱신. 사진은 IndexedDB 'rph:<파일 이름>'.
+  const RCP_STORE = 'wt_rcp_v1';
+  let rcpData = null;            // { recipes, boxes, me, canEdit, canPickMaker, staff, boxesVer }
+  let rcpOpen = null;            // 보고 있는 레시피 id (null = 목록)
+  let rcpShown = null;           // 그려 둔 레시피의 버전 (바뀌었을 때만 다시 그림)
+  let rcpProd = { id: null, entries: [] };
+  const rcpState = { q: '', cat: 'All', mult: {}, bases: {}, done: {} };
+  let stTab = 'stock';            // Stock 화면 탭: stock · count · sunday
+  let rcpStock = null;           // Stock 화면: 서버 stock (레시피별 합계·위치·배치·하루 평균)
+  const rcpPhotos = new Map();
+  const MULTS = [0.5, 1, 2, 3];
+
+  const rcpNum = (v) => {
+    const s = String(v ?? '').replace(/[\s  ]/g, '').replace(',', '.');
+    if (s === '') return null;
+    const n = Number(s);
+    return isFinite(n) ? n : NaN;
+  };
+  function fmtG(g) {
+    if (g == null || !isFinite(g)) return '–';
+    const v = g < 10 ? Math.round(g * 10) / 10 : Math.round(g);
+    const [a, b] = String(v).split('.');
+    return a.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + (b ? '.' + b : '');
+  }
+  const multLabel = (m) => (m === 0.5 ? '½' : String(m));
+  const rcpMult = (r) => rcpState.mult[r.id] || 1;
+  const boxesText = (n) => n + (n === 1 ? ' box' : ' boxes');
+  const rcpBox = (name) => (rcpData?.boxes || []).find((b) => b.name === name) || (name ? { name, capacity: '', photo: '', note: '' } : null);
+  const isoLabel = (iso, opts) => new Date(iso + 'T12:00:00Z').toLocaleDateString('en-GB', Object.assign({ timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }, opts));
+  function useByText(days) {
+    const [y, m, d] = parisNow().slice(0, 10).split('-').map(Number);
+    return isoLabel(new Date(Date.UTC(y, m - 1, d + days, 12)).toISOString().slice(0, 10));
+  }
+  const dayLabel = (iso) => (iso === parisNow().slice(0, 10) ? 'Today' : isoLabel(iso));
+
+  /** 재료마다 g (그 줄 번호 → g), 합계, 예상 박스 수. Percent 는 기준 무게가 없으면 ready=false. */
+  function rcpCalc(r) {
+    const amounts = {};
+    let ready = true, baseTotal = 0;
+    if (r.mode === 'percent') {
+      const bv = rcpState.bases[r.id] || [], nums = [];
+      let k = 0;
+      r.items.forEach((it, i) => {
+        if (it.t !== 'base') return;
+        const n = rcpNum(bv[k++]);
+        nums.push(n > 0 ? n : 0);
+        amounts[i] = nums[nums.length - 1];
+      });
+      baseTotal = nums.reduce((a, b) => a + b, 0);
+      ready = baseTotal > 0;
+      r.items.forEach((it, i) => { if (it.t === 'ing') amounts[i] = baseTotal * it.q / 100; });
+      if (!ready) for (const i in amounts) amounts[i] = null;
+    } else {
+      const m = rcpMult(r);
+      r.items.forEach((it, i) => { if (it.t === 'ing') amounts[i] = it.q * m; });
+    }
+    const total = ready ? Object.values(amounts).reduce((a, g) => a + (g || 0), 0) : null;
+    const boxes = total && r.fill ? Math.max(0.1, Math.round(total / r.fill * 10) / 10) : null;
+    return { amounts, total, baseTotal, boxes, ready };
+  }
+
+  function rcpPhoto(name) {
+    if (rcpPhotos.has(name)) return rcpPhotos.get(name);
+    const p = (async () => {
+      const saved = await idb.get('rph:' + name);
+      if (saved) return saved;
+      const r = await api({ action: 'recipePhoto', token: token(), name });
+      if (!r.ok) throw new Error(r.error);
+      idb.set('rph:' + name, r.dataUrl);
+      return r.dataUrl;
+    })();
+    rcpPhotos.set(name, p);
+    p.catch(() => rcpPhotos.delete(name));
+    return p;
+  }
+  /** node 안에 사진을 채움 (누르면 크게). */
+  async function rcpFill(node, file) {
+    try {
+      const url = await rcpPhoto(file);
+      const img = el('img');
+      img.alt = ''; img.src = url;
+      node.replaceChildren(img);
+      node.onclick = (e) => { e.stopPropagation(); e.preventDefault(); rcZoom(url); };
+    } catch (e) {
+      node.replaceChildren(node.classList.contains('rc-thumb') ? '📦' : 'Photo not available' + (rcpData?.canEdit ? ' (' + file + ')' : ''));
+    }
+  }
+  function rcZoom(url) {
+    const z = el('div', 'rc-zoom'), img = el('img');
+    img.src = url; img.alt = '';
+    z.append(img);
+    z.addEventListener('click', () => z.remove());
+    document.body.append(z);
+  }
+  function boxThumb(bx) {
+    const t = el('span', 'rc-thumb', '📦');
+    if (bx.photo) rcpFill(t, bx.photo);
+    return t;
+  }
+  function boxText(bx) {
+    const t = el('span', 't');
+    t.append(el('span', 'cap', bx.capacity || bx.name));
+    const sub = [bx.capacity ? bx.name : '', bx.note].filter(Boolean).join(' · ');
+    if (sub) t.append(el('span', 'bn', sub));
+    return t;
+  }
+
+  function openRcSheet(sheet) {
+    const s = $('rc-scrim');
+    s.replaceChildren(sheet);
+    s.classList.remove('hidden');
+    s.onclick = (e) => { if (e.target === s) closeRcSheet(); };
+  }
+  function closeRcSheet() {
+    $('rc-scrim').classList.add('hidden');
+    $('rc-scrim').replaceChildren();
+    document.querySelectorAll('.rc-zoom').forEach((z) => z.remove());
+  }
+
+  // 레시피를 보는 동안 화면이 꺼지지 않게 (손이 바쁠 때). 안 되는 기기는 그냥 넘어감.
+  let rcLock = null;
+  async function rcAwake(on) {
+    try {
+      if (!on) {
+        if (rcLock) { const l = rcLock; rcLock = null; await l.release(); }
+        return;
+      }
+      if (!rcLock && 'wakeLock' in navigator && document.visibilityState === 'visible') {
+        rcLock = await navigator.wakeLock.request('screen');
+        rcLock.addEventListener('release', () => { rcLock = null; });
+      }
+    } catch (e) { rcLock = null; }
+  }
+
+  function rcpSaved() {
+    if (!rcpData) { try { rcpData = JSON.parse(store.get(RCP_STORE) || 'null'); } catch (e) { rcpData = null; } }
+  }
+
+  async function loadRecipes() {
+    try {
+      const r = await api({ action: 'recipes', token: token() });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) {
+        if (!rcpData) $('rc-list').replaceChildren(el('p', 'err', serverMsg(r)));
+        if (!rcpData) $('re-list').replaceChildren(el('p', 'err', serverMsg(r)));
+        return null;
+      }
+      rcpData = r;
+      store.set(RCP_STORE, JSON.stringify(r));
+      syncStockTabs();
+      rcpRedraw();
+      if (currentView === 'recipes' && rcpOpen) { loadProd(); rcAwake(true); }
+      return r;
+    } catch (e) {
+      if (!rcpData) $('rc-list').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
+      return null;
+    }
+  }
+
+  function rcpRedraw() {
+    if (currentView === 'recipes') {
+      if (!rcpOpen) return renderRcpList();
+      const r = rcpData.recipes.find((x) => x.id === rcpOpen);
+      if (!r) { toast('This recipe was removed.'); return showRcpList(); }
+      if (!rcpShown || rcpShown.ver !== r.ver || rcpShown.boxes !== JSON.stringify(rcpData.boxes)) {
+        const y = window.scrollY;
+        renderRecipe();
+        window.scrollTo(0, y);
+      }
+    } else if (currentView === 'redit' && !reDraft) renderReList();
+    else if (currentView === 'stock' && stTab === 'stock' && rcpStock) renderStock(); // 짧은 주소·박스 용량이 바뀌었을 수 있음
+  }
+
+  async function openRecipes() {
+    rcpSaved();
+    show('recipes');
+    showRcpList();
+    if (!rcpData) $('rc-list').replaceChildren(el('p', 'hint', 'Loading…'));
+    loadRecipes();
+  }
+
+  function showRcpList() {
+    rcpOpen = null; rcpShown = null;
+    rcAwake(false);
+    closeRcSheet();
+    $('rc-detail').classList.add('hidden');
+    $('rc-list-box').classList.remove('hidden');
+    $('rc-q').value = rcpState.q;
+    if (rcpData) renderRcpList();
+  }
+
+  function rcpItem(r, onClick, warn) {
+    const b = el('button', 'rc-item'), t = el('span', 't'), bx = rcpBox(r.box);
+    b.type = 'button';
+    t.append(el('b', null, r.name));
+    const sub = [r.cat, bx && (bx.capacity || bx.name)].filter(Boolean).join(' · ');
+    if (sub) t.append(el('small', null, sub));
+    b.append(t);
+    if (warn && r.warnings && r.warnings.length) b.append(el('span', 'rc-warn', '⚠ ' + r.warnings.length));
+    b.append(el('span', 'rc-mode' + (r.mode === 'percent' ? ' pct' : ''), r.mode === 'percent' ? '%' : 'Fixed'), el('span', 'chev'));
+    b.addEventListener('click', onClick);
+    return b;
+  }
+
+  function renderRcpList() {
+    const list = rcpData?.recipes || [];
+    const cats = [...new Set(list.map((r) => r.cat).filter(Boolean))];
+    if (rcpState.cat !== 'All' && !cats.includes(rcpState.cat)) rcpState.cat = 'All';
+    $('rc-cats').replaceChildren(...(cats.length > 1 ? ['All', ...cats] : []).map((c) => {
+      const b = el('button', 'chip' + (c === rcpState.cat ? ' on' : ''), c);
+      b.type = 'button';
+      b.addEventListener('click', () => { rcpState.cat = c; renderRcpList(); });
+      return b;
+    }));
+    const q = rcpState.q.trim().toLowerCase();
+    const shown = list.filter((r) => (rcpState.cat === 'All' || r.cat === rcpState.cat) &&
+      (!q || [r.name, r.cat, ...r.items.map((x) => x.name || '')].join(' ').toLowerCase().includes(q)));
+    $('rc-list').replaceChildren(...(shown.length ? shown.map((r) => rcpItem(r, () => openRecipe(r.id)))
+      : [el('p', 'hint', list.length ? 'No recipe matches.' : 'No recipes yet.')]));
+  }
+
+  function openRecipe(id) {
+    rcpOpen = id;
+    $('rc-list-box').classList.add('hidden');
+    $('rc-detail').classList.remove('hidden');
+    renderRecipe();
+    window.scrollTo(0, 0);
+    rcAwake(true);
+    loadProd();
+  }
+
+  function renderRecipe() {
+    const r = rcpData && rcpData.recipes.find((x) => x.id === rcpOpen);
+    if (!r) return showRcpList();
+    rcpShown = { id: r.id, ver: r.ver, boxes: JSON.stringify(rcpData.boxes) };
+    const pct = r.mode === 'percent';
+
+    const head = el('div', 'rc-head'), meta = el('div', 'meta');
+    meta.append(el('span', 'rc-mode' + (pct ? ' pct' : ''), pct ? 'Percent' : 'Fixed'));
+    if (r.cat) meta.append(r.cat);
+    head.append(meta, el('h2', null, r.name));
+
+    const scale = el('div', 'rc-scale');
+    if (pct) {
+      scale.append(el('div', 'rc-lab', 'Weigh the base · grams'));
+      const bv = rcpState.bases[r.id] || (rcpState.bases[r.id] = []);
+      let k = 0;
+      r.items.forEach((it) => {
+        if (it.t !== 'base') return;
+        const j = k++, lab = el('label', 'rc-base'), inp = el('input');
+        inp.type = 'text'; inp.inputMode = 'decimal'; inp.placeholder = '0'; inp.value = bv[j] ?? '';
+        inp.setAttribute('aria-label', it.name + ', grams');
+        inp.addEventListener('input', () => { bv[j] = inp.value; rcpUpdate(r); });
+        lab.append(el('span', null, it.name), inp, 'g');
+        scale.append(lab);
+      });
+    } else {
+      scale.append(el('div', 'rc-lab', 'Batch'));
+      const row = el('div', 'rc-mult'), other = el('label'), oin = el('input');
+      oin.type = 'text'; oin.inputMode = 'decimal'; oin.placeholder = '1.5'; oin.setAttribute('aria-label', 'Other batch size');
+      if (!MULTS.includes(rcpMult(r))) oin.value = String(rcpMult(r));
+      oin.addEventListener('input', () => {
+        const n = rcpNum(oin.value);
+        if (n > 0 && n <= 100) { rcpState.mult[r.id] = n; rcpUpdate(r); }
+      });
+      other.append('×', oin);
+      row.append(...MULTS.map((m) => {
+        const b = el('button', null, '×' + multLabel(m));
+        b.type = 'button'; b.dataset.m = m;
+        b.addEventListener('click', () => { rcpState.mult[r.id] = m; oin.value = ''; rcpUpdate(r); });
+        return b;
+      }), other);
+      scale.append(row);
+    }
+    const sum = el('div', 'rc-sum');
+    sum.append(el('span', 'rc-sum-l', 'Total'), el('b', 'rc-total'));
+    scale.append(sum);
+
+    const flow = el('div', 'rc-flow'), done = rcpState.done[r.id] || (rcpState.done[r.id] = {});
+    const clear = el('button', 'link', 'Clear ticks');
+    clear.type = 'button';
+    const syncClear = () => clear.classList.toggle('hidden', !Object.values(done).some(Boolean));
+    let ings = null, n = 0;
+    r.items.forEach((it, i) => {
+      if (it.t === 'ing' || it.t === 'base') {
+        if (!ings) { ings = el('div', 'rc-ings'); flow.append(ings); }
+        const row = el('div', 'rc-ing' + (it.t === 'base' ? ' base' : '') + (done[i] ? ' done' : ''));
+        row.setAttribute('role', 'checkbox'); row.setAttribute('aria-checked', String(!!done[i])); row.tabIndex = 0;
+        const nm = el('span', 'nm', it.name);
+        const sub = [it.t === 'base' ? (pct ? 'base' : '') : pct ? it.q + '%' : '', it.note].filter(Boolean).join(' · ');
+        if (sub) nm.append(el('small', null, sub));
+        const qty = el('span', 'qty');
+        qty.dataset.i = i;
+        row.append(el('span', 'box'), nm, qty);
+        const toggle = () => {
+          done[i] = !done[i];
+          row.classList.toggle('done', done[i]);
+          row.setAttribute('aria-checked', String(done[i]));
+          syncClear();
+        };
+        row.addEventListener('click', toggle);
+        row.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); } });
+        ings.append(row);
+        return;
+      }
+      ings = null;
+      if (it.t === 'step') {
+        const s = el('div', 'rc-step');
+        s.append(el('span', 'n', String(++n)), el('p', null, it.text));
+        flow.append(s);
+      } else if (it.t === 'photo') {
+        const f = el('figure', 'rc-photo'), ph = el('div', 'ph', 'Loading photo…');
+        f.append(ph);
+        if (it.cap) f.append(el('figcaption', null, it.cap));
+        rcpFill(ph, it.file);
+        flow.append(f);
+      }
+    });
+    clear.addEventListener('click', () => {
+      for (const k in done) done[k] = false;
+      flow.querySelectorAll('.rc-ing.done').forEach((x) => { x.classList.remove('done'); x.setAttribute('aria-checked', 'false'); });
+      syncClear();
+    });
+    syncClear();
+
+    const st = el('section', 'rc-store'), bx = rcpBox(r.box);
+    st.append(el('h3', null, 'Store in'));
+    if (bx) { const row = el('div', 'rc-boxrow'); row.append(boxThumb(bx), boxText(bx)); st.append(row); }
+    else st.append(el('p', 'meta', 'No box set for this recipe.'));
+    const dl = el('dl', 'rc-facts');
+    const add = (k, v, cls) => dl.append(el('dt', null, k), el('dd', cls, v));
+    if (r.fill) { add('Fill', 'about ' + fmtG(r.fill) + ' g per box'); add('This batch', '', 'rc-nbox'); }
+    if (r.keepNote || r.keepDays != null) add('Keep', [r.keepNote, r.keepDays != null ? r.keepDays + ' days' : ''].filter(Boolean).join(' · '));
+    if (r.keepDays != null) add('Use by', useByText(r.keepDays) + ' (if made today)');
+    if (r.place) add('Usually', '📍 ' + r.place);
+    if (dl.children.length) st.append(dl);
+    const logBtn = el('button', null, 'Log production');
+    logBtn.type = 'button';
+    logBtn.addEventListener('click', () => openProdSheet(r));
+    const recent = el('div', 'rc-recent');
+    recent.id = 'rc-recent';
+    st.append(logBtn, recent);
+
+    $('rc-detail').replaceChildren(head, scale, flow, clear, st);
+    rcpUpdate(r);
+    renderProd();
+  }
+
+  /** 배수·기준 무게가 바뀌면 숫자만 고침 (입력 중인 칸의 포커스 유지). */
+  function rcpUpdate(r) {
+    const c = rcpCalc(r), d = $('rc-detail'), m = rcpMult(r);
+    d.querySelectorAll('.rc-ing .qty').forEach((q) => {
+      const g = c.amounts[q.dataset.i];
+      q.replaceChildren(g == null ? '–' : fmtG(g));
+      if (g != null) q.append(el('u', null, 'g'));
+    });
+    d.querySelectorAll('.rc-mult button').forEach((b) => b.classList.toggle('on', Number(b.dataset.m) === m));
+    d.querySelector('.rc-mult label')?.classList.toggle('on', !MULTS.includes(m));
+    const multi = r.items.filter((x) => x.t === 'base').length > 1;
+    d.querySelector('.rc-sum-l').textContent = r.mode === 'fixed' ? (m !== 1 ? 'Total (×' + multLabel(m) + ')' : 'Total')
+      : multi && c.ready ? 'Base ' + fmtG(c.baseTotal) + ' g = 100% · total' : 'Total';
+    d.querySelector('.rc-total').textContent = c.total == null ? 'Enter the base weight'
+      : fmtG(c.total) + ' g' + (c.boxes ? ' · about ' + boxesText(c.boxes) : '');
+    const nb = d.querySelector('.rc-nbox');
+    if (nb) nb.textContent = c.boxes ? 'about ' + boxesText(c.boxes) : '–';
+  }
+
+  async function loadProd() {
+    const id = rcpOpen;
+    if (!id) return;
+    try {
+      const r = await api({ action: 'prodList', token: token(), id });
+      if (r.ok && rcpOpen === id) { rcpProd = { id, entries: r.entries }; renderProd(); }
+    } catch (e) { /* 오프라인이면 목록 없이 */ }
+  }
+
+  /** 기록 한 줄: 몇 박스 × 박스 · 누가 · 언제 + 위치, [Move] [Delete]. withRecipe = Storage 화면(레시피 이름 먼저). */
+  function entryRow(e, withRecipe) {
+    const row = el('div', 'rc-entry'), w = el('span', 'w'), bx = rcpBox(e.box), acts = el('span', 'acts');
+    if (withRecipe) w.append(el('b', null, e.recipe), ' · ');
+    const n = e.left < e.boxes ? fmtB(e.left) + ' of ' + fmtB(e.boxes) : fmtB(e.boxes);
+    w.append(el('b', null, (e.left > 0 ? n : 'used up · ' + fmtB(e.boxes)) + ' × ' + ((bx && bx.capacity) || e.box)),
+             ' · ' + e.madeBy + ' · ' + dayLabel(e.date) + (e.time ? ' ' + e.time : ''));
+    if (withRecipe && e.useBy) w.append(' · use by ' + isoLabel(e.useBy));
+    w.append(el('span', 'where', e.place ? '📍 ' + e.place + (e.movedBy ? ' (moved by ' + e.movedBy + ')' : '') : '📍 No place yet'));
+    if (e.left > 0) {
+      const mv = el('button', 'link move', 'Move');
+      mv.type = 'button';
+      mv.addEventListener('click', () => openMoveSheet(e));
+      acts.append(mv);
+    }
+    if (e.canDelete) {
+      const del = el('button', 'link', 'Delete');
+      del.type = 'button';
+      del.addEventListener('click', () => deleteProd(e, del));
+      acts.append(del);
+    }
+    row.append(w, acts);
+    return row;
+  }
+
+  function renderProd() {
+    const box = $('rc-recent');
+    if (!box) return;
+    const list = rcpProd.id === rcpOpen ? rcpProd.entries : [];
+    box.replaceChildren();
+    if (!list.length) return;
+    box.append(el('div', 'rc-lab', 'Recently logged'), ...list.map((e) => entryRow(e, false)));
+  }
+
+  /** 기록이 바뀌면(옮김·지움) 레시피 화면 목록과 Storage 화면 둘 다 고침. */
+  function prodChanged(e, gone, added) {
+    const fix = (list) => {
+      const out = gone ? list.filter((x) => x.id !== e.id) : list.map((x) => (x.id === e.id ? e : x));
+      if (added) out.splice(Math.max(0, out.findIndex((x) => x.id === e.id)), 0, added); // 나눈 줄은 원래 줄 바로 위
+      return out;
+    };
+    rcpProd.entries = fix(rcpProd.entries);
+    renderProd();
+    if (currentView === 'stock' && stTab === 'stock') loadStock(); else rcpStock = null;
+  }
+
+  // ---------------------------------------------------------------- 저장 위치 고르기 (층 → 냉장고/선반 → 자리)
+  const PLACE_TYPES = { Fridge: 'Fridge / freezer', Shelf: 'Shelf (room temp)' };
+  function placePicker(initial, onChange, noneLabel) {
+    const places = (rcpData && rcpData.places) || [];
+    let cur = places.find((p) => p.label === initial) || null, floor = cur ? cur.floor : '', type = cur ? cur.group : '';
+    const box = el('div', 'rc-place');
+    const seg = (opts, val, pick) => {
+      const g = el('div', 'seg');
+      for (const [v, label] of opts) {
+        const b = el('button', v === val ? 'on' : null, label);
+        b.type = 'button';
+        b.addEventListener('click', () => { pick(v); draw(); });
+        g.append(b);
+      }
+      return g;
+    };
+    const set = (p) => { cur = p; onChange(p ? p.label : ''); };
+    const draw = () => {
+      const parts = [seg([...new Set(places.map((p) => p.floor))].map((f) => [f, f]), floor, (v) => {
+        if (v === floor) return;
+        floor = v; type = ''; set(null);
+      })];
+      if (floor) {
+        const types = [...new Set(places.filter((p) => p.floor === floor).map((p) => p.group))];
+        parts.push(seg(types.map((t) => [t, PLACE_TYPES[t] || t]), type, (v) => {
+          if (v === type) return;
+          type = v;
+          const spots = places.filter((p) => p.floor === floor && p.group === type);
+          set(spots.length === 1 ? spots[0] : null); // 자리가 하나뿐이면 바로 (예: 지하 선반 = Fermentation shelf)
+        }));
+      }
+      const spots = places.filter((p) => p.floor === floor && p.group === type);
+      if (spots.length > 1) {
+        const g = el('div', 'rc-spots');
+        for (const p of spots) {
+          const b = el('button', 'chip' + (cur === p ? ' on' : ''), p.spot);
+          b.type = 'button';
+          b.addEventListener('click', () => { set(p); draw(); });
+          g.append(b);
+        }
+        parts.push(g);
+      }
+      parts.push(el('div', 'rc-place-now' + (cur ? '' : ' none'), cur ? '📍 ' + cur.label : 'Choose the place'));
+      if (noneLabel && (cur || floor)) {
+        const n = el('button', 'link', noneLabel);
+        n.type = 'button';
+        n.addEventListener('click', () => { floor = ''; type = ''; set(null); draw(); });
+        parts.push(n);
+      }
+      box.replaceChildren(...parts);
+    };
+    draw();
+    return box;
+  }
+
+  function openMoveSheet(e) {
+    let place = '';
+    const sheet = el('div', 'oc-sheet rc-sheet'), bx = rcpBox(e.box);
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    const head = el('div');
+    head.append(el('div', 'oc-pos', 'Move'), el('h2', null, e.recipe),
+                el('div', 'meta', fmtB(e.left) + ' × ' + ((bx && bx.capacity) || e.box) + ' · made ' + dayLabel(e.date)),
+                el('div', 'meta', 'Now: ' + (e.place || 'no place')));
+    // 몇 통을 옮기나 (기본 = 전부). 일부만이면 서버가 기록을 둘로 나눔.
+    const stp = el('div', 'rc-stepper'), minus = el('button', null, '−'), plus = el('button', null, '+'), inp = el('input');
+    minus.type = 'button'; plus.type = 'button';
+    minus.setAttribute('aria-label', 'One box less'); plus.setAttribute('aria-label', 'One box more');
+    inp.id = 'rc-move-n'; inp.type = 'text'; inp.inputMode = 'decimal'; inp.value = fmtB(e.left);
+    inp.setAttribute('aria-label', 'Boxes to move');
+    const step = (d) => { const n = rcpNum(inp.value) || 0; inp.value = String(Math.min(e.left, Math.max(0, Math.round((n + d) * 10) / 10))); };
+    minus.addEventListener('click', () => step(-1));
+    plus.addEventListener('click', () => step(1));
+    stp.append(minus, inp, plus, el('span', 'meta', 'of ' + fmtB(e.left)));
+    const msg = el('p', 'err'), row = el('div', 'row'), cancel = el('button', 'secondary', 'Cancel'), save = el('button', null, 'Move here');
+    cancel.type = 'button'; save.type = 'button';
+    cancel.addEventListener('click', closeRcSheet);
+    save.addEventListener('click', async () => {
+      const raw = inp.value.trim(), n = rcpNum(raw);
+      if (!/^\d+([.,]\d)?$/.test(raw) || !(n > 0) || n > e.left) { msg.textContent = 'Boxes to move: between 0.1 and ' + fmtB(e.left) + '.'; return inp.focus(); }
+      if (!place) { msg.textContent = 'Choose the new place.'; return; }
+      if (place === e.place) return closeRcSheet();
+      save.disabled = true; msg.textContent = '';
+      try {
+        const r = await api({ action: 'prodMove', token: token(), entry: e.id, place, boxes: n });
+        if (r.code === 'AUTH') return logout(r.error);
+        if (!r.ok) { msg.textContent = serverMsg(r); save.disabled = false; return; }
+        closeRcSheet();
+        if (r.moved) {
+          toast('✓ Moved ' + fmtB(r.moved.left) + ' of ' + fmtB(e.left) + ' · ' + e.recipe + ' → ' + shortOf(r.moved.place) + ' (' + fmtB(r.entry.left) + ' stay)');
+          prodChanged(r.entry, false, r.moved);
+        } else {
+          toast('✓ Moved · ' + e.recipe + ' → ' + shortOf(r.entry.place));
+          prodChanged(r.entry);
+        }
+      } catch (err) {
+        msg.textContent = 'Network problem. Please try again.' + detail(err);
+        save.disabled = false;
+      }
+    });
+    row.append(cancel, save);
+    sheet.append(head, el('div', 'rc-lab', 'How many boxes'), stp, el('div', 'rc-lab', 'New place'), placePicker('', (v) => { place = v; }), msg, row);
+    openRcSheet(sheet);
+  }
+
+  // ---------------------------------------------------------------- Stock 앱 (홈 아이콘): Stock(종합본) · Count(매일) · Sunday(일요일 조사)
+  /** Count·Sunday 탭은 Admin 이상에게만. */
+  function syncStockTabs() {
+    const canCount = !!(rcpData && rcpData.canCount);
+    if ((stTab === 'count' || stTab === 'sunday') && rcpData && !canCount) stTab = 'stock';
+    $('st-tabs').querySelectorAll('button').forEach((b) => {
+      b.classList.toggle('on', b.dataset.t === stTab);
+      if (b.dataset.t === 'count' || b.dataset.t === 'sunday') b.classList.toggle('hidden', !canCount);
+    });
+  }
+
+  function setStockTab(t) {
+    stTab = t;
+    syncStockTabs();
+    t = stTab;
+    $('rc-stock').classList.toggle('hidden', t !== 'stock');
+    $('rc-count').classList.toggle('hidden', t === 'stock');
+    if (t === 'stock') { renderStock(); loadStock(); }
+    else openCount(t === 'sunday' ? 'sunday' : 'daily');
+  }
+  $('st-tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { setStockTab(b.dataset.t); window.scrollTo(0, 0); } });
+
+  async function openStock() {
+    rcpSaved();
+    show('stock');
+    setStockTab(stTab);
+    loadRecipes(); // 위치 목록·권한·레시피 (Missing batch 용)
+  }
+  $('b-stock').addEventListener('click', () => openStock());
+  $('b-st-back').addEventListener('click', () => goHome());
+
+  const placeOf = (label) => ((rcpData && rcpData.places) || []).find((p) => p.label === label);
+  const shortOf = (label) => (placeOf(label) || {}).short || label || '?';
+  const fmtB = (n) => String(Math.round(n * 10) / 10);
+  /** 보관 통 = 박스 용량 (없으면 박스 이름). */
+  const unitOf = (box) => (box === 'mixed' ? 'mixed' : (rcpBox(box) || {}).capacity || box || '');
+
+  // ---------------------------------------------------------------- Stock (종합본): 레시피마다 한 줄
+  async function loadStock() {
+    try {
+      const r = await api({ action: 'stock', token: token() });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) { if (!rcpStock) $('rc-stock').replaceChildren(el('p', 'err', serverMsg(r))); return; }
+      rcpStock = r;
+      if (currentView === 'stock' && stTab === 'stock') renderStock();
+      if (!$('rc-scrim').classList.contains('hidden') && stockSheetFor) openStockItem(stockSheetFor, true);
+    } catch (e) {
+      if (!rcpStock) $('rc-stock').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
+    }
+  }
+
+  /** '언제까지' = 오늘 + 남은 일수 → 'Tue 13' (오늘 안이면 'today'). */
+  function untilLabel(days) {
+    if (days == null) return '';
+    if (days < 1) return 'today';
+    const [y, m, d] = parisNow().slice(0, 10).split('-').map(Number);
+    return isoLabel(new Date(Date.UTC(y, m - 1, d + Math.floor(days), 12)).toISOString().slice(0, 10), { month: undefined });
+  }
+
+  function renderStock() {
+    const box = $('rc-stock');
+    if (!rcpStock) return box.replaceChildren(el('p', 'hint', 'Loading…'));
+    const head = el('div', 'st-head');
+    head.append(el('h2', 'feed-title', 'Stock'), el('span', 'meta', rcpStock.lastCount.daily ? 'counted ' + rcpStock.lastCount.daily.replace(/^\d{4}-/, '') : 'not counted yet'));
+    const list = el('div', 'st-list');
+    for (const it of rcpStock.items) {
+      const b = el('button', 'st-item'), nm = el('span', 'nm'), name = el('b', null, it.recipe), where = el('span', 'where');
+      b.type = 'button';
+      if (it.expired) name.append(el('span', 'st-dot'));
+      const units = [...new Set(it.places.map((p) => p.box))];
+      it.places.forEach((p, i) => {
+        if (i) where.append(' · ');
+        where.append(el('em', null, shortOf(p.place)), ' ' + fmtB(p.left) + (units.length > 1 ? ' ' + unitOf(p.box) : ''));
+      });
+      nm.append(name, where);
+      const left = el('span', 'left' + (it.daysLeft != null && it.daysLeft < 2 ? ' low' : ''));
+      if (it.daysLeft != null) left.append(el('b', null, untilLabel(it.daysLeft)), fmtB(it.daysLeft) + ' days');
+      else left.append(el('b', null, '–'), it.avg === 0 ? 'no use yet' : 'not counted');
+      const tot = el('span', 'tot', fmtB(it.total));
+      tot.append(el('small', null, units.length > 1 ? 'mixed' : unitOf(units[0])));
+      b.append(nm, tot, left);
+      b.addEventListener('click', () => openStockItem(it.recipeId));
+      list.append(b);
+    }
+    const out = [head, rcpStock.items.length ? list : el('p', 'hint', 'Nothing in stock.')];
+    const codes = ((rcpData && rcpData.places) || []).map((p) => p.short + ' ' + p.spot).join(' · ');
+    if (codes) out.push(el('p', 'st-codes', codes));
+    box.replaceChildren(...out);
+  }
+
+  let stockSheetFor = null;
+  /** 품목 하나: 위치별 배치 (Move · Correct · Delete) + 빠진 배치 추가. */
+  function openStockItem(recipeId, refresh) {
+    const it = rcpStock && rcpStock.items.find((x) => x.recipeId === recipeId);
+    const r = rcpData && rcpData.recipes.find((x) => x.id === recipeId);
+    if (!it && !r) { if (refresh) closeRcSheet(); return; }
+    stockSheetFor = recipeId;
+    const admin = !!rcpData.canCount, sheet = el('div', 'oc-sheet rc-sheet'), head = el('div');
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    head.append(el('div', 'oc-pos', it ? fmtB(it.total) + ' boxes' + (it.avg ? ' · uses about ' + fmtB(it.avg) + ' a day' : '') : 'Not in stock'),
+                el('h2', null, it ? it.recipe : r.name));
+    const lots = el('div');
+    const order = (rcpData.places || []).map((p) => p.label);
+    (it ? it.lots.slice() : []).sort((a, b) => (order.indexOf(a.place) + 1 || 99) - (order.indexOf(b.place) + 1 || 99) || (a.date < b.date ? -1 : 1))
+      .forEach((e) => {
+        const row = el('div', 'st-lot'), w = el('span', 'w'), acts = el('span', 'acts');
+        w.append(el('b', null, shortOf(e.place)), ' ', el('span', 'meta', e.place));
+        const sub = el('span', 'meta st-sub');
+        sub.append('made ' + isoLabel(e.date) + (e.madeBy ? ' · ' + e.madeBy : '') + ' · ');
+        sub.append(e.expired ? el('span', 'err', 'past use-by') : e.useBy ? 'use by ' + isoLabel(e.useBy) : 'no use-by');
+        w.append(sub);
+        const mk = (label, cls, fn) => { const x = el('button', 'link ' + cls, label); x.type = 'button'; x.addEventListener('click', fn); acts.append(x); };
+        mk('Move', 'move', () => openMoveSheet(e));
+        if (admin) mk('Correct', 'move', () => openCorrectSheet(e));
+        if (e.canDelete) mk('Delete', '', () => deleteProd(e, acts.lastChild));
+        const n = el('span', 'n', fmtB(e.left));
+        n.append(el('small', 'meta', ' ' + unitOf(e.box)));
+        row.append(w, n, acts);
+        lots.append(row);
+      });
+    sheet.append(head, lots);
+    if (admin && r) {
+      const add = el('button', 'secondary', '+ Missing batch');
+      add.type = 'button';
+      add.addEventListener('click', () => openMissingSheet(r));
+      sheet.append(add);
+    }
+    const done = el('button', null, 'Close');
+    done.type = 'button';
+    done.addEventListener('click', () => { stockSheetFor = null; closeRcSheet(); });
+    sheet.append(done);
+    openRcSheet(sheet);
+  }
+
+  /** 숫자 입력 한 줄 (박스, 소수 1자리). */
+  function boxesInput(id, value, label) {
+    const inp = el('input');
+    inp.id = id; inp.type = 'text'; inp.inputMode = 'decimal'; inp.value = value == null ? '' : String(value);
+    inp.setAttribute('aria-label', label);
+    inp.className = 'st-num';
+    return inp;
+  }
+  const boxesOk = (raw, allowZero) => /^\d+([.,]\d)?$/.test(raw.trim()) && (allowZero ? rcpNum(raw) >= 0 : rcpNum(raw) > 0);
+
+  function openCorrectSheet(e) {
+    const sheet = el('div', 'oc-sheet rc-sheet'), head = el('div'), inp = boxesInput('st-correct', e.left, 'Boxes left');
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    head.append(el('div', 'oc-pos', 'Correct'), el('h2', null, e.recipe), el('div', 'meta', shortOf(e.place) + ' · made ' + isoLabel(e.date) + ' · app says ' + fmtB(e.left)));
+    const msg = el('p', 'err'), row = el('div', 'row'), cancel = el('button', 'secondary', 'Cancel'), save = el('button', null, 'Save');
+    cancel.type = 'button'; save.type = 'button';
+    cancel.addEventListener('click', () => openStockItem(e.recipeId));
+    save.addEventListener('click', async () => {
+      if (!boxesOk(inp.value, true)) { msg.textContent = 'Boxes: a number, one decimal at most.'; return; }
+      save.disabled = true;
+      try {
+        const r = await api({ action: 'prodCorrect', token: token(), entry: e.id, left: rcpNum(inp.value) });
+        if (r.code === 'AUTH') return logout(r.error);
+        if (!r.ok) { msg.textContent = serverMsg(r); save.disabled = false; return; }
+        toast('✓ Corrected · ' + e.recipe + ' ' + shortOf(e.place) + ' = ' + fmtB(r.entry.left) + ' (not counted as use)');
+        await loadStock();
+        openStockItem(e.recipeId);
+      } catch (err) { msg.textContent = 'Network problem.' + detail(err); save.disabled = false; }
+    });
+    row.append(cancel, save);
+    const lab = el('label', null, 'Boxes really there');
+    lab.htmlFor = inp.id;
+    sheet.append(head, lab, inp, el('p', 'meta', 'Use this when the app is wrong. It is not counted as use.'), msg, row);
+    openRcSheet(sheet);
+  }
+
+  /** 'Made on' 날짜 칸 (Admin). 오늘 ~ 60일 전. */
+  function madeOnInput(id) {
+    const d = el('input'), today = parisNow().slice(0, 10), [y, m, dd] = today.split('-').map(Number);
+    d.id = id; d.type = 'date'; d.value = today; d.max = today;
+    d.min = new Date(Date.UTC(y, m - 1, dd - 60, 12)).toISOString().slice(0, 10);
+    d.className = 'st-date';
+    return d;
+  }
+
+  function openMissingSheet(r) {
+    let place = r.place || '';
+    const sheet = el('div', 'oc-sheet rc-sheet'), head = el('div'), inp = boxesInput('st-miss', 1, 'Boxes'), date = madeOnInput('st-miss-date');
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    head.append(el('div', 'oc-pos', 'Missing batch'), el('h2', null, r.name), el('div', 'meta', 'Made but not logged. Not counted as use.'));
+    const msg = el('p', 'err'), row = el('div', 'row'), cancel = el('button', 'secondary', 'Cancel'), save = el('button', null, 'Add');
+    cancel.type = 'button'; save.type = 'button';
+    cancel.addEventListener('click', () => openStockItem(r.id));
+    save.addEventListener('click', async () => {
+      if (!boxesOk(inp.value)) { msg.textContent = 'Boxes: a number, one decimal at most.'; return; }
+      if (!place) { msg.textContent = 'Choose where it is.'; return; }
+      save.disabled = true;
+      try {
+        const res = await api({ action: 'prodLog', token: token(), id: r.id, missing: true, boxes: rcpNum(inp.value), place, madeOn: date.value, box: r.box });
+        if (res.code === 'AUTH') return logout(res.error);
+        if (!res.ok) { msg.textContent = serverMsg(res); save.disabled = false; return; }
+        toast('✓ Added · ' + r.name + ' ' + fmtB(res.entry.boxes) + ' at ' + shortOf(place));
+        await loadStock();
+        openStockItem(r.id);
+      } catch (err) { msg.textContent = 'Network problem.' + detail(err); save.disabled = false; }
+    });
+    row.append(cancel, save);
+    const l1 = el('label', null, 'Boxes'), l2 = el('label', null, 'Made on');
+    l1.htmlFor = inp.id; l2.htmlFor = date.id;
+    sheet.append(head, l1, inp, l2, date, el('div', 'rc-lab', 'Where'), placePicker(place, (v) => { place = v; }), msg, row);
+    openRcSheet(sheet);
+  }
+
+  // ---------------------------------------------------------------- Count (매일 저녁) / Sunday (일요일) — Admin 이상
+  // 냉장고 하나 = 화면 하나, 품목 한 줄 = 이름 + 숫자. 숫자는 앱이 아는 양(흐리게), 다를 때만 눌러서 숫자 패드로.
+  // 저장 전 확인 화면 = 바뀐 것만 + "옮긴 것 같아요" (같은 품목이 한 곳은 줄고 다른 곳은 늘었을 때).
+  let cnt = null;  // { kind, places, step, val: {key: n}, waste: {key}, added: [], moves: [], review, pairs, done }
+  const cKey = (place, id) => place + '\n' + id;
+
+  async function openCount(kind) {
+    if (cnt && cnt.kind === kind && !cnt.done) return renderCount();
+    cnt = { kind, places: null, step: 0, val: {}, waste: {}, added: [], moves: [], review: false, pairs: [], done: null };
+    renderCount();
+    try {
+      const [r, s] = await Promise.all([api({ action: 'countView', token: token(), kind }), rcpStock ? Promise.resolve(rcpStock) : api({ action: 'stock', token: token() })]);
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) return $('rc-count').replaceChildren(el('p', 'err', serverMsg(r)));
+      if (s && s.ok) rcpStock = s;
+      if (!cnt || cnt.kind !== kind) return;
+      cnt.places = r.places.filter((p) => kind === 'daily' || p.items.length || (placeOf(p.place) || {}).count === 'sunday');
+      cnt.recipes = r.recipes;
+      cnt.last = r.last;
+      renderCount();
+    } catch (e) {
+      $('rc-count').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
+    }
+  }
+
+  function renderCount() {
+    const box = $('rc-count');
+    if (!cnt || !cnt.places) return box.replaceChildren(el('p', 'hint', 'Loading…'));
+    const title = cnt.kind === 'sunday' ? 'Sunday count' : 'Evening count';
+    if (cnt.done) return box.replaceChildren(...countDone());
+    if (!cnt.places.length) return box.replaceChildren(el('h2', 'feed-title', title), el('p', 'hint', 'Nothing to count.'));
+    if (cnt.review) return box.replaceChildren(...countReview(title));
+    const p = cnt.places[cnt.step], next = cnt.places[cnt.step + 1];
+    const top = el('div', 'cn-top');
+    top.append(el('h2', null, (placeOf(p.place) || {}).spot || p.place),
+               el('span', 'meta', p.short + ' · ' + (p.floor || '') + ' · ' + (cnt.step + 1) + ' / ' + cnt.places.length));
+    const bar = el('div', 'cn-bar'), fill = el('i');
+    fill.style.width = ((cnt.step + 1) / cnt.places.length * 100) + '%';
+    bar.append(fill);
+    const list = el('div', 'st-list');
+    for (const x of p.items) {
+      const k = cKey(p.place, x.recipeId), v = cnt.waste[k] ? 0 : cnt.val[k], changed = v != null && v !== x.left;
+      const b = el('button', 'cn-row' + (v != null ? ' set' : '') + (changed ? ' diff' : '')), nm = el('span', 'nm', x.recipe);
+      b.type = 'button';
+      if (x.expired) nm.append(el('span', 'st-dot'));
+      b.append(nm);
+      if (changed) b.append(el('span', 'was', fmtB(x.left)));
+      b.append(el('span', 'v', cnt.waste[k] ? '🗑 0' : fmtB(v != null ? v : x.left)), el('span', 'u', unitOf(x.box)));
+      b.addEventListener('click', () => openPad(p, x));
+      list.append(b);
+    }
+    const add = el('button', 'cn-add', '+ Not in the list');
+    add.type = 'button';
+    add.addEventListener('click', () => openNotListed(p));
+    list.append(add);
+    const nav = el('div', 'cn-nav');
+    if (cnt.step) { const back = el('button', 'secondary', '←'); back.type = 'button'; back.addEventListener('click', () => { cnt.step--; renderCount(); window.scrollTo(0, 0); }); nav.append(back); }
+    const go = el('button', 'go', next ? 'Next: ' + ((placeOf(next.place) || {}).short || next.short) + ' →' : 'Check & save →');
+    go.type = 'button';
+    go.addEventListener('click', () => {
+      if (next) cnt.step++; else { cnt.review = true; cnt.pairs = findMoves(); }
+      renderCount();
+      window.scrollTo(0, 0);
+    });
+    nav.append(go);
+    box.replaceChildren(top, bar, list, el('p', 'cn-hint', 'Tap a number only if it is different.'), nav);
+  }
+
+  /** 숫자 패드: 센 양 입력 (소수 1자리). 사용기한이 지난 것만 '버렸음'. */
+  function openPad(p, x) {
+    const k = cKey(p.place, x.recipeId);
+    let buf = '';
+    const sheet = el('div', 'oc-sheet cn-pad'), t = el('div', 'cn-pad-t'), disp = el('div', 'cn-disp');
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    t.append(el('b', null, x.recipe), el('span', 'meta', 'app says ' + fmtB(x.left) + ' ' + unitOf(x.box)));
+    const show = () => { disp.replaceChildren(buf || el('small', null, 'boxes')); };
+    show();
+    const keys = el('div', 'cn-keys');
+    for (const key of ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫']) {
+      const b = el('button', null, key);
+      b.type = 'button';
+      b.addEventListener('click', () => {
+        if (key === '⌫') buf = buf.slice(0, -1);
+        else if (key === '.') { if (!buf.includes('.')) buf = (buf || '0') + '.'; }
+        else if (!/\.\d$/.test(buf) && buf.length < 5) buf = buf === '0' ? key : buf + key;
+        show();
+      });
+      keys.append(b);
+    }
+    const ok = el('button', 'ok', 'OK');
+    ok.type = 'button';
+    ok.addEventListener('click', () => {
+      if (buf !== '' && buf !== '.') { cnt.val[k] = Math.round(Number(buf) * 10) / 10; delete cnt.waste[k]; }
+      closeRcSheet(); renderCount();
+    });
+    keys.append(ok);
+    sheet.append(t, disp);
+    if (x.expired) {
+      const w = el('button', 'cn-waste', '🗑 Past use-by · thrown away');
+      w.type = 'button';
+      w.addEventListener('click', () => { cnt.waste[k] = true; cnt.val[k] = 0; closeRcSheet(); renderCount(); });
+      sheet.append(w);
+    }
+    if (cnt.val[k] != null || cnt.waste[k]) {
+      const u = el('button', 'link', 'Undo (as the app says)');
+      u.type = 'button';
+      u.addEventListener('click', () => { delete cnt.val[k]; delete cnt.waste[k]; closeRcSheet(); renderCount(); });
+      sheet.append(u);
+    }
+    sheet.append(keys);
+    openRcSheet(sheet);
+  }
+
+  /** '+ Not in the list': 이 냉장고에서 찾은 품목. 앱에 다른 곳에 있으면 '거기서 옮긴 것', 아니면 '안 적은 배치'. */
+  function openNotListed(p) {
+    let recipeId = '', boxes = '', from = '';
+    const sheet = el('div', 'oc-sheet rc-sheet'), head = el('div'), sel = el('select'), inp = boxesInput('cn-nl-n', '', 'Boxes');
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    head.append(el('div', 'oc-pos', 'Not in the list · ' + p.short), el('h2', null, 'What did you find?'));
+    sel.id = 'cn-nl-r';
+    sel.append(Object.assign(el('option', null, 'Choose…'), { value: '' }));
+    (cnt.recipes || []).slice().sort((a, b) => (a.name < b.name ? -1 : 1))
+      .filter((r) => !p.items.some((x) => x.recipeId === r.id))
+      .forEach((r) => { const o = el('option', null, r.name); o.value = r.id; sel.append(o); });
+    const how = el('div'), date = madeOnInput('cn-nl-date');
+    const drawHow = () => {
+      how.replaceChildren();
+      if (!recipeId) return;
+      const it = rcpStock && rcpStock.items.find((x) => x.recipeId === recipeId);
+      const elsewhere = it ? it.places.filter((q) => q.place !== p.place) : [];
+      how.append(el('div', 'rc-lab', 'Where does it come from?'));
+      const opt = (val, label) => {
+        const b = el('button', 'rc-pick-box' + (from === val ? ' on' : ''), label);
+        b.type = 'button';
+        b.addEventListener('click', () => { from = val; drawHow(); });
+        how.append(b);
+      };
+      elsewhere.forEach((q) => opt(q.place, 'Moved from ' + shortOf(q.place) + ' (app: ' + fmtB(q.left) + ' there)'));
+      opt('new', 'Not logged — made on a day');
+      if (from === 'new') { const l = el('label', null, 'Made on'); l.htmlFor = date.id; how.append(l, date); }
+    };
+    sel.addEventListener('change', () => { recipeId = sel.value; from = ''; drawHow(); });
+    const msg = el('p', 'err'), row = el('div', 'row'), cancel = el('button', 'secondary', 'Cancel'), save = el('button', null, 'Add here');
+    cancel.type = 'button'; save.type = 'button';
+    cancel.addEventListener('click', closeRcSheet);
+    save.addEventListener('click', () => {
+      if (!recipeId) { msg.textContent = 'Choose the prep.'; return; }
+      if (!boxesOk(inp.value)) { msg.textContent = 'Boxes: a number, one decimal at most.'; return; }
+      if (!from) { msg.textContent = 'Where does it come from?'; return; }
+      boxes = Math.round(rcpNum(inp.value) * 10) / 10;
+      const r = cnt.recipes.find((x) => x.id === recipeId);
+      if (from === 'new') cnt.added.push({ place: p.place, recipeId, boxes, madeOn: date.value });
+      else {
+        cnt.moves.push({ recipeId, from, to: p.place, boxes });
+        // 옮겨 온 곳이 이 조사에 있으면 그곳의 '앱이 아는 양'도 줄여서 보여 줌
+        const src = cnt.places.find((q) => q.place === from), sx = src && src.items.find((x) => x.recipeId === recipeId);
+        if (sx) sx.left = Math.max(0, Math.round((sx.left - boxes) * 10) / 10);
+      }
+      p.items.push({ place: p.place, recipeId, recipe: r.name, left: boxes, expired: false, box: r.box, found: from === 'new' ? 'new' : 'moved' });
+      closeRcSheet();
+      renderCount();
+    });
+    row.append(cancel, save);
+    const l1 = el('label', null, 'Prep'), l2 = el('label', null, 'Boxes here');
+    l1.htmlFor = sel.id; l2.htmlFor = inp.id;
+    sheet.append(head, l1, sel, l2, inp, how, msg, row);
+    openRcSheet(sheet);
+  }
+
+  /** 같은 품목이 한 곳은 줄고(센 양 < 앱) 다른 곳은 늘었으면(센 양 > 앱) = 옮긴 것 같음. */
+  function findMoves() {
+    const down = {}, up = {}, pairs = [];
+    for (const p of cnt.places) for (const x of p.items) {
+      const k = cKey(p.place, x.recipeId);
+      if (cnt.waste[k] || cnt.val[k] == null) continue;
+      const d = Math.round((cnt.val[k] - x.left) * 10) / 10;
+      if (d < 0) (down[x.recipeId] = down[x.recipeId] || []).push({ place: p.place, n: -d, recipe: x.recipe });
+      if (d > 0) (up[x.recipeId] = up[x.recipeId] || []).push({ place: p.place, n: d, recipe: x.recipe });
+    }
+    for (const id of Object.keys(up)) {
+      for (const u of up[id]) {
+        for (const d of down[id] || []) {
+          const n = Math.round(Math.min(u.n, d.n) * 10) / 10;
+          if (n <= 0) continue;
+          pairs.push({ recipeId: id, recipe: u.recipe, from: d.place, to: u.place, boxes: n, on: true });
+          u.n -= n; d.n -= n;
+        }
+      }
+    }
+    return pairs;
+  }
+
+  function countReview(title) {
+    const out = [el('h2', 'feed-title', 'Check before saving'), el('p', 'meta', title + ' · only what changed. Everything else = as the app says.')];
+    if (cnt.pairs.length) {
+      const box = el('div', 'cn-rev');
+      for (const m of cnt.pairs) {
+        const b = el('button', 'cn-move' + (m.on ? ' on' : ''));
+        b.type = 'button';
+        b.append(el('span', null, (m.on ? '☑ ' : '☐ ') + m.recipe + ': ' + fmtB(m.boxes) + ' moved ' + shortOf(m.from) + ' → ' + shortOf(m.to) + '?'),
+                 el('small', null, m.on ? 'Saved as a move, not use' : 'Saved as use + extra'));
+        b.addEventListener('click', () => { m.on = !m.on; renderCount(); });
+        box.append(b);
+      }
+      out.push(el('div', 'rc-lab', 'Looks like a move'), box);
+    }
+    const lines = [], moved = {};  // 옮김으로 처리한 양은 used / more 에서 뺌
+    for (const m of cnt.pairs) if (m.on) {
+      moved[cKey(m.from, m.recipeId)] = (moved[cKey(m.from, m.recipeId)] || 0) - m.boxes;
+      moved[cKey(m.to, m.recipeId)] = (moved[cKey(m.to, m.recipeId)] || 0) + m.boxes;
+    }
+    for (const p of cnt.places) for (const x of p.items) {
+      const k = cKey(p.place, x.recipeId), v = cnt.val[k] != null ? Math.round((cnt.val[k] - (moved[k] || 0)) * 10) / 10 : null;
+      const line = (label, cls) => { const d = el('div'); d.append(el('span', null, x.recipe + ' · ' + p.short), el('b', cls, label)); lines.push(d); };
+      if (x.found === 'new') line('+' + fmtB(x.left) + ' not logged', 'up');
+      else if (x.found === 'moved') line('+' + fmtB(x.left) + ' moved here', 'up');
+      if (cnt.waste[k]) line('thrown away ' + fmtB(x.left), 'waste');
+      else if (v != null && v !== x.left) line(v < x.left ? 'used ' + fmtB(x.left - v) : '+' + fmtB(v - x.left) + ' more', v < x.left ? 'used' : 'up');
+    }
+    const rev = el('div', 'cn-rev');
+    if (lines.length) rev.append(...lines); else rev.append(el('div', null, 'Nothing changed.'));
+    const nav = el('div', 'cn-nav'), back = el('button', 'secondary', '←'), save = el('button', 'go', 'Save count');
+    back.type = 'button'; save.type = 'button';
+    back.addEventListener('click', () => { cnt.review = false; renderCount(); });
+    save.addEventListener('click', () => saveCount(save));
+    nav.append(back, save);
+    const msg = el('p', 'err');
+    msg.id = 'cn-msg';
+    out.push(el('div', 'rc-lab', 'Changes'), rev, msg, nav);
+    return out;
+  }
+
+  async function saveCount(btn) {
+    const counts = [];
+    for (const p of cnt.places) for (const x of p.items) {
+      const k = cKey(p.place, x.recipeId);
+      counts.push({ place: p.place, recipeId: x.recipeId, boxes: cnt.waste[k] ? 0 : (cnt.val[k] != null ? cnt.val[k] : x.left), waste: !!cnt.waste[k] });
+    }
+    const moves = cnt.moves.concat(cnt.pairs.filter((m) => m.on).map(({ recipeId, from, to, boxes }) => ({ recipeId, from, to, boxes })));
+    btn.disabled = true;
+    try {
+      const r = await api({ action: 'countSave', token: token(), kind: cnt.kind, counts, moves, added: cnt.added });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) { btn.disabled = false; $('cn-msg').textContent = serverMsg(r); return; }
+      cnt.done = r;
+      rcpStock = null;
+      renderCount();
+      window.scrollTo(0, 0);
+    } catch (e) {
+      btn.disabled = false;
+      $('cn-msg').textContent = 'Network problem. Nothing was saved. Please try again.' + detail(e);
+    }
+  }
+
+  function countDone() {
+    const r = cnt.done, used = r.used.filter((x) => x.used || x.wasted || x.corrected);
+    const rev = el('div', 'cn-rev');
+    for (const x of used) {
+      const d = el('div'), parts = [];
+      if (x.used) parts.push('used ' + fmtB(x.used));
+      if (x.wasted) parts.push('thrown ' + fmtB(x.wasted));
+      if (x.corrected) parts.push('+' + fmtB(x.corrected));
+      d.append(el('span', null, x.recipe), el('b', x.used ? 'used' : 'waste', parts.join(' · ')));
+      rev.append(d);
+    }
+    if (!used.length) rev.append(el('div', null, 'No use recorded (everything as the app said).'));
+    const go = el('button', null, 'See stock');
+    go.type = 'button';
+    go.addEventListener('click', () => { cnt = null; setStockTab('stock'); window.scrollTo(0, 0); });
+    return [el('h2', 'feed-title', '✓ ' + (r.kind === 'sunday' ? 'Sunday count' : 'Count') + ' saved'), el('p', 'meta', 'Tonight’s use is in the Use tab of the Production Log.'), rev, go];
+  }
+
+  async function deleteProd(e, btn) {
+    if (!confirm('Delete this entry from the production log?\n\n' + e.boxes + ' × ' + e.box + ' · ' + e.madeBy + ' · ' + e.date + ' ' + e.time)) return;
+    btn.disabled = true;
+    try {
+      const r = await api({ action: 'prodDelete', token: token(), entry: e.id });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) { btn.disabled = false; return toast(serverMsg(r)); }
+      prodChanged(e, true);
+      toast('Deleted from the production log.');
+    } catch (err) {
+      btn.disabled = false;
+      toast('Network problem. Please try again.' + detail(err));
+    }
+  }
+
+  /** 박스 목록 (레시피 기본 박스가 목록에 없어도 넣음). */
+  function rcpBoxOptions(r) {
+    const list = (rcpData.boxes || []).slice();
+    if (r.box && !list.some((b) => b.name === r.box)) list.unshift(rcpBox(r.box));
+    return list;
+  }
+
+  function openProdSheet(r) {
+    const c = rcpCalc(r);
+    if (r.mode === 'percent' && !c.ready) {
+      toast('Enter the weight of the base first.');
+      $('rc-detail').querySelector('.rc-base input')?.focus();
+      return;
+    }
+    const sheet = el('div', 'oc-sheet rc-sheet');
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    const batch = r.mode === 'percent' ? 'base ' + fmtG(c.baseTotal) + ' g' : '×' + multLabel(rcpMult(r));
+    const head = el('div');
+    head.append(el('div', 'oc-pos', 'Log production'), el('h2', null, r.name), el('div', 'meta', batch + ' · ' + fmtG(c.total) + ' g'));
+
+    const stp = el('div', 'rc-stepper'), minus = el('button', null, '−'), plus = el('button', null, '+'), inp = el('input');
+    minus.type = 'button'; plus.type = 'button';
+    minus.setAttribute('aria-label', 'One box less'); plus.setAttribute('aria-label', 'One box more');
+    inp.id = 'rc-boxes'; inp.type = 'text'; inp.inputMode = 'decimal'; inp.value = String(c.boxes || 1);
+    inp.setAttribute('aria-label', 'Number of boxes');
+    const step = (d) => { const n = rcpNum(inp.value) || 0; inp.value = String(Math.max(0, Math.round((n + d) * 10) / 10)); };
+    minus.addEventListener('click', () => step(-1));
+    plus.addEventListener('click', () => step(1));
+    stp.append(minus, inp, plus, el('span', 'meta', 'e.g. 2.5'));
+
+    let chosen = r.box || (rcpData.boxes[0] && rcpData.boxes[0].name) || '';
+    const boxes = el('div');
+    const drawBoxes = (all) => {
+      const opts = all ? rcpBoxOptions(r) : [rcpBox(chosen)].filter(Boolean);
+      boxes.replaceChildren(...opts.map((bx) => {
+        const b = el('button', 'rc-pick-box' + (bx.name === chosen ? ' on' : ''));
+        b.type = 'button';
+        b.append(boxThumb(bx), boxText(bx));
+        if (bx.name === r.box) b.append(el('span', 'rc-mode', 'Default'));
+        b.addEventListener('click', () => { if (all) chosen = bx.name; drawBoxes(!all); });
+        return b;
+      }));
+      if (!all && rcpBoxOptions(r).length > 1) {
+        const ch = el('button', 'link', 'Use another box');
+        ch.type = 'button';
+        ch.addEventListener('click', () => drawBoxes(true));
+        boxes.append(ch);
+      }
+      if (!opts.length) boxes.append(el('p', 'meta', 'No boxes yet. Ask the supervisor to add them.'));
+    };
+    drawBoxes(!chosen);
+
+    let place = r.place || store.get('wt_rcp_place') || '';
+    if (!((rcpData.places || []).some((p) => p.label === place))) place = '';
+    const parts = [head, el('div', 'rc-lab', 'Boxes'), stp, el('div', 'rc-lab', 'Box'), boxes,
+                   el('div', 'rc-lab', 'Stored at'), placePicker(place, (v) => { place = v; })];
+    let maker = null;
+    if (rcpData.canPickMaker && rcpData.staff) {
+      maker = el('select');
+      maker.id = 'rc-maker'; maker.setAttribute('aria-label', 'Made by');
+      const groups = [['Kitchen', true], ['Others', false]].map(([label, k]) => {
+        const g = el('optgroup');
+        g.label = label;
+        for (const p of rcpData.staff.filter((x) => x.kitchen === k)) {
+          const o = el('option', null, p.name);
+          o.value = p.name;
+          o.selected = p.name === rcpData.me;
+          g.append(o);
+        }
+        return g;
+      });
+      maker.append(...groups.filter((g) => g.children.length));
+      parts.push(el('div', 'rc-lab', 'Made by'), maker);
+    }
+    const dl = el('dl', 'oc-facts');
+    if (!maker) dl.append(el('dt', null, 'Made by'), el('dd', null, store.get('wt_name')));
+    let madeOn = null;
+    if (rcpData.canPickMaker) { madeOn = madeOnInput('rc-made-on'); parts.push(el('div', 'rc-lab', 'Made on'), madeOn); }
+    else dl.append(el('dt', null, 'Date'), el('dd', null, 'Today, ' + parisNow().slice(11)));
+    if (r.keepDays != null) dl.append(el('dt', null, 'Use by'), el('dd', null, useByText(r.keepDays)));
+    const msg = el('p', 'err'), row = el('div', 'row'), cancel = el('button', 'secondary', 'Cancel'), save = el('button', null, 'Add to log');
+    cancel.type = 'button'; save.type = 'button';
+    cancel.addEventListener('click', closeRcSheet);
+    save.addEventListener('click', async () => {
+      const raw = inp.value.trim(), n = rcpNum(raw);
+      if (!/^\d+([.,]\d)?$/.test(raw) || !(n > 0)) { msg.textContent = 'Enter the number of boxes, one decimal at most (e.g. 2.5).'; return inp.focus(); }
+      if (!chosen) { msg.textContent = 'Choose the box.'; return; }
+      if (!place) { msg.textContent = 'Choose where it is stored.'; return; }
+      const body = { action: 'prodLog', token: token(), id: r.id, boxes: n, box: chosen, place };
+      if (maker) body.madeBy = maker.value;
+      if (madeOn && madeOn.value) body.madeOn = madeOn.value;
+      if (r.mode === 'percent') {
+        const bv = rcpState.bases[r.id] || [];
+        body.bases = r.items.filter((x) => x.t === 'base').map((_, j) => { const v = rcpNum(bv[j]); return v > 0 ? v : 0; });
+      } else body.mult = rcpMult(r);
+      save.disabled = true; msg.textContent = '';
+      try {
+        const res = await api(body);
+        if (res.code === 'AUTH') return logout(res.error);
+        if (!res.ok) { msg.textContent = serverMsg(res); save.disabled = false; return; }
+        closeRcSheet();
+        if (!r.place) store.set('wt_rcp_place', place); // 기본 위치가 없는 레시피: 다음에 이 폰에서 같은 곳을 먼저
+        const e = res.entry, eb = rcpBox(e.box);
+        rcpStock = null;
+        toast('✓ Logged · ' + e.boxes + ' × ' + ((eb && eb.capacity) || e.box) + ' · ' + e.place + (e.madeBy !== rcpData.me ? ' · by ' + e.madeBy : ''));
+        if (rcpProd.id !== r.id) rcpProd = { id: r.id, entries: [] };
+        rcpProd.entries.unshift(e);
+        renderProd();
+      } catch (err) {
+        msg.textContent = 'Network problem. Please try again.' + detail(err);
+        save.disabled = false;
+      }
+    });
+    row.append(cancel, save);
+    sheet.append(...parts, dl, msg, row);
+    openRcSheet(sheet);
+  }
+
+  $('b-recipes').addEventListener('click', () => openRecipes());
+  $('b-rc-list-back').addEventListener('click', () => { if (rcpOpen) { showRcpList(); window.scrollTo(0, 0); } else goHome(); });
+  $('rc-q').addEventListener('input', () => { rcpState.q = $('rc-q').value; renderRcpList(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeRcSheet(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && currentView === 'recipes' && rcpOpen) rcAwake(true);
+  });
+
+  // ------------------------------------------------------------------ Recipe editor (Supervisor)
+  // 저장하면 서버가 그 레시피의 시트 탭을 통째로 다시 씀. 연 뒤에 시트에서 바뀌었으면 CHANGED (덮어쓰지 않음).
+  // 사진은 고르는 즉시 올려서 'Recipe Photos' 폴더의 파일 이름을 받아 PHOTO 줄에 넣음.
+  let reDraft = null;            // { kind: 'recipe' | 'boxes', id, ver, d, dirty, uploads, warnings }
+  let reKey = 0;
+  const RE_KINDS = { ing: 'Ingredient', base: 'Base ingredient (weighed)', step: 'Step', photo: 'Photo' };
+
+  async function openEditor() {
+    rcpSaved();
+    show('redit');
+    reShowList();
+    await loadRecipes();
+  }
+
+  function reShowList() {
+    reDraft = null;
+    $('v-redit').classList.remove('re-on');
+    $('re-form').classList.add('hidden');
+    $('re-form').replaceChildren();
+    $('re-list-box').classList.remove('hidden');
+    renderReList();
+  }
+
+  function renderReList() {
+    if (!rcpData) return $('re-list').replaceChildren(el('p', 'hint', 'Loading…'));
+    if (!rcpData.canEdit) return $('re-list').replaceChildren(el('p', 'err', 'Only the supervisor can edit recipes.'));
+    const list = rcpData.recipes;
+    $('re-list').replaceChildren(...(list.length ? list.map((r) => rcpItem(r, () => editRecipe(r), true))
+      : [el('p', 'hint', 'No recipes yet. Tap “New recipe”.')]));
+  }
+
+  function reLeave() {
+    if (reDraft && reDraft.dirty && !confirm('Discard your changes?')) return;
+    reShowList();
+    window.scrollTo(0, 0);
+  }
+
+  const reDirty = () => { if (reDraft) reDraft.dirty = true; };
+
+  function reInput(value, label, onInput, opts = {}) {
+    const x = el(opts.area ? 'textarea' : 'input');
+    if (!opts.area) x.type = 'text';
+    if (opts.mode) x.inputMode = opts.mode;
+    if (opts.list) x.setAttribute('list', opts.list);
+    if (opts.cls) x.className = opts.cls;
+    x.id = 're-f' + (++reKey);
+    x.placeholder = opts.ph || '';
+    x.value = value ?? '';
+    x.setAttribute('aria-label', label);
+    x.addEventListener('input', () => { onInput(x.value); reDirty(); });
+    return x;
+  }
+  function reLabeled(label, input) {
+    const w = el('div'), l = el('label', null, label);
+    l.htmlFor = input.id;
+    w.append(l, input);
+    return w;
+  }
+  function reHeadBtn(text, label, fn, cls) {
+    const b = el('button', cls || null, text);
+    b.type = 'button';
+    b.setAttribute('aria-label', label);
+    b.addEventListener('click', fn);
+    return b;
+  }
+  function reDock(onSave, extra) {
+    const dock = el('div', 'rc-dock'), cancel = el('button', 'secondary', 'Cancel'), save = el('button', null, 'Save');
+    cancel.type = 'button'; save.type = 'button';
+    cancel.addEventListener('click', reLeave);
+    save.addEventListener('click', () => onSave(save));
+    dock.append(cancel, save);
+    const msg = el('p');
+    msg.id = 're-msg';
+    return [msg, dock].concat(extra || []);
+  }
+  function reMsg(text, cls) { const m = $('re-msg'); if (m) { m.textContent = text; m.className = cls || ''; } }
+
+  /** 사진을 줄이고 바로 올림 → done(파일 이름). */
+  async function reUpload(file, hint, th, pick, done) {
+    if (!file) return;
+    const draft = reDraft, label = pick.firstChild;
+    draft.uploads++;
+    label.nodeValue = 'Uploading…';
+    try {
+      const url = await resizeImage(file, 1280, 0.8);
+      const r = await api({ action: 'recipePhotoUpload', token: token(), photo: url, hint });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) throw new Error(serverMsg(r));
+      rcpPhotos.set(r.name, Promise.resolve(url));
+      idb.set('rph:' + r.name, url);
+      const img = el('img');
+      img.src = url; img.alt = '';
+      th.replaceChildren(img);
+      done(r.name);
+      draft.dirty = true;
+      label.nodeValue = 'Replace photo';
+    } catch (e) {
+      toast('Photo not uploaded: ' + e.message);
+      label.nodeValue = 'Choose photo';
+    } finally {
+      draft.uploads--;
+    }
+  }
+  function rePhotoPick(text, onFile) {
+    const pick = el('label', 'pick secondary', text), f = el('input');
+    f.type = 'file'; f.accept = 'image/*';
+    f.addEventListener('change', () => { onFile(f.files[0]); f.value = ''; });
+    pick.append(f);
+    return pick;
+  }
+
+  function editRecipe(r) {
+    const d = r ? JSON.parse(JSON.stringify(r)) : { name: '', mode: 'fixed', cat: '', items: [{ t: 'ing', name: '', q: '' }],
+                                                    box: '', fill: null, keepNote: '', keepDays: null };
+    d.items.forEach((x) => { x.k = ++reKey; });
+    reDraft = { kind: 'recipe', id: r ? r.id : null, ver: r ? r.ver : null, d, dirty: false, uploads: 0, warnings: (r && r.warnings) || [] };
+    $('re-list-box').classList.add('hidden');
+    $('re-form').classList.remove('hidden');
+    $('v-redit').classList.add('re-on');
+    renderReForm();
+    window.scrollTo(0, 0);
+  }
+
+  function renderReForm() {
+    const dr = reDraft, d = dr.d, out = [el('h2', 'feed-title', dr.id ? 'Edit recipe' : 'New recipe')];
+    if (dr.warnings.length) {
+      const n = el('div', 'notice'), ul = el('ul', 'names');
+      dr.warnings.forEach((w) => ul.append(el('li', null, w)));
+      n.append('Please check (from the sheet):', ul);
+      out.push(n);
+    }
+    const card = el('div', 'card');
+    const cats = el('datalist');
+    cats.id = 're-cats';
+    [...new Set((rcpData.recipes || []).map((x) => x.cat).filter(Boolean))].forEach((c) => { const o = el('option'); o.value = c; cats.append(o); });
+    const seg = el('div', 'seg'), modeHint = el('p', 'meta');
+    const drawMode = () => {
+      seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.m === d.mode));
+      modeHint.textContent = d.mode === 'percent'
+        ? 'Percent: add the base ingredient(s) you weigh at prep time. Other amounts are % of the base total.'
+        : 'Fixed: amounts in grams for one batch. Staff can make ½, ×2, ×3…';
+    };
+    for (const [m, label] of [['fixed', 'Fixed (grams)'], ['percent', 'Percent of base']]) {
+      const b = el('button', null, label);
+      b.type = 'button'; b.dataset.m = m;
+      b.addEventListener('click', () => {
+        if (d.mode === m) return;
+        d.mode = m;
+        if (m === 'fixed') d.items.forEach((x) => { if (x.t === 'base') { x.t = 'ing'; x.q = ''; } });
+        reDirty(); drawMode(); renderReLines();
+      });
+      seg.append(b);
+    }
+    drawMode();
+    const modeLab = el('label', null, 'Type');
+    card.append(reLabeled('Name', reInput(d.name, 'Recipe name', (v) => { d.name = v; }, { ph: 'e.g. Bulgogi marinade' })),
+                reLabeled('Category', reInput(d.cat, 'Category', (v) => { d.cat = v; }, { list: 're-cats', ph: 'e.g. Sauce' })), cats,
+                modeLab, seg, modeHint);
+    out.push(card);
+
+    out.push(el('div', 'rc-lab', 'Ingredients, steps and photos (top to bottom)'));
+    const lines = el('div');
+    lines.id = 're-lines';
+    out.push(lines);
+    const addBar = el('div', 'rc-add');
+    const addBtn = (label, make, id) => {
+      const b = el('button', 'secondary', label);
+      b.type = 'button';
+      if (id) b.id = id;
+      b.addEventListener('click', () => {
+        const it = Object.assign({ k: ++reKey }, make());
+        d.items.push(it); reDirty(); renderReLines();
+        const node = $('re-lines').lastElementChild;
+        node.scrollIntoView({ block: 'center' });
+        node.querySelector('input, textarea')?.focus();
+      });
+      return b;
+    };
+    addBar.append(addBtn('+ Ingredient', () => ({ t: 'ing', name: '', q: '' })), addBtn('+ Base', () => ({ t: 'base', name: '' }), 're-add-base'),
+                  addBtn('+ Step', () => ({ t: 'step', text: '' })), addBtn('+ Photo', () => ({ t: 'photo', file: '', cap: '' })));
+    out.push(addBar);
+
+    const st = el('div', 'card'), sel = el('select'), preview = el('div');
+    st.append(el('h3', null, 'Storage'));
+    sel.id = 're-box';
+    const drawPreview = () => {
+      const bx = d.box ? rcpBox(d.box) : null;
+      preview.replaceChildren();
+      if (bx) { const row = el('div', 'rc-boxrow'); row.style.marginTop = '8px'; row.append(boxThumb(bx), boxText(bx)); preview.append(row); }
+    };
+    const opts = [['', 'No box']].concat((rcpData.boxes || []).map((b) => [b.name, (b.capacity ? b.capacity + ' · ' : '') + b.name]));
+    if (d.box && !(rcpData.boxes || []).some((b) => b.name === d.box)) opts.push([d.box, d.box + ' (not in the box list)']);
+    for (const [v, label] of opts) { const o = el('option', null, label); o.value = v; o.selected = v === (d.box || ''); sel.append(o); }
+    sel.addEventListener('change', () => { d.box = sel.value; reDirty(); drawPreview(); });
+    drawPreview();
+    st.append(reLabeled('Default box', sel), preview,
+      reLabeled('Grams per box (for “about N boxes”)', reInput(d.fill, 'Grams per box', (v) => { d.fill = v; }, { mode: 'decimal', ph: 'e.g. 1700' })),
+      reLabeled('Storage', reInput(d.keepNote, 'Storage', (v) => { d.keepNote = v; }, { ph: 'e.g. Fridge 0–3 °C' })),
+      reLabeled('Keeps for (days)', reInput(d.keepDays, 'Days', (v) => { d.keepDays = v; }, { mode: 'numeric', ph: 'e.g. 5' })),
+      el('label', null, 'Usual place (pre-selected when logging)'), placePicker(d.place || '', (v) => { d.place = v; reDirty(); }, 'No usual place'),
+      el('label', null, 'Stock count'), reCountSeg(d));
+    out.push(st);
+
+    const extra = [];
+    if (dr.id) {
+      const del = el('button', 'link edit-link danger', 'Delete this recipe');
+      del.type = 'button';
+      del.addEventListener('click', () => reDelete(del));
+      extra.push(del);
+    }
+    out.push(...reDock(reSave, extra));
+    $('re-form').replaceChildren(...out);
+    renderReLines();
+  }
+
+  /** 재고 조사: Daily (매일 저녁, 냉장고) / Sunday (일요일 조사만). */
+  function reCountSeg(d) {
+    const g = el('div', 'seg'), hint = el('p', 'meta'), box = el('div');
+    const draw = () => {
+      g.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.c === (d.count || 'daily')));
+      hint.textContent = d.count === 'sunday' ? 'Counted only in the Sunday count.' : 'Counted every evening when it is in a fridge (shelves and freezers: Sunday).';
+    };
+    for (const [c, label] of [['daily', 'Every evening'], ['sunday', 'Sunday only']]) {
+      const b = el('button', null, label);
+      b.type = 'button'; b.dataset.c = c;
+      b.addEventListener('click', () => { d.count = c; reDirty(); draw(); });
+      g.append(b);
+    }
+    draw();
+    box.append(g, hint);
+    return box;
+  }
+
+  function renderReLines() {
+    const d = reDraft.d, box = $('re-lines');
+    box.replaceChildren(...d.items.map((it, i) => reLine(it, i)));
+    if (!d.items.length) box.append(el('p', 'hint', 'No lines yet.'));
+    $('re-add-base').classList.toggle('hidden', d.mode !== 'percent');
+  }
+
+  function reMove(i, dir) {
+    const items = reDraft.d.items, j = i + dir;
+    if (j < 0 || j >= items.length) return;
+    [items[i], items[j]] = [items[j], items[i]];
+    reDirty();
+    renderReLines();
+    $('re-lines').children[j]?.scrollIntoView({ block: 'nearest' });
+  }
+
+  function reLine(it, i) {
+    const d = reDraft.d, card = el('div', 'rc-line k-' + it.t), h = el('div', 'rc-line-h');
+    h.append(el('b', null, RE_KINDS[it.t]),
+             reHeadBtn('↑', 'Move up', () => reMove(i, -1)), reHeadBtn('↓', 'Move down', () => reMove(i, 1)),
+             reHeadBtn('✕', 'Delete line', () => { d.items.splice(i, 1); reDirty(); renderReLines(); }, 'x'));
+    card.append(h);
+    if (it.t === 'ing' || it.t === 'base') {
+      const row = el('div', 'rc-row'), unit = d.mode === 'percent' ? '%' : 'g';
+      row.append(reInput(it.name, 'Ingredient', (v) => { it.name = v; }, { ph: it.t === 'base' ? 'e.g. Salted cabbage, drained' : 'Ingredient' }));
+      if (it.t === 'ing') row.append(reInput(it.q, 'Amount in ' + unit, (v) => { it.q = v; }, { mode: 'decimal', ph: unit, cls: 'rc-num' }), el('span', 'unit', unit));
+      card.append(row, reInput(it.note, 'Note', (v) => { it.note = v; }, { ph: 'Note (optional, e.g. peeled)', cls: 'rc-note' }));
+      if (it.t === 'base') card.append(el('p', 'meta', 'Staff weigh it and enter the grams. Several base lines: their total = 100%.'));
+    } else if (it.t === 'step') {
+      card.append(reInput(it.text, 'Step', (v) => { it.text = v; }, { area: true, ph: 'What to do' }));
+    } else if (it.t === 'photo') {
+      const row = el('div', 'rc-row'), th = el('span', 'rc-thumb', '📷');
+      if (it.file) rcpFill(th, it.file);
+      const fileIn = reInput(it.file, 'File name', (v) => { it.file = v.trim(); }, { ph: 'File name in Recipe Photos', cls: 'rc-note' });
+      const pick = rePhotoPick(it.file ? 'Replace photo' : 'Choose photo',
+        (f) => reUpload(f, d.name || 'recipe', th, pick, (name) => { it.file = name; fileIn.value = name; }));
+      row.append(th, pick);
+      card.append(row, reInput(it.cap, 'Caption', (v) => { it.cap = v; }, { ph: 'Caption (optional)', cls: 'rc-note' }), fileIn);
+    }
+    return card;
+  }
+
+  async function reSave(btn) {
+    const dr = reDraft;
+    if (dr.uploads) return reMsg('Please wait until the photo is uploaded.', 'err');
+    const d = dr.d;
+    const recipe = { name: d.name, mode: d.mode, cat: d.cat, box: d.box, fill: d.fill ?? '', keepNote: d.keepNote, keepDays: d.keepDays ?? '', place: d.place || '',
+                     count: d.count === 'sunday' ? 'sunday' : 'daily',
+                     items: d.items.map(({ k, ...x }) => x) };
+    btn.disabled = true;
+    reMsg('Saving…', 'meta');
+    try {
+      const r = await api({ action: 'recipeSave', token: token(), id: dr.id || undefined, ver: dr.ver || undefined, recipe });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) {
+        btn.disabled = false;
+        reMsg(serverMsg(r), 'err');
+        if (r.code === 'CHANGED') loadRecipes();
+        return;
+      }
+      const list = rcpData.recipes, i = list.findIndex((x) => x.id === r.recipe.id);
+      if (i >= 0) list[i] = r.recipe; else list.push(r.recipe);
+      store.set(RCP_STORE, JSON.stringify(rcpData));
+      toast('✓ Saved: ' + r.recipe.name + (r.recipe.warnings && r.recipe.warnings.length ? ' (please check the warnings)' : ''));
+      reShowList();
+      window.scrollTo(0, 0);
+      loadRecipes();
+    } catch (e) {
+      btn.disabled = false;
+      reMsg('Network problem. Please try again.' + detail(e), 'err');
+    }
+  }
+
+  async function reDelete(btn) {
+    const dr = reDraft;
+    if (!confirm('Delete “' + dr.d.name + '”?\n\nThe tab is hidden in the Recipes sheet (unhide it there to bring it back). The production log stays.')) return;
+    btn.disabled = true;
+    try {
+      const r = await api({ action: 'recipeDelete', token: token(), id: dr.id });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) { btn.disabled = false; return reMsg(serverMsg(r), 'err'); }
+      rcpData.recipes = rcpData.recipes.filter((x) => x.id !== dr.id);
+      store.set(RCP_STORE, JSON.stringify(rcpData));
+      toast('Deleted: ' + dr.d.name);
+      reShowList();
+      loadRecipes();
+    } catch (e) {
+      btn.disabled = false;
+      reMsg('Network problem. Please try again.' + detail(e), 'err');
+    }
+  }
+
+  function editBoxes() {
+    const d = (rcpData.boxes || []).map((b) => Object.assign({ k: ++reKey }, b));
+    reDraft = { kind: 'boxes', ver: rcpData.boxesVer, d, dirty: false, uploads: 0, warnings: [] };
+    $('re-list-box').classList.add('hidden');
+    $('re-form').classList.remove('hidden');
+    $('v-redit').classList.add('re-on');
+    renderBoxForm();
+    window.scrollTo(0, 0);
+  }
+
+  function renderBoxForm() {
+    const d = reDraft.d, lines = el('div');
+    lines.id = 're-lines';
+    const draw = () => {
+      lines.replaceChildren(...d.map((b, i) => {
+        const card = el('div', 'rc-line'), h = el('div', 'rc-line-h');
+        const move = (dir) => { const j = i + dir; if (j < 0 || j >= d.length) return; [d[i], d[j]] = [d[j], d[i]]; reDirty(); draw(); };
+        h.append(el('b', null, 'Box ' + (i + 1)), reHeadBtn('↑', 'Move up', () => move(-1)), reHeadBtn('↓', 'Move down', () => move(1)),
+                 reHeadBtn('✕', 'Delete box', () => { d.splice(i, 1); reDirty(); draw(); }, 'x'));
+        const row = el('div', 'rc-row'), th = el('span', 'rc-thumb', '📦');
+        if (b.photo) rcpFill(th, b.photo);
+        const pick = rePhotoPick(b.photo ? 'Replace photo' : 'Choose photo',
+          (f) => reUpload(f, 'box ' + (b.name || ''), th, pick, (name) => { b.photo = name; }));
+        row.append(th, pick);
+        card.append(h,
+          reLabeled('Capacity (shown first)', reInput(b.capacity, 'Capacity', (v) => { b.capacity = v; }, { ph: 'e.g. 2.6 L' })),
+          reLabeled('Name', reInput(b.name, 'Box name', (v) => { b.name = v; }, { ph: 'e.g. GN 1/6 · 150 mm' })),
+          reLabeled('Note', reInput(b.note, 'Note', (v) => { b.note = v; }, { ph: 'Optional, e.g. with lid' })), row);
+        return card;
+      }));
+      if (!d.length) lines.append(el('p', 'hint', 'No boxes yet.'));
+    };
+    draw();
+    const add = el('button', 'secondary', '+ Add box');
+    add.type = 'button';
+    add.addEventListener('click', () => {
+      d.push({ k: ++reKey, name: '', capacity: '', photo: '', note: '' });
+      reDirty(); draw();
+      lines.lastElementChild.scrollIntoView({ block: 'center' });
+      lines.lastElementChild.querySelector('input')?.focus();
+    });
+    $('re-form').replaceChildren(el('h2', 'feed-title', 'Boxes'),
+      el('p', 'meta', 'Staff see the capacity first, with the photo next to it. If you rename a box, also choose it again in the recipes that use it.'),
+      lines, add, ...reDock(saveBoxes));
+  }
+
+  async function saveBoxes(btn) {
+    const dr = reDraft;
+    if (dr.uploads) return reMsg('Please wait until the photo is uploaded.', 'err');
+    btn.disabled = true;
+    reMsg('Saving…', 'meta');
+    try {
+      const r = await api({ action: 'boxSave', token: token(), ver: dr.ver, boxes: dr.d.map(({ k, ...x }) => x) });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) {
+        btn.disabled = false;
+        reMsg(serverMsg(r), 'err');
+        if (r.code === 'CHANGED') loadRecipes();
+        return;
+      }
+      rcpData.boxes = r.boxes;
+      rcpData.boxesVer = r.boxesVer;
+      store.set(RCP_STORE, JSON.stringify(rcpData));
+      toast('✓ Boxes saved.');
+      reShowList();
+      window.scrollTo(0, 0);
+    } catch (e) {
+      btn.disabled = false;
+      reMsg('Network problem. Please try again.' + detail(e), 'err');
+    }
+  }
+
+  $('b-redit').addEventListener('click', () => openEditor());
+  $('b-re-new').addEventListener('click', () => { if (rcpData) editRecipe(null); });
+  $('b-re-boxes').addEventListener('click', () => { if (rcpData) editBoxes(); });
+  $('b-re-back').addEventListener('click', () => (reDraft ? reLeave() : goHome()));
+
   // 상단 로고 = 메인 화면 (로그인 전에는 아무 동작 안 함)
   $('b-logo').addEventListener('click', () => {
     if (!token() || currentView === 'login') return;
+    if (currentView === 'redit' && reDraft && reDraft.dirty && !confirm('Discard your changes?')) return;
     if (editingRule) stopEditRule();
     goHome();
   });
@@ -3199,6 +5002,8 @@
       if (currentView === 'inbox') return openInbox();
       if (currentView === 'team') return openTeam();
       if (currentView === 'org') return openOrg();
+      if (currentView === 'recipes') return loadRecipes();
+      if (currentView === 'stock') { if (stTab === 'stock') loadStock(); return loadRecipes(); }
       if (currentView === 'chat') return chatRefresh();
       if (currentView === 'receipt' && !rcNew.length) return openReceipt(rcReturn);
       if (currentView === 'schedule') {
