@@ -2185,6 +2185,25 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.ok(C.call({ action: 'countView', token: chef, kind: 'sunday' }).places.find((p) => p.short === 'F6').items.some((x) => x.recipeId === soup));
   });
 
+  test('ingredients: one list; same name with other case/spaces/accents is saved as the listed name; new names are added', () => {
+    const tab = book().getSheetByName('Ingredients');
+    const names = () => tabRows(tab).slice(1).map((r) => r[0]);
+    assert.ok(names().includes('Soy sauce') && names().includes('Sugar'), 'filled from saved recipes');
+    const r = C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Dressing', items: [
+      { t: 'ing', name: '  soy   SAUCE ', q: 100 }, { t: 'ing', name: 'Crème fraîche', q: 50 }, { t: 'ing', name: 'creme fraiche', q: 5 }] } });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.deepStrictEqual(r.recipe.items.map((x) => x.name), ['Soy sauce', 'Crème fraîche', 'Crème fraîche']);
+    assert.deepStrictEqual(r.newIngredients, ['Crème fraîche']);
+    assert.deepStrictEqual(tabRows(tab).slice(-1)[0].slice(0, 4), ['Crème fraîche', '', '2026-10-09', 'Dressing']);
+    const again = C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Dressing 2', items: [{ t: 'ing', name: 'CREME FRAICHE', q: 1 }] } });
+    assert.deepStrictEqual([again.recipe.items[0].name, again.newIngredients], ['Crème fraîche', []]);
+    const v = view(sup);
+    assert.ok(v.ingredients.includes('Crème fraîche') && v.ingredients.includes('Soy sauce'));
+    assert.strictEqual(v.ingredients.filter((n) => n.toLowerCase() === 'soy sauce').length, 1);
+    assert.ok(!('ingredients' in view(yu)), 'only for the editor');
+    assert.ok(!v.recipes.some((x) => x.name === 'Ingredients'), 'the tab is not a recipe');
+  });
+
   test('recipes: delete = hidden tab (not in the list, still in the file)', () => {
     const id = bulgogi().id;
     assert.strictEqual(C.call({ action: 'recipeDelete', token: yu, id }).ok, false);

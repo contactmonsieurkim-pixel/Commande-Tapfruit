@@ -601,6 +601,18 @@
     .rc-dock button { margin: 0; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
     #v-redit.re-on { padding-bottom: 24px; }
     #v-redit.re-on .back-fab { display: none; }
+    /* 재료 이름 자동완성 */
+    .ac { position: relative; flex: 1; min-width: 0; }
+    .ac > input { width: 100%; }
+    .ac-list { position: absolute; left: 0; right: 0; top: calc(100% + 2px); z-index: 10; background: var(--card); border: 1px solid var(--line);
+               border-radius: 10px; box-shadow: 0 4px 14px rgba(0, 0, 0, .15); overflow: hidden; }
+    .ac-list button { display: block; width: 100%; margin: 0; padding: 10px 12px; border: 0; border-top: 1px solid var(--line); border-radius: 0;
+                      background: none; color: var(--text); text-align: left; font-size: 15px; font-weight: 400; }
+    .ac-list button:first-child { border-top: 0; }
+    .ac-note { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; }
+    .ac-note:not(:empty) { margin-top: 5px; }
+    .ac-new { font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 7px; background: var(--warn-bg); color: var(--warn-ink); }
+    .ac-note .link { color: var(--brand); font-size: 13px; padding: 0; }
     /* 저장 위치: 층 → 냉장고/선반 → 자리 */
     .rc-place { display: grid; gap: 8px; }
     .rc-place .seg { margin: 0; }
@@ -4837,9 +4849,11 @@
     card.append(h);
     if (it.t === 'ing' || it.t === 'base') {
       const row = el('div', 'rc-row'), unit = d.mode === 'percent' ? '%' : 'g';
-      row.append(reInput(it.name, 'Ingredient', (v) => { it.name = v; }, { ph: it.t === 'base' ? 'e.g. Salted cabbage, drained' : 'Ingredient' }));
+      const nameIn = reInput(it.name, 'Ingredient', (v) => { it.name = v; }, { ph: it.t === 'base' ? 'e.g. Salted cabbage, drained' : 'Ingredient' });
+      const hint = el('div', 'ac-note');
+      row.append(ingAutocomplete(nameIn, it, hint));
       if (it.t === 'ing') row.append(reInput(it.q, 'Amount in ' + unit, (v) => { it.q = v; }, { mode: 'decimal', ph: unit, cls: 'rc-num' }), el('span', 'unit', unit));
-      card.append(row, reInput(it.note, 'Note', (v) => { it.note = v; }, { ph: 'Note (optional, e.g. peeled)', cls: 'rc-note' }));
+      card.append(row, hint, reInput(it.note, 'Note', (v) => { it.note = v; }, { ph: 'Note (optional, e.g. peeled)', cls: 'rc-note' }));
       if (it.t === 'base') card.append(el('p', 'meta', 'Staff weigh it and enter the grams. Several base lines: their total = 100%.'));
     } else if (it.t === 'step') {
       card.append(reInput(it.text, 'Step', (v) => { it.text = v; }, { area: true, ph: 'What to do' }));
@@ -4853,6 +4867,75 @@
       card.append(row, reInput(it.cap, 'Caption', (v) => { it.cap = v; }, { ph: 'Caption (optional)', cls: 'rc-note' }), fileIn);
     }
     return card;
+  }
+
+  // ---------------------------------------------------------------- 재료 이름 자동완성 (Ingredients 탭 = 하나의 재료 목록)
+  // 앞글자만 쳐도 목록의 이름이 뜸 → 눌러서 선택. 목록에 없으면 'New ingredient', 비슷한 이름이 있으면 'Did you mean …?'.
+  // 대소문자·띄어쓰기·악센트만 다르면 칸을 떠날 때 목록의 표기로 바꿈 (서버도 저장할 때 같은 규칙으로 맞춤).
+  const ingKey = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  function ingNames() {
+    const seen = new Set(), out = [];
+    const add = (n) => { const k = ingKey(n); if (k && !seen.has(k)) { seen.add(k); out.push(String(n).replace(/\s+/g, ' ').trim()); } };
+    ((rcpData && rcpData.ingredients) || []).forEach(add);
+    return out;
+  }
+  function ingDistance(a, b) {
+    if (Math.abs(a.length - b.length) > 2) return 3;
+    const d = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      let prev = d[0]; d[0] = i;
+      for (let j = 1; j <= b.length; j++) {
+        const t = d[j];
+        d[j] = Math.min(d[j] + 1, d[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+        prev = t;
+      }
+    }
+    return d[b.length];
+  }
+  /** 이름 칸 + 아래로 뜨는 목록. hint = 칸 아래 한 줄 (New ingredient / Did you mean). */
+  function ingAutocomplete(input, it, hint) {
+    const box = el('div', 'ac'), list = el('div', 'ac-list hidden');
+    input.setAttribute('autocomplete', 'off');
+    const pick = (name) => { input.value = name; it.name = name; reDirty(); list.classList.add('hidden'); note(); };
+    const note = () => {
+      hint.replaceChildren();
+      const k = ingKey(input.value);
+      if (!k) return;
+      const names = ingNames();
+      if (names.some((n) => ingKey(n) === k)) return;
+      const near = names.filter((n) => { const x = ingKey(n); return ingDistance(x, k) <= 2 || (k.length >= 4 && (x.startsWith(k) || k.startsWith(x))); }).slice(0, 2);
+      hint.append(el('span', 'ac-new', 'New ingredient'));
+      for (const n of near) {
+        const b = el('button', 'link', 'Did you mean ' + n + '?');
+        b.type = 'button';
+        b.addEventListener('click', () => pick(n));
+        hint.append(b);
+      }
+    };
+    const show = () => {
+      const k = ingKey(input.value);
+      if (!k) { list.classList.add('hidden'); return; }
+      const rank = (n) => { const x = ingKey(n); return x === k ? -1 : x.startsWith(k) ? 0 : x.split(/[\s,()-]+/).some((w) => w.startsWith(k)) ? 1 : x.includes(k) ? 2 : 9; };
+      const hits = ingNames().map((n) => [rank(n), n]).filter(([r]) => r >= 0 && r < 9).sort((a, b) => a[0] - b[0] || a[1].localeCompare(b[1])).slice(0, 6);
+      list.replaceChildren(...hits.map(([, n]) => {
+        const b = el('button', null, n);
+        b.type = 'button';
+        b.addEventListener('pointerdown', (e) => e.preventDefault()); // 칸의 포커스를 잃지 않게 (iPhone 키보드 유지)
+        b.addEventListener('click', () => pick(n));
+        return b;
+      }));
+      list.classList.toggle('hidden', !hits.length);
+    };
+    input.addEventListener('input', () => { show(); note(); });
+    input.addEventListener('focus', show);
+    input.addEventListener('blur', () => {
+      setTimeout(() => list.classList.add('hidden'), 150);
+      const k = ingKey(input.value), same = k && ingNames().find((n) => ingKey(n) === k);
+      if (same && same !== input.value) { input.value = same; it.name = same; } // 표기만 다르면 목록의 이름으로
+    });
+    note();
+    box.append(input, list);
+    return box;
   }
 
   async function reSave(btn) {
@@ -4876,7 +4959,9 @@
       const list = rcpData.recipes, i = list.findIndex((x) => x.id === r.recipe.id);
       if (i >= 0) list[i] = r.recipe; else list.push(r.recipe);
       store.set(RCP_STORE, JSON.stringify(rcpData));
-      toast('✓ Saved: ' + r.recipe.name + (r.recipe.warnings && r.recipe.warnings.length ? ' (please check the warnings)' : ''));
+      if (r.newIngredients && r.newIngredients.length) rcpData.ingredients = (rcpData.ingredients || []).concat(r.newIngredients);
+      toast('✓ Saved: ' + r.recipe.name + (r.newIngredients && r.newIngredients.length ? ' · new ingredient: ' + r.newIngredients.join(', ') : '') +
+            (r.recipe.warnings && r.recipe.warnings.length ? ' (please check the warnings)' : ''));
       reShowList();
       window.scrollTo(0, 0);
       loadRecipes();
