@@ -15,6 +15,8 @@
 //     KEEP     보관 조건 | 보관 일수 (사용기한 = 만든 날 + 일수)
 //     PLACE    기본 저장 위치 (Places 탭의 이름, 예: 'Ground floor · Fridge 4')
 //     COUNT    재고 조사: Daily (매일 저녁, 기본) / Sunday (일요일 조사만)
+//     YIELD    메모(예: after straining) | 완성 무게 = 재료 총무게의 % (끓이고 거르면 < 100, 밥처럼 불면 > 100)
+//   재료 이름이 다른 레시피 이름과 같으면(홈메이드) 앱에서 그 재료를 눌러 그 레시피로 감.
 //   'Boxes' 탭: Name | Capacity | Photo | Note  (박스 목록. 앱에서는 용량 + 작은 사진)
 //   'Places' 탭: 저장 위치 목록 (Stock.gs 참고)
 //   'Ingredients' 탭: 재료 이름 목록 (Name | Note | Added | First recipe). 편집기의 재료 칸 자동완성 = 이 목록.
@@ -51,6 +53,8 @@ function ensureRecipes_() {
       ['STEP | what to do                    PHOTO | file name in the Recipe Photos folder | | caption'],
       ['BOX | box name from the Boxes tab    FILL | | grams per box    KEEP | storage | days'],
       ['PLACE | usual place (name from the Places tab)    COUNT | Daily (default) or Sunday'],
+      ['YIELD | note (e.g. after straining) | finished weight as % of the raw total (e.g. 60)'],
+      ['An ingredient with the same name as another recipe (homemade) opens that recipe in the app.'],
       ['Hidden tabs, this tab, the Boxes and Places tabs and tabs starting with _ are not recipes.'],
     ];
     h.getRange(1, 1, lines.length, 1).setValues(lines);
@@ -129,7 +133,7 @@ function recipeNum_(v) {
 /** 탭의 행 → { name, mode, cat, items: [{t: ing|base|step|photo, …}], box, fill, keepNote, keepDays, warnings }. */
 function parseRecipe_(tab, rows) {
   var r = { name: '', mode: 'fixed', cat: '', items: [], box: '', fill: null, keepNote: '', keepDays: null, place: '', count: 'daily',
-           warnings: [] };
+           yieldPct: null, yieldNote: '', warnings: [] };
   var warn = function (i, msg) { r.warnings.push('Row ' + (i + 1) + ': ' + msg); };
   rows.forEach(function (row, i) {
     var k = String(row[0] == null ? '' : row[0]).trim().toUpperCase();
@@ -165,6 +169,9 @@ function parseRecipe_(tab, rows) {
     } else if (k === 'PLACE') {
       if (prodPlace_(b)) r.place = prodPlace_(b).label;
       else if (b) warn(i, 'Unknown place “' + b + '”. Use a name from the app, e.g. “Ground floor · Fridge 4”.');
+    } else if (k === 'YIELD') {
+      if (n === null || isNaN(n) || n <= 0 || n > 1000) warn(i, 'YIELD needs the finished weight as % of the raw total in column C (e.g. 60).');
+      else { r.yieldPct = Math.round(n * 10) / 10; r.yieldNote = b; }
     } else if (k === 'COUNT') {
       if (!/^(daily|sunday|weekly)$/i.test(b)) warn(i, 'COUNT must be Daily or Sunday.');
       r.count = /^(sunday|weekly)$/i.test(b) ? 'sunday' : 'daily';
@@ -400,6 +407,11 @@ function recipeRows_(r, canon) {
     rows.push(['PLACE', prodPlace_(r.place).label, '', '']);
   }
   if (r.count === 'sunday') rows.push(['COUNT', 'Sunday', '', '']);
+  if (r.yieldPct !== '' && r.yieldPct != null) {
+    var y = recipeNum_(r.yieldPct);
+    if (y === null || isNaN(y) || y <= 0 || y > 1000) fail_('Yield: the finished weight as % of the raw total (e.g. 60).');
+    rows.push(['YIELD', rcpText_(r.yieldNote, 80, 'The yield note'), String(Math.round(y * 10) / 10), '%']);
+  }
   return { name: name, rows: rows };
 }
 
@@ -425,6 +437,8 @@ function recipeSave_(req) {
   ensureIngredients_(ss);
   var known = {}, fresh = [];
   readIngredients_(ss).forEach(function (n) { known[ingKey_(n)] = n; });
+  // 홈메이드 재료 = 다른 레시피 이름 → 레시피 이름의 표기로 맞춤 (앱에서 그 레시피로 연결되도록)
+  recipesAll_().recipes.forEach(function (x) { known[ingKey_(x.name)] = x.name; });
   // 목록에 있는 이름은 목록의 표기로, 없는 이름은 새 재료로 (같은 레시피 안에서 두 번 써도 한 번만)
   var built = recipeRows_(req.recipe || {}, function (n) {
     var k = ingKey_(n);

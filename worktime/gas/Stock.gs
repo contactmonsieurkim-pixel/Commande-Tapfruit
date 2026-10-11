@@ -196,12 +196,17 @@ function prodBatch_(r, req) {
     }
     var baseTotal = bases.reduce(function (n, b) { return n + b; }, 0);
     if (!(baseTotal > 0)) fail_('Please enter the weight of the base ingredient.');
-    return { batch: 'base ' + fmtGrams_(baseTotal) + ' g', total: Math.round(baseTotal + baseTotal * sum / 100) };
+    return { batch: 'base ' + fmtGrams_(baseTotal) + ' g', total: Math.round((baseTotal + baseTotal * sum / 100) * yieldOf_(r)) };
   }
   var mult = recipeNum_(req.mult);
   if (mult === null || isNaN(mult) || mult <= 0 || mult > 100) fail_('Please choose the batch size.');
   mult = Math.round(mult * 1000) / 1000;
-  return { batch: '×' + mult, total: Math.round(sum * mult) };
+  return { batch: '×' + mult, total: Math.round(sum * mult * yieldOf_(r)) };
+}
+
+/** 완성 무게 비율 (YIELD 줄, 없으면 1). Total (g) = 재료 총무게 × 이 비율 = 박스에 들어가는 양. */
+function yieldOf_(r) {
+  return r.yieldPct ? r.yieldPct / 100 : 1;
 }
 
 /** 'Made on' (Admin): 오늘(기본) 또는 지난 LATE_MAX_DAYS 일 안의 날. */

@@ -613,6 +613,11 @@
     .ac-note:not(:empty) { margin-top: 5px; }
     .ac-new { font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 7px; background: var(--warn-bg); color: var(--warn-ink); }
     .ac-note .link { color: var(--brand); font-size: 13px; padding: 0; }
+    .ac-home { font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 7px; background: var(--brand-soft); color: var(--brand); margin-left: 8px; }
+    .rc-sub { display: block; width: auto; margin: 3px 0 0; padding: 0; background: none; border: 0; color: var(--brand); font-size: 13px; font-weight: 600; text-align: left; }
+    .rc-need { background: var(--brand-soft); border-radius: 10px; padding: 8px 10px; margin-bottom: 10px; font-size: 14px; display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+    .rc-need .link { color: var(--brand); font-weight: 700; padding: 0; font-size: 14px; }
+    #re-form .rc-row .meta { flex: none; }
     /* 저장 위치: 층 → 냉장고/선반 → 자리 */
     .rc-place { display: grid; gap: 8px; }
     .rc-place .seg { margin: 0; }
@@ -3470,6 +3475,13 @@
     const [a, b] = String(v).split('.');
     return a.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + (b ? '.' + b : '');
   }
+  /** g → ['1 250', 'g'], 10 000 g 부터 ['12.5', 'kg']. */
+  function wParts(g) {
+    if (g == null || !isFinite(g)) return ['–', ''];
+    if (Math.abs(g) >= 10000) return [String(Math.round(g / 10) / 100), 'kg'];
+    return [fmtG(g), 'g'];
+  }
+  const fmtW = (g) => { const [n, u] = wParts(g); return u ? n + ' ' + u : n; };
   const multLabel = (m) => (m === 0.5 ? '½' : String(m));
   const rcpMult = (r) => rcpState.mult[r.id] || 1;
   const boxesText = (n) => n + (n === 1 ? ' box' : ' boxes');
@@ -3503,8 +3515,9 @@
       r.items.forEach((it, i) => { if (it.t === 'ing') amounts[i] = it.q * m; });
     }
     const total = ready ? Object.values(amounts).reduce((a, g) => a + (g || 0), 0) : null;
-    const boxes = total && r.fill ? Math.max(0.1, Math.round(total / r.fill * 10) / 10) : null;
-    return { amounts, total, baseTotal, boxes, ready };
+    const finished = total == null ? null : r.yieldPct ? total * r.yieldPct / 100 : total; // 끓이고 거른 뒤 = 박스에 들어가는 양
+    const boxes = finished && r.fill ? Math.max(0.1, Math.round(finished / r.fill * 10) / 10) : null;
+    return { amounts, total, finished, baseTotal, boxes, ready };
   }
 
   function rcpPhoto(name) {
@@ -3629,6 +3642,9 @@
 
   function showRcpList() {
     rcpOpen = null; rcpShown = null;
+    rcpStack = [];
+    for (const k in rcpNeed) delete rcpNeed[k];
+    syncRcpBack();
     rcAwake(false);
     closeRcSheet();
     $('rc-detail').classList.add('hidden');
@@ -3667,11 +3683,55 @@
       : [el('p', 'hint', list.length ? 'No recipe matches.' : 'No recipes yet.')]));
   }
 
+  // 홈메이드 재료 → 그 레시피: 돌아갈 레시피(rcpStack)와 필요한 양(rcpNeed)
+  let rcpStack = [];
+  const rcpNeed = {};
+  const rcpByName = (name) => rcpData && rcpData.recipes.find((x) => ingKey(x.name) === ingKey(name));
+  function goSubRecipe(from, sub, grams) {
+    rcpStack.push(from.id);
+    rcpNeed[sub.id] = { grams: grams || 0, from: from.name };
+    openRecipe(sub.id);
+  }
+  /** '레시피 A 에 1 100 g 필요 → ×0.6 만들기' (정량) / '기준 재료 약 830 g' (비율, 기준 재료 하나일 때). */
+  function needHint(r, need) {
+    const box = el('div', 'rc-need'), yf = r.yieldPct ? r.yieldPct / 100 : 1;
+    box.append(el('span', null, 'Needed for ' + need.from + ': '), el('b', null, fmtW(need.grams)));
+    let label = '', apply = null;
+    if (r.mode === 'fixed') {
+      const perBatch = r.items.filter((x) => x.t === 'ing').reduce((a, x) => a + x.q, 0) * yf;
+      if (perBatch > 0) {
+        const m = Math.ceil(need.grams / perBatch * 20) / 20;
+        label = 'Make ×' + m;
+        apply = () => { rcpState.mult[r.id] = m; renderRecipe(); };
+      }
+    } else {
+      const bases = r.items.filter((x) => x.t === 'base');
+      const pct = r.items.filter((x) => x.t === 'ing').reduce((a, x) => a + x.q, 0);
+      if (bases.length === 1) {
+        const g = Math.ceil(need.grams / (yf * (1 + pct / 100)) / 10) * 10;
+        label = 'Weigh about ' + fmtW(g) + ' of ' + bases[0].name;
+        apply = () => { rcpState.bases[r.id] = [String(g)]; renderRecipe(); };
+      }
+    }
+    if (apply) {
+      const b = el('button', 'link', label + ' →');
+      b.type = 'button';
+      b.addEventListener('click', apply);
+      box.append(b);
+    }
+    return box;
+  }
+  function syncRcpBack() {
+    const prev = rcpOpen && rcpStack.length && rcpData.recipes.find((x) => x.id === rcpStack[rcpStack.length - 1]);
+    $('b-rc-list-back').textContent = prev ? '← ' + prev.name : '← Back';
+  }
+
   function openRecipe(id) {
     rcpOpen = id;
     $('rc-list-box').classList.add('hidden');
     $('rc-detail').classList.remove('hidden');
     renderRecipe();
+    syncRcpBack();
     window.scrollTo(0, 0);
     rcAwake(true);
     loadProd();
@@ -3723,6 +3783,8 @@
     const sum = el('div', 'rc-sum');
     sum.append(el('span', 'rc-sum-l', 'Total'), el('b', 'rc-total'));
     scale.append(sum);
+    const need = rcpNeed[r.id];
+    if (need && need.grams > 0) scale.prepend(needHint(r, need));
 
     const flow = el('div', 'rc-flow'), done = rcpState.done[r.id] || (rcpState.done[r.id] = {});
     const clear = el('button', 'link', 'Clear ticks');
@@ -3737,6 +3799,13 @@
         const nm = el('span', 'nm', it.name);
         const sub = [it.t === 'base' ? (pct ? 'base' : '') : pct ? it.q + '%' : '', it.note].filter(Boolean).join(' · ');
         if (sub) nm.append(el('small', null, sub));
+        const home = it.name && rcpByName(it.name);
+        if (home && home.id !== r.id) { // 홈메이드 재료 = 다른 레시피 → 눌러서 그 레시피로 (필요한 양과 함께)
+          const go = el('button', 'rc-sub', '↳ Homemade · open recipe');
+          go.type = 'button';
+          go.addEventListener('click', (e) => { e.stopPropagation(); goSubRecipe(r, home, rcpCalc(r).amounts[i]); });
+          nm.append(go);
+        }
         const qty = el('span', 'qty');
         qty.dataset.i = i;
         row.append(el('span', 'box'), nm, qty);
@@ -3777,7 +3846,8 @@
     else st.append(el('p', 'meta', 'No box set for this recipe.'));
     const dl = el('dl', 'rc-facts');
     const add = (k, v, cls) => dl.append(el('dt', null, k), el('dd', cls, v));
-    if (r.fill) { add('Fill', 'about ' + fmtG(r.fill) + ' g per box'); add('This batch', '', 'rc-nbox'); }
+    if (r.yieldPct) add('Yield', r.yieldPct + '% of the raw weight' + (r.yieldNote ? ' · ' + r.yieldNote : ''));
+    if (r.fill) { add('Fill', 'about ' + fmtW(r.fill) + ' per box'); add('This batch', '', 'rc-nbox'); }
     if (r.keepNote || r.keepDays != null) add('Keep', [r.keepNote, r.keepDays != null ? r.keepDays + ' days' : ''].filter(Boolean).join(' · '));
     if (r.keepDays != null) add('Use by', useByText(r.keepDays) + ' (if made today)');
     if (r.place) add('Usually', '📍 ' + r.place);
@@ -3799,16 +3869,17 @@
     const c = rcpCalc(r), d = $('rc-detail'), m = rcpMult(r);
     d.querySelectorAll('.rc-ing .qty').forEach((q) => {
       const g = c.amounts[q.dataset.i];
-      q.replaceChildren(g == null ? '–' : fmtG(g));
-      if (g != null) q.append(el('u', null, 'g'));
+      const [n, u] = wParts(g);
+      q.replaceChildren(n);
+      if (u) q.append(el('u', null, u));
     });
     d.querySelectorAll('.rc-mult button').forEach((b) => b.classList.toggle('on', Number(b.dataset.m) === m));
     d.querySelector('.rc-mult label')?.classList.toggle('on', !MULTS.includes(m));
     const multi = r.items.filter((x) => x.t === 'base').length > 1;
     d.querySelector('.rc-sum-l').textContent = r.mode === 'fixed' ? (m !== 1 ? 'Total (×' + multLabel(m) + ')' : 'Total')
-      : multi && c.ready ? 'Base ' + fmtG(c.baseTotal) + ' g = 100% · total' : 'Total';
+      : multi && c.ready ? 'Base ' + fmtW(c.baseTotal) + ' = 100% · total' : 'Total';
     d.querySelector('.rc-total').textContent = c.total == null ? 'Enter the base weight'
-      : fmtG(c.total) + ' g' + (c.boxes ? ' · about ' + boxesText(c.boxes) : '');
+      : fmtW(c.total) + (r.yieldPct ? ' → ≈ ' + fmtW(c.finished) : '') + (c.boxes ? ' · about ' + boxesText(c.boxes) : '');
     const nb = d.querySelector('.rc-nbox');
     if (nb) nb.textContent = c.boxes ? 'about ' + boxesText(c.boxes) : '–';
   }
@@ -4482,9 +4553,9 @@
     }
     const sheet = el('div', 'oc-sheet rc-sheet');
     sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
-    const batch = r.mode === 'percent' ? 'base ' + fmtG(c.baseTotal) + ' g' : '×' + multLabel(rcpMult(r));
+    const batch = r.mode === 'percent' ? 'base ' + fmtW(c.baseTotal) : '×' + multLabel(rcpMult(r));
     const head = el('div');
-    head.append(el('div', 'oc-pos', 'Log production'), el('h2', null, r.name), el('div', 'meta', batch + ' · ' + fmtG(c.total) + ' g'));
+    head.append(el('div', 'oc-pos', 'Log production'), el('h2', null, r.name), el('div', 'meta', batch + ' · ' + fmtW(c.finished) + (r.yieldPct ? ' (after ' + r.yieldPct + '% yield)' : '')));
 
     const stp = el('div', 'rc-stepper'), minus = el('button', null, '−'), plus = el('button', null, '+'), inp = el('input');
     minus.type = 'button'; plus.type = 'button';
@@ -4585,7 +4656,10 @@
   }
 
   $('b-recipes').addEventListener('click', () => openRecipes());
-  $('b-rc-list-back').addEventListener('click', () => { if (rcpOpen) { showRcpList(); window.scrollTo(0, 0); } else goHome(); });
+  $('b-rc-list-back').addEventListener('click', () => {
+    if (rcpOpen && rcpStack.length) return openRecipe(rcpStack.pop()); // 홈메이드 재료에서 왔으면 그 레시피로
+    if (rcpOpen) { showRcpList(); window.scrollTo(0, 0); } else goHome();
+  });
   $('rc-q').addEventListener('input', () => { rcpState.q = $('rc-q').value; renderRcpList(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeRcSheet(); });
   document.addEventListener('visibilitychange', () => {
@@ -4792,7 +4866,7 @@
       reLabeled('Storage', reInput(d.keepNote, 'Storage', (v) => { d.keepNote = v; }, { ph: 'e.g. Fridge 0–3 °C' })),
       reLabeled('Keeps for (days)', reInput(d.keepDays, 'Days', (v) => { d.keepDays = v; }, { mode: 'numeric', ph: 'e.g. 5' })),
       el('label', null, 'Usual place (pre-selected when logging)'), placePicker(d.place || '', (v) => { d.place = v; reDirty(); }, 'No usual place'),
-      el('label', null, 'Stock count'), reCountSeg(d));
+      el('label', null, 'Stock count'), reCountSeg(d), reYield(d));
     out.push(st);
 
     const extra = [];
@@ -4805,6 +4879,30 @@
     out.push(...reDock(reSave, extra));
     $('re-form').replaceChildren(...out);
     renderReLines();
+  }
+
+  /** 완성 무게 (끓이고 거른 뒤): 재료 총무게의 %. 정량 레시피는 1 batch 완성 g 으로 넣어도 % 로 바꿔 줌. */
+  function reYield(d) {
+    const box = el('div'), row = el('div', 'rc-row'), hint = el('p', 'meta');
+    const raw = () => d.items.filter((x) => x.t === 'ing').reduce((a, x) => a + (rcpNum(x.q) || 0), 0);
+    const pct = reInput(d.yieldPct, 'Yield in %', (v) => { d.yieldPct = v; syncG(); draw(); }, { mode: 'decimal', ph: '100', cls: 'rc-num' });
+    const gIn = reInput('', 'Finished grams for 1 batch', (v) => {
+      const g = rcpNum(v), r0 = raw();
+      if (g > 0 && r0 > 0) { d.yieldPct = String(Math.round(g / r0 * 1000) / 10); pct.value = d.yieldPct; }
+      draw();
+    }, { mode: 'decimal', ph: 'g', cls: 'rc-num' });
+    const syncG = () => { const y = rcpNum(d.yieldPct), r0 = raw(); gIn.value = y > 0 && r0 > 0 && d.mode === 'fixed' ? String(Math.round(r0 * y / 100)) : ''; };
+    const draw = () => {
+      const y = rcpNum(d.yieldPct);
+      hint.textContent = y > 0 ? 'Finished = ' + y + '% of the raw weight' + (d.mode === 'fixed' && raw() > 0 ? ' (' + fmtW(raw()) + ' raw → ' + fmtW(raw() * y / 100) + ')' : '') + '.'
+        : 'Leave empty if the weight does not change. Boiled and strained: less than 100%. Rice, soaked: more than 100%.';
+    };
+    row.append(pct, el('span', 'unit', '%'));
+    if (d.mode === 'fixed') row.append(el('span', 'meta', 'or'), gIn, el('span', 'unit', 'g'));
+    syncG(); draw();
+    box.append(el('label', null, 'Finished weight (after cooking / straining)'), row,
+      reInput(d.yieldNote, 'Yield note', (v) => { d.yieldNote = v; }, { ph: 'Note (optional, e.g. after straining)', cls: 'rc-note' }), hint);
+    return box;
   }
 
   /** 재고 조사: Daily (매일 저녁, 냉장고) / Sunday (일요일 조사만). */
@@ -4877,6 +4975,7 @@
     const seen = new Set(), out = [];
     const add = (n) => { const k = ingKey(n); if (k && !seen.has(k)) { seen.add(k); out.push(String(n).replace(/\s+/g, ' ').trim()); } };
     ((rcpData && rcpData.ingredients) || []).forEach(add);
+    ((rcpData && rcpData.recipes) || []).forEach((r) => add(r.name)); // 홈메이드 재료 = 레시피 이름
     return out;
   }
   function ingDistance(a, b) {
@@ -4902,6 +5001,7 @@
       const k = ingKey(input.value);
       if (!k) return;
       const names = ingNames();
+      if (rcpByName(input.value)) { hint.append(el('span', 'ac-home', '↳ Homemade · links to its recipe')); return; }
       if (names.some((n) => ingKey(n) === k)) return;
       const near = names.filter((n) => { const x = ingKey(n); return ingDistance(x, k) <= 2 || (k.length >= 4 && (x.startsWith(k) || k.startsWith(x))); }).slice(0, 2);
       hint.append(el('span', 'ac-new', 'New ingredient'));
@@ -4919,6 +5019,7 @@
       const hits = ingNames().map((n) => [rank(n), n]).filter(([r]) => r >= 0 && r < 9).sort((a, b) => a[0] - b[0] || a[1].localeCompare(b[1])).slice(0, 6);
       list.replaceChildren(...hits.map(([, n]) => {
         const b = el('button', null, n);
+        if (rcpByName(n)) b.append(el('small', 'ac-home', 'recipe'));
         b.type = 'button';
         b.addEventListener('pointerdown', (e) => e.preventDefault()); // 칸의 포커스를 잃지 않게 (iPhone 키보드 유지)
         b.addEventListener('click', () => pick(n));
@@ -4943,7 +5044,7 @@
     if (dr.uploads) return reMsg('Please wait until the photo is uploaded.', 'err');
     const d = dr.d;
     const recipe = { name: d.name, mode: d.mode, cat: d.cat, box: d.box, fill: d.fill ?? '', keepNote: d.keepNote, keepDays: d.keepDays ?? '', place: d.place || '',
-                     count: d.count === 'sunday' ? 'sunday' : 'daily',
+                     count: d.count === 'sunday' ? 'sunday' : 'daily', yieldPct: d.yieldPct ?? '', yieldNote: d.yieldNote || '',
                      items: d.items.map(({ k, ...x }) => x) };
     btn.disabled = true;
     reMsg('Saving…', 'meta');

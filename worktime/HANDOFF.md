@@ -140,6 +140,12 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
   열어 둔 사이에 시트에서 바뀌었으면 `CHANGED` 로 거절(덮어쓰지 않음, 다시 열기). **Delete = 탭 숨기기**(시트에서 숨김 해제하면 복구, Production log 는 그대로).
   사진: 고르는 즉시 줄여서(1280px) `Recipe Photos` 폴더에 `<레시피이름>-yyyyMMdd-HHmmss.jpg` 로 올리고 그 파일 이름을 PHOTO 줄에 넣음. 사장님이 Drive 에 직접 올리고 파일 이름을 적어도 됨.
   **Boxes**: 박스 목록(Capacity·Name·Note·사진) 편집 = `Boxes` 탭을 다시 씀. 박스 이름을 바꾸면 그 박스를 쓰던 레시피에서 다시 골라야 함(이름으로 연결).
+- **홈메이드 재료**: 재료 이름 = 다른 레시피 이름(대소문자·악센트 무시)이면 그 줄에 *↳ Homemade · open recipe* → 그 레시피로 이동.
+  이동한 레시피 위에 'Needed for 원래 레시피: 1 100 g' + 정량이면 *Make ×0.2*(필요량 ÷ 1 batch 완성 무게, 0.05 단위 올림), 비율(기준 재료 1개)이면 *Weigh about … of 기준 재료*.
+  Back 버튼 = '← 원래 레시피'(여러 단계도 차례로). 편집기 자동완성에 레시피 이름도 나오고(작은 'recipe' 표시), 저장할 때 레시피 이름의 표기로 맞춤.
+- **수율 (YIELD 줄)**: 완성 무게 = 재료 총무게의 % (끓이고 거르면 < 100, 불리면 > 100). 편집기 'Finished weight' 에서 % 또는 1 batch 완성 g(정량)으로 입력.
+  화면 합계 = '2 000 g → ≈ 1 100 g', 예상 박스 수·Log production 의 Total (g)·홈메이드 배수 계산은 완성 무게 기준. YIELD 가 없으면 100%.
+- **무게 표시**: 10 000 g 부터 kg (소수 2자리까지, 예: 12.5 kg). 입력은 계속 g.
 - **재료 목록 (Ingredients 탭)**: 편집기의 재료 이름 칸 = 자동완성(앞글자만 쳐도 목록이 뜸, 단어 시작·포함 순). 목록에 없으면 노란 *New ingredient* + 비슷한 이름이 있으면 *Did you mean …?*(편집 거리 2 이하 또는 앞부분 일치).
   저장할 때 서버가 대소문자·띄어쓰기·악센트만 다른 이름을 목록의 표기로 맞추고(`ingKey_`), 새 이름은 탭에 자동 추가(Added, First recipe). 목적 = 나중에 주문 시스템에서 같은 재료가 다른 이름으로 갈라지지 않게.
   탭은 setup/첫 저장 때 지금 레시피들의 재료로 채워짐. 시트에서 고치거나 지워도 됨(이미 저장된 레시피의 이름은 그대로 — 바꾸면 레시피 탭도 같이 고칠 것).
@@ -182,7 +188,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 137개, python 의 pycryptodome 필요)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 138개, python 의 pycryptodome 필요)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```
