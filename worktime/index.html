@@ -3653,11 +3653,21 @@
     if (rcpData) renderRcpList();
   }
 
+  /** 목록에 보이는 1 batch 분량: '1 batch ≈ 2.3 × 2.6 L'. 비율 레시피는 기준 재료 1 kg 당. 박스당 g(FILL)이 없으면 박스 크기만. */
+  function batchBoxes(r, bx) {
+    const unit = bx ? bx.capacity || bx.name : '', yf = r.yieldPct ? r.yieldPct / 100 : 1;
+    const sum = r.items.filter((x) => x.t === 'ing').reduce((a, x) => a + (x.q || 0), 0);
+    const g = r.mode === 'percent' ? 1000 * (1 + sum / 100) * yf : sum * yf; // 완성 무게
+    if (!r.fill || !(g > 0)) return unit;
+    const n = Math.max(0.1, Math.round(g / r.fill * 10) / 10);
+    return (r.mode === 'percent' ? '1 kg base ≈ ' : '1 batch ≈ ') + n + (unit ? ' × ' + unit : n === 1 ? ' box' : ' boxes');
+  }
+
   function rcpItem(r, onClick, warn) {
     const b = el('button', 'rc-item'), t = el('span', 't'), bx = rcpBox(r.box);
     b.type = 'button';
     t.append(el('b', null, r.name));
-    const sub = [r.cat, bx && (bx.capacity || bx.name)].filter(Boolean).join(' · ');
+    const sub = [r.cat, batchBoxes(r, bx)].filter(Boolean).join(' · ');
     if (sub) t.append(el('small', null, sub));
     b.append(t);
     if (warn && r.warnings && r.warnings.length) b.append(el('span', 'rc-warn', '⚠ ' + r.warnings.length));
