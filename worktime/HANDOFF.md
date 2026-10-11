@@ -145,7 +145,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
   Back 버튼 = '← 원래 레시피'(여러 단계도 차례로). 편집기 자동완성에 레시피 이름도 나오고(작은 'recipe' 표시), 저장할 때 레시피 이름의 표기로 맞춤.
 - **수율 (YIELD 줄)**: 완성 무게 = 재료 총무게의 % (끓이고 거르면 < 100, 불리면 > 100). 편집기 'Finished weight' 에서 % 또는 1 batch 완성 g(정량)으로 입력.
   화면 합계 = '2 000 g → ≈ 1 100 g', 예상 박스 수·Log production 의 Total (g)·홈메이드 배수 계산은 완성 무게 기준. YIELD 가 없으면 100%.
-- **Not stored (재고로 두지 않는 레시피)**: 편집기 Stock count 의 세 번째 선택(COUNT 줄 `Not stored`). 바로 쓰고 끝나는 프렙. Log production = 만든 기록만(배치·Made by·Made on, 박스·위치 없음, Left 0) → Stock·Count·Sunday 에 안 나옴. 레시피 화면 'Not stored', 목록 칩 'Not stored'.
+- **Not stored (재고로 두지 않는 레시피)**: 편집기 Stock count 의 세 번째 선택(COUNT 줄 `Not stored`). 바로 쓰고 끝나는 프렙. Log production 없음(버튼 없음, 서버도 거절) → Stock·Count·Sunday 에 안 나옴. 레시피 화면 'Not stored', 목록 칩 'Not stored'.
 - **레시피 목록**: 분류 · 통 크기(왼쪽) + 옅은 배경의 통 수 '2.3 box / Batch' (완성 무게 ÷ 박스당 g, 소수 1자리). 비율 레시피는 '… box / kg base'. 박스당 g(FILL)이 없으면 통 크기만.
 - **무게 표시**: 10 000 g 부터 kg (소수 2자리까지, 예: 12.5 kg). 입력은 계속 g.
 - **재료 목록 (Ingredients 탭)**: 편집기의 재료 이름 칸 = 자동완성(앞글자만 쳐도 목록이 뜸, 단어 시작·포함 순). 목록에 없으면 노란 *New ingredient* + 비슷한 이름이 있으면 *Did you mean …?*(편집 거리 2 이하 또는 앞부분 일치).
