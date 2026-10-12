@@ -19,9 +19,10 @@
 //   재료 이름이 다른 레시피 이름과 같으면(홈메이드) 앱에서 그 재료를 눌러 그 레시피로 감.
 //   'Boxes' 탭: Name | Capacity | Photo | Note  (박스 목록. 앱에서는 용량 + 작은 사진)
 //   'Places' 탭: 저장 위치 목록 (Stock.gs 참고)
-//   'Ingredients' 탭: 재료 이름 목록 (Name | Note | Added | First recipe). 편집기의 재료 칸 자동완성 = 이 목록.
+//   재료 목록 = 별도 'Ingredients' 스프레드시트 (Ingredients.gs). 편집기의 재료 칸 자동완성 = 그 목록.
 //     레시피를 저장할 때 대소문자·띄어쓰기·악센트만 다른 이름은 목록의 이름으로 맞추고(Soy Sauce → Soy sauce),
-//     목록에 없는 새 이름은 자동으로 추가됨. 나중에 주문 시스템이 같은 이름을 쓰도록. 시트에서 고치거나 지워도 됨.
+//     목록에 없는 새 이름은 자동으로 추가됨(ID 자동). 주문 시스템이 같은 재료를 같은 이름으로 쓰도록.
+//     예전 이 시트의 'Ingredients' 탭은 setup 때 옮기고 숨김.
 //   'How to' 탭과 이름이 _ 로 시작하는 탭, 숨긴 탭은 레시피가 아님 (앱에서 지운 레시피 = 숨긴 탭, 숨김 해제로 복구).
 // "Production Log" 스프레드시트 (PROD_SHEET_ID): 프렙 입고 기록·재고·재고 조사 — Stock.gs.
 // 보는 사람 = Employees F열 Team 이 RECIPE_TEAMS(스크립트 속성, 기본 'Kitchen', 쉼표로 여러 팀)인 직원 + Supervisor.
@@ -61,7 +62,7 @@ function ensureRecipes_() {
   }
   recipePhotoFolder_();
   ensurePlaces_(ss);
-  ensureIngredients_(ss);
+  ensureIngredients_();
   prodSheet_();
   return ss;
 }
@@ -214,31 +215,14 @@ function ingKey_(s) {
   return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
-/** 처음 한 번: Ingredients 탭을 만들고 지금 레시피들에 쓰인 재료로 채움. */
-function ensureIngredients_(ss) {
-  if (ss.getSheetByName('Ingredients')) return;
-  var sh = ss.insertSheet('Ingredients'), seen = {}, rows = [], today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
-  recipeTabs_(ss).forEach(function (t) {
-    var r = parseRecipe_(t.getName(), recipeValues_(t));
-    r.items.forEach(function (it) {
-      if ((it.t === 'ing' || it.t === 'base') && !seen[ingKey_(it.name)]) {
-        seen[ingKey_(it.name)] = true;
-        rows.push([it.name, '', today, r.name]);
-      }
-    });
-  });
-  sh.getRange(1, 1, rows.length + 1, 4).setNumberFormat('@').setValues([INGREDIENT_HEAD].concat(rows));
-  sh.getRange(1, 1, 1, 4).setFontWeight('bold');
-  sh.setFrozenRows(1);
+/** 재료 목록은 별도 'Ingredients' 스프레드시트 (Ingredients.gs). 처음이면 만들고 예전 탭을 옮김. */
+function ensureIngredients_() {
+  ensureIngBook_();
 }
 
-/** Ingredients 탭의 이름들 (시트 순서, 같은 이름은 처음 것만). */
-function readIngredients_(ss) {
-  var sh = ss.getSheetByName('Ingredients');
-  if (!sh || sh.getLastRow() < 2) return [];
-  var seen = {};
-  return sh.getRange(2, 1, sh.getLastRow() - 1, 1).getDisplayValues().map(function (r) { return String(r[0]).replace(/\s+/g, ' ').trim(); })
-    .filter(function (n) { var k = ingKey_(n); if (!n || seen[k]) return false; seen[k] = true; return true; });
+/** 재료 이름들 (Ingredients 시트 순서, 지운 것 제외). */
+function readIngredients_() {
+  return ingNames_();
 }
 
 /** { recipes: [...], boxes: [...], boxesVer } — 캐시(앱에서 고치면 RCP_VER 이 바뀌어 바로 새로 읽음). */
@@ -246,7 +230,7 @@ function recipesAll_() {
   var key = 'rcp_all_' + (props_.getProperty('RCP_VER') || '0'), cache = CacheService.getScriptCache();
   var hit = cache.get(key);
   if (hit) return JSON.parse(hit);
-  var ss = recipeBook_(), out = { recipes: [], boxes: readBoxes_(ss), ingredients: readIngredients_(ss) };
+  var ss = recipeBook_(), out = { recipes: [], boxes: readBoxes_(ss), ingredients: readIngredients_() };
   out.boxesVer = recipeVer_(out.boxes);
   recipeTabs_(ss).forEach(function (sh) {
     var values = recipeValues_(sh), r = parseRecipe_(sh.getName(), values);
@@ -435,9 +419,9 @@ function recipeSheetById_(ss, id) {
 function recipeSave_(req) {
   recipeEditor_(req);
   var ss = recipeBook_();
-  ensureIngredients_(ss);
+  ensureIngredients_();
   var known = {}, fresh = [];
-  readIngredients_(ss).forEach(function (n) { known[ingKey_(n)] = n; });
+  readIngredients_().forEach(function (n) { known[ingKey_(n)] = n; });
   // 홈메이드 재료 = 다른 레시피 이름 → 레시피 이름의 표기로 맞춤 (앱에서 그 레시피로 연결되도록)
   recipesAll_().recipes.forEach(function (x) { known[ingKey_(x.name)] = x.name; });
   // 목록에 있는 이름은 목록의 표기로, 없는 이름은 새 재료로 (같은 레시피 안에서 두 번 써도 한 번만)
@@ -467,12 +451,7 @@ function recipeSave_(req) {
     }));
     sh.getRange(1, 1, 1, 4).setFontWeight('bold');
     sh.setFrozenRows(1);
-    if (fresh.length) {
-      var ing = ss.getSheetByName('Ingredients'), today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
-      ing.getRange(ing.getLastRow() + 1, 1, fresh.length, 4).setNumberFormat('@').setValues(fresh.map(function (n) {
-        return [/^[=+\-@']/.test(n) ? "'" + n : n, '', today, built.name];
-      }));
-    }
+    ingAddFromRecipe_(fresh, built.name);
     SpreadsheetApp.flush();
     bumpRecipes_();
   } finally {

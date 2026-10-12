@@ -202,7 +202,7 @@ function makeEnv(propsInit) {
     },
   };
   vm.createContext(ctx);
-  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs', 'Rules.gs', 'Schedule.gs', 'Receipts.gs', 'Chat.gs', 'Recipes.gs', 'Stock.gs']) {
+  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs', 'Rules.gs', 'Schedule.gs', 'Receipts.gs', 'Chat.gs', 'Recipes.gs', 'Stock.gs', 'Ingredients.gs']) {
     vm.runInContext(fs.readFileSync(path.join(GAS, f), 'utf8'), ctx, { filename: f });
   }
   ctx.setup();
@@ -2185,16 +2185,23 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.ok(C.call({ action: 'countView', token: chef, kind: 'sunday' }).places.find((p) => p.short === 'F6').items.some((x) => x.recipeId === soup));
   });
 
-  test('ingredients: one list; same name with other case/spaces/accents is saved as the listed name; new names are added', () => {
-    const tab = book().getSheetByName('Ingredients');
-    const names = () => tabRows(tab).slice(1).map((r) => r[0]);
+  const ingBook = () => C.files[C.props.INGREDIENT_SHEET_ID];
+  const rowsOf = (sh, w) => Array.from({ length: sh.getLastRow() }, (_, i) => sh.getRange(i + 1, 1, 1, w).getValues()[0]);
+
+  test('ingredients: one list (own spreadsheet); same name with other case/spaces/accents is saved as the listed name; new names are added with an ID', () => {
+    const tab = ingBook().getSheetByName('Ingredients');
+    const names = () => rowsOf(tab, 13).slice(1).map((r) => r[1]);
     assert.ok(names().includes('Soy sauce') && names().includes('Sugar'), 'filled from saved recipes');
+    assert.ok(!book().getSheetByName('Ingredients'), 'not in the Recipes book any more');
     const r = C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Dressing', items: [
       { t: 'ing', name: '  soy   SAUCE ', q: 100 }, { t: 'ing', name: 'Crème fraîche', q: 50 }, { t: 'ing', name: 'creme fraiche', q: 5 }] } });
     assert.ok(r.ok, JSON.stringify(r));
     assert.deepStrictEqual(r.recipe.items.map((x) => x.name), ['Soy sauce', 'Crème fraîche', 'Crème fraîche']);
     assert.deepStrictEqual(r.newIngredients, ['Crème fraîche']);
-    assert.deepStrictEqual(tabRows(tab).slice(-1)[0].slice(0, 4), ['Crème fraîche', '', '2026-10-09', 'Dressing']);
+    const last = rowsOf(tab, 13).slice(-1)[0];
+    assert.match(last[0], /^ING-\d{3}$/);
+    assert.deepStrictEqual([last[1], last[11], last[12]], ['Crème fraîche', '2026-10-09', 'Dressing']);
+    assert.strictEqual(new Set(rowsOf(tab, 1).slice(1).map((x) => x[0])).size, tab.getLastRow() - 1, 'IDs are unique');
     const again = C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Dressing 2', items: [{ t: 'ing', name: 'CREME FRAICHE', q: 1 }] } });
     assert.deepStrictEqual([again.recipe.items[0].name, again.newIngredients], ['Crème fraîche', []]);
     const v = view(sup);
@@ -2202,6 +2209,119 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.strictEqual(v.ingredients.filter((n) => n.toLowerCase() === 'soy sauce').length, 1);
     assert.ok(!('ingredients' in view(yu)), 'only for the editor');
     assert.ok(!v.recipes.some((x) => x.name === 'Ingredients'), 'the tab is not a recipe');
+  });
+
+  test('ingredients app: Admin and Supervisor only; default shelves A–G (6 levels, D–G counted by Service); fridges from Places', () => {
+    assert.strictEqual(C.call({ action: 'ingView', token: yu }).ok, false);
+    assert.strictEqual(C.call({ action: 'ingView', token: waiter }).ok, false);
+    const v = C.call({ action: 'ingView', token: chef });
+    assert.ok(v.ok, JSON.stringify(v));
+    assert.deepStrictEqual(v.shelves.map((s) => s.code + s.levels + s.by[0]), ['A6K', 'B6K', 'C6K', 'D6S', 'E6S', 'F6S', 'G6S']);
+    assert.deepStrictEqual(v.fridges.map((f) => f.code).slice(0, 3), ["B·L", "B·R", "K1"], "Places fridges by Short (an earlier test renamed F1)");
+    assert.ok(/basement/i.test(v.fridges[0].floor), 'basement fridges first');
+    assert.ok(v.teams.includes('Kitchen') && v.teams.includes('Service'));
+    const soy = v.ingredients.find((i) => i.name === 'Soy sauce');
+    assert.ok(soy.used.includes('Bulgogi marinade') || soy.used.length > 0, 'used in recipes');
+    assert.ok(C.call({ action: 'ingView', token: sup }).ok);
+  });
+
+  let soyId;
+  test('ingredients: save storage, address, count, demand and packs (HT price + deposit per pack); conflict check; history', () => {
+    let r = C.call({ action: 'supSave', token: chef, ver: C.call({ action: 'ingView', token: chef }).suppliersVer, suppliers: [
+      { name: 'Metro', by: 'Website', website: 'https://metro.fr' },
+      { name: 'K-Mart', by: 'WhatsApp', whatsapp: '+33 6 12 34 56 78', min: '150' },
+      { name: 'Laiterie', by: 'Email', email: 'c@laiterie.fr' }] });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.deepStrictEqual(r.suppliers.map((s) => s.name + ':' + s.by), ['Metro:Website', 'K-Mart:WhatsApp', 'Laiterie:Email']);
+    const v = C.call({ action: 'ingView', token: chef }), soy = v.ingredients.find((i) => i.name === 'Soy sauce');
+    soyId = soy.id;
+    const bad = (ing, re) => { const x = C.call({ action: 'ingSave', token: chef, id: soy.id, ver: soy.ver, ingredient: ing }); assert.strictEqual(x.ok, false); assert.match(x.error, re); };
+    const base = { name: 'Soy sauce', unit: 'ml', storage: 'Shelf', address: 'A-1', count: 'Sunday', demand: 'Recipes + Par', par: '6 000' };
+    bad(Object.assign({}, base, { address: 'Z-9' }), /Unknown address/);
+    bad(Object.assign({}, base, { packs: [{ supplier: 'Nobody', pack: 'x', size: 1, price: 1 }] }), /unknown supplier/);
+    bad(Object.assign({}, base, { packs: [{ supplier: 'Metro', pack: 'x', size: '', price: 1 }] }), /size/);
+    bad(Object.assign({}, base, { name: 'SUGAR' }), /already exists/);
+    r = C.call({ action: 'ingSave', token: chef, id: soy.id, ver: soy.ver, ingredient: Object.assign({}, base, { packs: [
+      { supplier: 'k-mart', pack: 'Bottle 1.8 L', size: '1 800', price: '6,90' },
+      { supplier: 'Metro', pack: 'Carton 6 × 1 L', size: 6000, price: 27.5, deposit: '1,20', usual: true }] }) });
+    assert.ok(r.ok, JSON.stringify(r));
+    const i = r.ingredient;
+    assert.deepStrictEqual([i.unit, i.storage, i.address, i.par, i.packs.length], ['ml', 'Shelf', 'A-1', 6000, 2]);
+    assert.deepStrictEqual(i.packs.map((p) => [p.supplier, p.size, p.price, p.deposit, p.usual]),
+      [['K-Mart', 1800, 6.9, 0, false], ['Metro', 6000, 27.5, 1.2, true]]);
+    assert.strictEqual(C.call({ action: 'ingSave', token: chef, id: soy.id, ver: soy.ver, ingredient: base }).code, 'CHANGED', 'old version');
+    // 냉장고 주소를 고르면 보관 = Fridge, 냉동이면 주소 없음
+    const fridge = v.fridges[0].code;
+    r = C.call({ action: 'ingSave', token: chef, id: i.id, ver: i.ver, ingredient: Object.assign({}, i, { storage: 'Shelf', address: fridge }) });
+    assert.deepStrictEqual([r.ingredient.storage, r.ingredient.address], ['Fridge', fridge]);
+    r = C.call({ action: 'ingSave', token: chef, id: i.id, ver: r.ingredient.ver, ingredient: Object.assign({}, r.ingredient, { storage: 'Freezer', address: fridge }) });
+    assert.deepStrictEqual([r.ingredient.storage, r.ingredient.address], ['Freezer', '']);
+    const hist = rowsOf(ingBook().getSheetByName('Price history'), 10);
+    assert.strictEqual(hist.length, 3, 'header + two new packs');
+    assert.deepStrictEqual(hist[2].slice(3, 10), ['Metro', 'Carton 6 × 1 L', '', '27.5', '', '1.2', 'Chef Admin']);
+    const ch = rowsOf(ingBook().getSheetByName('Changes'), 7).slice(1);
+    assert.ok(ch.some((c) => c[1] === 'Chef Admin' && c[4] === 'Address' && c[5] === 'A-1' && c[6] === fridge));
+    assert.strictEqual(C.call({ action: 'ingSave', token: yu, id: i.id, ingredient: base }).ok, false, 'staff cannot');
+  });
+
+  test('ingredients: rename updates every recipe that uses it (homemade links and recipes keep working)', () => {
+    const v = C.call({ action: 'ingView', token: chef }), sug = v.ingredients.find((i) => i.name === 'Sugar');
+    const r = C.call({ action: 'ingSave', token: chef, id: sug.id, ver: sug.ver, ingredient: Object.assign({}, sug, { name: 'White sugar' }) });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.ok(r.renamedIn.length >= 1);
+    dropCache();
+    const uses = view(sup).recipes.filter((x) => x.items.some((it) => it.name === 'White sugar'));
+    assert.ok(uses.length >= 1 && !view(sup).recipes.some((x) => x.items.some((it) => it.name === 'Sugar')));
+    assert.ok(view(sup).ingredients.includes('White sugar'));
+    assert.ok(C.call({ action: 'ingView', token: chef }).ingredients.find((i) => i.id === sug.id).used.length >= 1);
+  });
+
+  test('ingredients: drag on the map = move (address / freezer / no address); remove = hidden from the list', () => {
+    const id = C.call({ action: 'ingView', token: chef }).ingredients.find((i) => i.name === 'Garlic').id;
+    const mv = (a) => C.call({ action: 'ingMove', token: chef, id, address: a });
+    assert.deepStrictEqual([mv('B-3').storage, mv('b-3').address], ['Shelf', 'B-3']);
+    assert.deepStrictEqual([mv('FREEZER').storage, mv('FREEZER').address], ['Freezer', '']);
+    assert.deepStrictEqual([mv('').storage, mv('').address], ['', '']);
+    assert.strictEqual(mv('Q-1').ok, false);
+    assert.strictEqual(C.call({ action: 'ingMove', token: yu, id, address: 'A-1' }).ok, false);
+    assert.ok(C.call({ action: 'ingRemove', token: chef, id }).ok);
+    assert.ok(!C.call({ action: 'ingView', token: chef }).ingredients.some((i) => i.id === id));
+    const n = ingBook().getSheetByName('Ingredients').getLastRow();
+    C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Garlic oil', items: [{ t: 'ing', name: 'garlic', q: 100 }] } });
+    assert.strictEqual(ingBook().getSheetByName('Ingredients').getLastRow(), n, 'used again in a recipe = the same row comes back (no duplicate)');
+    assert.ok(C.call({ action: 'ingView', token: chef }).ingredients.some((i) => i.id === id));
+  });
+
+  test('shelves: levels + / − (not below a used level), counted by a team; suppliers in use cannot be removed, rename follows', () => {
+    const id = C.call({ action: 'ingView', token: chef }).ingredients.find((i) => i.name === 'Pepper').id;
+    C.call({ action: 'ingMove', token: chef, id, address: 'C-6' });
+    let r = C.call({ action: 'shelfSave', token: chef, shelf: 'C', levels: 5 });
+    assert.strictEqual(r.ok, false); assert.match(r.error, /C-6 is not empty/);
+    assert.strictEqual(C.call({ action: 'shelfSave', token: chef, shelf: 'C', levels: 7 }).shelf.levels, 7);
+    assert.ok(C.call({ action: 'ingMove', token: chef, id, address: 'C-7' }).ok);
+    assert.strictEqual(C.call({ action: 'shelfSave', token: chef, shelf: 'C', levels: 13 }).ok, false);
+    assert.strictEqual(C.call({ action: 'shelfSave', token: chef, shelf: 'A', by: 'Service' }).shelf.by, 'Service');
+    assert.strictEqual(C.call({ action: 'ingView', token: chef }).shelves[0].by, 'Service');
+    const sv = C.call({ action: 'ingView', token: chef });
+    r = C.call({ action: 'supSave', token: chef, ver: sv.suppliersVer, suppliers: sv.suppliers.filter((s) => s.name !== 'Metro') });
+    assert.strictEqual(r.ok, false); assert.match(r.error, /used by/);
+    r = C.call({ action: 'supSave', token: chef, ver: sv.suppliersVer, suppliers: sv.suppliers.map((s) => Object.assign({}, s, { was: s.name, name: s.name === 'Metro' ? 'Metro Paris' : s.name })) });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.ok(C.call({ action: 'ingView', token: chef }).ingredients.find((i) => i.id === soyId).packs.some((p) => p.supplier === 'Metro Paris'));
+    assert.strictEqual(C.call({ action: 'supSave', token: chef, ver: sv.suppliersVer, suppliers: [] }).code, 'CHANGED');
+  });
+
+  test('ingredients: setup moves the old Recipes “Ingredients” tab into the new spreadsheet once and hides it', () => {
+    const M = makeEnv({ SDM_META_KEY: keys.K1_SDM_META, SDM_FILE_KEY: keys.K2_SDM_FILE });
+    delete M.props.INGREDIENT_SHEET_ID; delete M.props.ING_MIGRATED;
+    const old = M.files[M.props.RECIPE_SHEET_ID].insertSheet('Ingredients');
+    old.getRange(1, 1, 3, 4).setValues([['Name', 'Note', 'Added', 'First recipe'], ['Gochujang', 'spicy', '2026-10-01', 'Tteokbokki'], ['gochujang', '', '', '']]);
+    M.ctx.setup();
+    const t = M.files[M.props.INGREDIENT_SHEET_ID].getSheetByName('Ingredients');
+    assert.deepStrictEqual(rowsOf(t, 13).slice(1).map((r) => [r[0], r[1], r[9], r[11], r[12]]), [['ING-001', 'Gochujang', 'spicy', '2026-10-01', 'Tteokbokki']]);
+    assert.ok(old.isSheetHidden());
+    M.ctx.setup();
+    assert.strictEqual(t.getLastRow(), 2, 'only once');
   });
 
   test('recipes: yield (finished weight %) is saved, read back and used for the logged total; homemade names follow the recipe name', () => {
