@@ -705,6 +705,111 @@
     .cn-move:first-child { border-top: 0; }
     .cn-move small { color: var(--muted); font-weight: 400; font-size: 12px; }
     .cn-move.on small { color: var(--brand); }
+    /* Ingredients (Admin 이상): 재료 · 거래처 · 주소 그림 */
+    :root { --amber-bg: #fbeedd; --amber-text: #8a4b12; }
+    @media (prefers-color-scheme: dark) { :root { --amber-bg: #3a2814; --amber-text: #f0b77a; } }
+    .ic-ingr { background: linear-gradient(160deg, #8fbf5a, #4f7d2c); }
+    #v-ingr { padding-bottom: 80px; }
+    #v-ingr button { width: auto; margin: 0; padding: 0; font: inherit; font-weight: 400; background: none; color: inherit; border: 0; border-radius: 0; }
+    #v-ingr .back-fab { padding: 10px 16px; border-radius: 22px; font-size: 14px; font-weight: 600; background: var(--fab-bg); color: var(--brand-ink); }
+    #v-ingr .back-fab:active, #v-ingr .back-fab:focus-visible { background: var(--brand); }
+    #v-ingr input, #v-ingr select { font-size: 16px; padding: 9px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--text); width: 100%; min-width: 0; }
+    #v-ingr label { margin: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+    .ig-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .ig-head .feed-title { margin: 0; }
+    #v-ingr .ig-tabs { display: flex; gap: 6px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 4px; margin: 10px 0 12px; }
+    #v-ingr .ig-tabs button { flex: 1; color: var(--muted); font-weight: 600; font-size: 14px; padding: 9px 4px; border-radius: 9px; cursor: pointer; }
+    #v-ingr .ig-tabs button.on { background: var(--brand); color: var(--brand-ink); }
+    #ig-view { display: flex; flex-direction: column; gap: 10px; }
+    .ig-seg { display: flex; gap: 6px; flex-wrap: wrap; }
+    #v-ingr .ig-chip { border: 1px solid var(--line); background: var(--card); border-radius: 999px; padding: 5px 11px; font-size: 13px; cursor: pointer; }
+    #v-ingr .ig-chip.on { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+    .ig-gh { font-size: 12px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); margin: 6px 4px -4px; }
+    .ig-list { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+    #v-ingr .ig-item { display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; align-items: center; padding: 11px 12px; border-top: 1px solid var(--line); width: 100%; text-align: left; cursor: pointer; }
+    #v-ingr .ig-item:first-child { border-top: 0; }
+    .ig-addr { font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace; text-align: center; padding: 7px 0; border-radius: 8px; background: var(--brand-soft); color: var(--brand); }
+    .ig-addr.fz { background: var(--blue-bg); color: var(--blue-text); font-family: inherit; font-weight: 600; font-size: 12px; }
+    .ig-addr.none { background: var(--bg); color: var(--muted); font-weight: 400; }
+    .ig-nm { font-weight: 600; min-width: 0; overflow-wrap: anywhere; }
+    .ig-sub { font-size: 13px; color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+    .ig-price { text-align: right; font-variant-numeric: tabular-nums; font-size: 14px; }
+    .ig-price small { display: block; color: var(--muted); font-size: 12px; }
+    .ig-tag { display: inline-block; font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 6px; margin-right: 4px; vertical-align: 1px; }
+    .ig-t-daily { background: var(--brand-soft); color: var(--brand); }
+    .ig-t-sun { background: var(--blue-bg); color: var(--blue-text); }
+    .ig-t-use { background: var(--amber-bg); color: var(--amber-text); }
+    .ig-t-dep { background: var(--warn-bg); color: var(--warn-ink); }
+    .ig-warn { color: var(--err); font-weight: 600; font-size: 13px; }
+    .ig-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+    .ig-card h3 { font-size: 15px; margin: 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .ig-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .ig-three { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .ig-opt { display: flex; gap: 6px; flex-wrap: wrap; }
+    #v-ingr .ig-opt button { flex: 1 1 auto; border: 1px solid var(--line); background: var(--bg); border-radius: 9px; padding: 9px 8px; font-size: 14px; cursor: pointer; }
+    #v-ingr .ig-opt button.on { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); font-weight: 600; }
+    .ig-help { font-size: 13px; color: var(--muted); margin: 0; }
+    .ig-pack { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .ig-pack.pref { border: 2px solid var(--brand); }
+    .ig-pack-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    #v-ingr .ig-star { font-size: 20px; cursor: pointer; color: var(--muted); padding: 0 4px; }
+    .ig-pack.pref .ig-star { color: var(--brand) !important; }
+    .ig-calc { font-size: 13px; background: var(--bg); border-radius: 8px; padding: 8px 10px; font-variant-numeric: tabular-nums; }
+    #v-ingr .ig-btn { background: var(--brand); color: var(--brand-ink); font-weight: 600; font-size: 16px; padding: 13px; border-radius: 12px; cursor: pointer; width: 100%; }
+    #v-ingr .ig-btn.ghost { background: none; color: var(--brand); border: 1px solid var(--brand); }
+    #v-ingr .ig-btn:disabled { opacity: .5; }
+    #v-ingr .ig-link { color: var(--brand); font-size: 15px; font-weight: 600; cursor: pointer; padding: 4px 0; align-self: flex-start; }
+    #v-ingr .ig-link.danger { color: var(--err); font-weight: 400; font-size: 14px; }
+    .ig-used a { color: var(--brand); }
+    .ig-ch { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+    .ig-ch-Email { background: var(--blue-bg); color: var(--blue-text); }
+    .ig-ch-WhatsApp { background: var(--brand-soft); color: var(--brand); }
+    .ig-ch-Website { background: var(--amber-bg); color: var(--amber-text); }
+    #v-ingr .ig-supcard { text-align: left; cursor: pointer; width: 100%; }
+    .ig-msg { margin: 0; font-size: 14px; }
+    /* 주소 그림 */
+    .ig-dock { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 6; background: var(--bg); padding: 6px 0 8px; display: flex; flex-direction: column; gap: 6px; }
+    .ig-zbar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+    #v-ingr .ig-zb { border: 1.5px solid var(--line); background: var(--card); border-radius: 8px; padding: 4px 2px 5px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+    .ig-zb b { font-size: 14px; }
+    .ig-zb.hall b { color: var(--amber-text); }
+    #v-ingr .ig-zb.on { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); background: var(--brand-soft); }
+    #v-ingr .ig-zb.wide { grid-column: span 3; flex-direction: row; justify-content: center; gap: 8px; padding: 6px; }
+    #v-ingr .ig-zb.wide.last { grid-column: span 4; }
+    .ig-mini { display: flex; flex-direction: column; gap: 2px; width: 70%; }
+    .ig-mini i { display: block; height: 3px; border-radius: 2px; background: var(--line); }
+    .ig-mini i.full { background: var(--brand); }
+    .ig-zb.hall .ig-mini i.full { background: var(--amber-text); }
+    .ig-tray { background: var(--card); border: 2px dashed var(--err); border-radius: 12px; padding: 4px 8px; }
+    .ig-tray-h { font-size: 13px; font-weight: 700; color: var(--err); display: flex; justify-content: space-between; }
+    .ig-tray .ig-slot { min-height: 36px; max-height: 84px; overflow-y: auto; }
+    .ig-shelf { background: var(--card); border: 2px solid var(--text); border-radius: 10px; display: flex; flex-direction: column; }
+    .ig-shelf-h { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 6px 8px; background: var(--text); color: var(--bg); border-radius: 7px 7px 0 0; }
+    .ig-shelf-h b { font-size: 17px; }
+    #v-ingr .ig-who { border-radius: 6px; font-size: 11px; font-weight: 700; padding: 3px 7px; cursor: pointer; background: var(--brand-soft); color: var(--brand); }
+    #v-ingr .ig-who.other { background: var(--amber-bg); color: var(--amber-text); }
+    .ig-whomenu { position: absolute; right: 6px; top: calc(100% - 4px); z-index: 8; background: var(--card); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, .18); padding: 3px; display: flex; flex-direction: column; min-width: 110px; }
+    #v-ingr .ig-whomenu button { color: var(--text); text-align: left; font-size: 12px; font-weight: 600; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+    #v-ingr .ig-whomenu button.cur { color: var(--brand); }
+    .ig-lvl { display: grid; grid-template-columns: 38px 1fr; border-top: 1px solid var(--line); min-height: 44px; }
+    .ig-shelf-h + .ig-lvl { border-top: 0; }
+    .ig-lvl-n { font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); display: flex; align-items: center; justify-content: center; border-right: 1px dashed var(--line); }
+    .ig-slot { display: flex; flex-wrap: wrap; gap: 4px; padding: 5px; align-content: flex-start; min-width: 0; }
+    .ig-slot.empty::after { content: 'empty'; font-size: 11px; color: var(--muted); opacity: .6; align-self: center; padding-left: 2px; }
+    .ig-slot.hot { background: var(--brand-soft); box-shadow: inset 0 0 0 2px var(--brand); }
+    .ig-slot.can { background: var(--brand-soft); cursor: pointer; }
+    .ig-lvctl { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 8px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); }
+    #v-ingr .ig-lvctl button { width: 40px; height: 34px; border-radius: 9px; border: 1px solid var(--brand); background: var(--card); color: var(--brand); font-size: 20px; line-height: 1; cursor: pointer; }
+    .ig-fridges { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+    .ig-fridge { background: var(--card); border: 2px solid var(--blue-text); border-radius: 12px; display: flex; flex-direction: column; min-width: 0; }
+    .ig-fridge-h { font-weight: 700; font-size: 14px; padding: 5px 8px 0; color: var(--blue-text); }
+    .ig-fridge .ig-slot { min-height: 48px; }
+    .ig-freezer { border: 2px dashed var(--line); border-radius: 12px; background: var(--card); }
+    .ig-freezer .ig-fridge-h { color: var(--muted); }
+    .ig-ichip { display: inline-flex; align-items: center; font-size: 13px; line-height: 1.2; padding: 5px 8px; border-radius: 7px; background: var(--bg); border: 1px solid var(--line); color: var(--text); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; max-width: 100%; overflow-wrap: anywhere; }
+    .ig-ichip.sel { border-color: var(--brand); background: var(--brand); color: var(--brand-ink); }
+    .ig-ichip.lift { opacity: .3; }
+    .ig-ghost { position: fixed; z-index: 50; pointer-events: none; transform: translate(-50%, -120%) rotate(-3deg); box-shadow: 0 6px 18px rgba(0, 0, 0, .25); background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
   </style>
 </head>
 <body>
@@ -769,6 +874,7 @@
         <button id="b-team" class="app hidden" type="button"><span class="app-ic ic-team"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="app-name">Team status</span></button>
         <button id="b-receipts" class="app hidden" type="button"><span class="app-ic ic-acct"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg></span><span class="app-name">To accountant</span></button>
         <button id="b-redit" class="app hidden" type="button"><span class="app-ic ic-redit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4M2 10h4M2 14h4M2 18h4"/><path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/></svg></span><span class="app-name">Recipe editor</span></button>
+        <button id="b-ingr" class="app hidden" type="button"><span class="app-ic ic-ingr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></span><span class="app-name">Ingredients</span></button>
       </div>
     </div>
   </div>
@@ -950,6 +1056,18 @@
   </section>
   <div id="rc-scrim" class="oc-scrim hidden"></div>
 
+  <!-- Admin 이상: Ingredients (재료 · 거래처 · 주소 그림, 별도 'Ingredients' 시트) -->
+  <section id="v-ingr" class="hidden">
+    <div class="ig-head"><h2 id="ig-title" class="feed-title">Ingredients</h2><span id="ig-count" class="meta"></span></div>
+    <div id="ig-tabs" class="ig-tabs" role="tablist">
+      <button type="button" data-tab="ing" class="on">Ingredients</button>
+      <button type="button" data-tab="sup">Suppliers</button>
+      <button type="button" data-tab="addr">Addresses</button>
+    </div>
+    <div id="ig-view"><p class="hint">Loading…</p></div>
+    <button id="b-ig-back" class="back-fab" type="button">← Back</button>
+  </section>
+
   <!-- Supervisor 전용: 받은 요청 -->
   <section id="v-inbox" class="hidden">
     <h2 class="feed-title">Requests</h2>
@@ -1101,7 +1219,7 @@
     }
   }
   const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed', 'request', 'inbox', 'schedule', 'team',
-                 'receipt', 'receipts', 'chat', 'org', 'recipes', 'redit', 'stock'];
+                 'receipt', 'receipts', 'chat', 'org', 'recipes', 'redit', 'stock', 'ingr'];
   let lastTap = null;
   let annReturn = 'home';
 
@@ -1128,6 +1246,7 @@
   function syncManager() {
     const admin = store.get('wt_admin') === '1', sup = store.get('wt_sup') === '1';
     $('b-admin').classList.toggle('hidden', !admin);
+    $('b-ingr').classList.toggle('hidden', !admin);
     for (const id of ['b-inbox', 'b-team', 'b-receipts', 'b-redit']) $(id).classList.toggle('hidden', !sup);
     $('b-recipes').classList.toggle('hidden', store.get('wt_rcp') !== '1');
     $('b-stock').classList.toggle('hidden', store.get('wt_rcp') !== '1');
@@ -5241,10 +5360,539 @@
   $('b-re-boxes').addEventListener('click', () => { if (rcpData) editBoxes(); });
   $('b-re-back').addEventListener('click', () => (reDraft ? reLeave() : goHome()));
 
+  // ------------------------------------------------------------------ Ingredients (Admin 이상)
+  // 재료 · 거래처 · 주소 그림. 서버 = 별도 'Ingredients' 스프레드시트 (Ingredients.gs). 시트에서 직접 고쳐도 됨.
+  // 재료 저장은 연 뒤에 바뀌었으면 CHANGED(덮어쓰지 않음). 주소 그림에서 끌어 놓기 = 바로 저장(ingMove).
+  const IG_STORE = 'wt_ing_v1';
+  let ig = null;                 // 서버 ingView 결과
+  let igTab = 'ing', igGroup = 'addr', igQ = '', igZone = 'A', igSel = null, igWho = null;
+  let igDraft = null;            // 편집 중인 재료 { id, ver, d, dirty }
+  let igSupDraft = null;         // 편집 중인 거래처 목록 { list, i, dirty }
+  let igDrag = null;
+  const igEsc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const igEur = (n) => (Number(n) || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+  const igQty = (n, u) => {
+    n = Number(n) || 0;
+    if (u === 'pcs') return n.toLocaleString('fr-FR') + ' pcs';
+    return n >= 1000 ? (n / 1000).toLocaleString('fr-FR') + (u === 'ml' ? ' L' : ' kg') : n.toLocaleString('fr-FR') + ' ' + u;
+  };
+  // kg(또는 L) 당 원가 = 가격 HT ÷ 크기. 병 보증금은 넣지 않음.
+  const igPer = (p, unit) => {
+    const size = igNum(p.size), price = igNum(p.price);
+    if (!size || price == null) return '';
+    return unit === 'pcs' ? igEur(price / size) + ' / pc' : igEur(price / size * 1000) + (unit === 'ml' ? ' / L' : ' / kg');
+  };
+  const igNum = (v) => {
+    if (typeof v === 'number') return v;
+    const s = String(v ?? '').replace(/[\s  €]/g, '').replace(',', '.');
+    if (s === '') return null;
+    const n = Number(s);
+    return isFinite(n) ? n : null;
+  };
+  const igUsual = (i) => i.packs.find((p) => p.usual) || i.packs[0];
+  const igById = (id) => ig && ig.ingredients.find((i) => i.id === id);
+
+  function igAddrs() {
+    const out = [];
+    for (const s of ig.shelves) for (let l = 1; l <= s.levels; l++) out.push({ code: s.code + '-' + l, kind: 'Shelf', zone: s.floor + ' · Shelf ' + s.code });
+    for (const f of ig.fridges) out.push({ code: f.code, kind: 'Fridge', zone: f.label || f.floor + ' · ' + f.code });
+    return out;
+  }
+  const igAddrIdx = (code) => { const i = igAddrs().findIndex((a) => a.code === code); return i < 0 ? 9999 : i; };
+  const igProblems = (i) => [!i.packs.length && 'No pack / price', i.storage !== 'Freezer' && !i.address && 'No address'].filter(Boolean);
+
+  async function openIngr() {
+    show('ingr');
+    igDraft = null; igSupDraft = null; igSel = null; igWho = null;
+    if (!ig) { try { ig = JSON.parse(store.get(IG_STORE) || 'null'); } catch (e) { ig = null; } }
+    igRender();
+    await loadIngr();
+  }
+
+  async function loadIngr() {
+    try {
+      const r = await api({ action: 'ingView', token: token() });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) { if (!ig) $('ig-view').replaceChildren(el('p', 'err', serverMsg(r))); return; }
+      ig = r;
+      store.set(IG_STORE, JSON.stringify(r));
+      if (currentView === 'ingr' && !igDraft && !igSupDraft && !igDrag) igRender();
+    } catch (e) {
+      if (!ig) $('ig-view').replaceChildren(el('p', 'err', 'Network problem. Please try again.' + detail(e)));
+    }
+  }
+
+  function igRender() {
+    for (const b of document.querySelectorAll('#ig-tabs button')) b.classList.toggle('on', b.dataset.tab === igTab);
+    $('ig-title').textContent = igDraft ? (igDraft.id ? 'Edit ingredient' : 'New ingredient') : igSupDraft ? 'Supplier' : { ing: 'Ingredients', sup: 'Suppliers', addr: 'Addresses' }[igTab];
+    $('ig-tabs').classList.toggle('hidden', !!(igDraft || igSupDraft));
+    if (!ig) { $('ig-count').textContent = ''; return $('ig-view').replaceChildren(el('p', 'hint', 'Loading…')); }
+    if (igDraft) return igEditView();
+    if (igSupDraft) return igSupForm();
+    if (igTab === 'sup') return igSupView();
+    if (igTab === 'addr') return igAddrView();
+    igListView();
+  }
+
+  // ---- 목록
+  function igAddrCell(i) {
+    if (i.storage === 'Freezer') return '<div class="ig-addr fz">Freezer</div>';
+    if (!i.address) return '<div class="ig-addr none">—</div>';
+    return '<div class="ig-addr">' + igEsc(i.address) + '</div>';
+  }
+  function igTags(i) {
+    let t = '<span class="ig-tag ' + (i.count === 'Daily' ? 'ig-t-daily">Daily' : 'ig-t-sun">Sunday') + '</span>';
+    if (i.demand === 'Usage') t += '<span class="ig-tag ig-t-use">Usage</span>';
+    if (i.packs.some((p) => p.deposit > 0)) t += '<span class="ig-tag ig-t-dep">Deposit</span>';
+    return t;
+  }
+
+  function igListView() {
+    const q = igQ.trim().toLowerCase();
+    const items = ig.ingredients.filter((i) => !q || i.name.toLowerCase().includes(q) || (i.cat || '').toLowerCase().includes(q));
+    const zoneOf = (code) => (igAddrs().find((a) => a.code === code) || {}).zone || 'Unknown address';
+    const key = (i) => {
+      if (igGroup === 'addr') return i.storage === 'Freezer' ? 'Freezer (no address)' : i.address ? zoneOf(i.address) : 'No address yet';
+      if (igGroup === 'sup') return igUsual(i) ? igUsual(i).supplier : 'No supplier yet';
+      return i.cat || 'No category';
+    };
+    if (igGroup === 'addr') items.sort((a, b) => (a.storage === 'Freezer') - (b.storage === 'Freezer') || igAddrIdx(a.address) - igAddrIdx(b.address));
+    else items.sort((a, b) => key(a).localeCompare(key(b)) || a.name.localeCompare(b.name));
+    const groups = new Map();
+    for (const i of items) { const k = key(i); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(i); }
+    const warnN = ig.ingredients.filter((i) => igProblems(i).length).length;
+    let h = '<input id="ig-q" type="search" placeholder="Search ingredients" aria-label="Search ingredients" value="' + igEsc(igQ) + '">' +
+      '<div class="ig-seg">' + [['addr', 'Address order'], ['sup', 'Supplier'], ['cat', 'Category']].map(([g, t]) =>
+        '<button type="button" class="ig-chip' + (igGroup === g ? ' on' : '') + '" data-group="' + g + '">' + t + '</button>').join('') + '</div>';
+    if (warnN) h += '<p class="ig-warn" style="margin:0 4px">⚠ ' + warnN + ' ingredient' + (warnN > 1 ? 's' : '') + ' missing pack or address</p>';
+    if (!items.length) h += '<p class="hint">' + (q ? 'No ingredient matches.' : 'No ingredients yet.') + '</p>';
+    for (const [k, list] of groups) {
+      h += '<div class="ig-gh">' + igEsc(k) + '</div><div class="ig-list">';
+      for (const i of list) {
+        const p = igUsual(i), w = igProblems(i);
+        h += '<button type="button" class="ig-item" data-open="' + igEsc(i.id) + '">' + igAddrCell(i) +
+          '<div class="ig-nm">' + igEsc(i.name) + '<div class="ig-sub">' + igTags(i) + (p ? igEsc(p.pack) + ' · ' + igEsc(p.supplier) : '') + '</div>' +
+          (w.length ? '<div class="ig-warn">⚠ ' + w.join(' · ') + '</div>' : '') + '</div>' +
+          '<div class="ig-price">' + (p ? igEur(p.price) + '<small>' + igPer(p, i.unit) + '</small>' : '') + '</div></button>';
+      }
+      h += '</div>';
+    }
+    h += '<button type="button" class="ig-btn ghost" data-act="new">+ New ingredient</button>';
+    $('ig-view').innerHTML = h;
+    $('ig-count').textContent = ig.ingredients.length + ' items';
+  }
+
+  // ---- 편집
+  function igStartEdit(i) {
+    const d = i ? JSON.parse(JSON.stringify(i)) : { name: '', cat: '', unit: 'g', storage: 'Shelf', address: '', count: 'Sunday', demand: 'Recipes + Par', par: 0, note: '', packs: [], used: [] };
+    d.packs.forEach((p) => { p.k = Math.random(); });
+    igDraft = { id: i ? i.id : null, ver: i ? i.ver : null, d, dirty: false };
+    igRender();
+    window.scrollTo(0, 0);
+  }
+
+  function igOpt(field, val, choices) {
+    return '<div class="ig-opt" data-field="' + field + '">' + choices.map(([v, t]) =>
+      '<button type="button" class="' + (v === val ? 'on' : '') + '" data-val="' + igEsc(v) + '">' + igEsc(t) + '</button>').join('') + '</div>';
+  }
+
+  function igEditView() {
+    const d = igDraft.d, opts = igAddrs().filter((a) => a.kind === d.storage);
+    let h = '<button type="button" class="ig-link" data-act="leave">← Ingredients</button>';
+    h += '<div class="ig-card"><h3>' + igEsc(d.name || 'New ingredient') + ' <span class="ig-sub">' + igEsc(igDraft.id || '') + '</span></h3>' +
+      '<label>Name<input data-f="name" value="' + igEsc(d.name) + '" maxlength="120"></label>' +
+      (igDraft.id ? '<p class="ig-help">Renaming also updates every recipe that uses it.</p>' : '') +
+      '<div class="ig-two"><label>Category<input data-f="cat" value="' + igEsc(d.cat) + '" maxlength="60"></label>' +
+      '<label>Unit<select data-f="unit" data-rerender="1">' + ig.units.map((u) => '<option' + (u === d.unit ? ' selected' : '') + '>' + u + '</option>').join('') + '</select></label></div></div>';
+
+    h += '<div class="ig-card"><h3>Storage</h3>' + igOpt('storage', d.storage, [['Shelf', 'Shelf'], ['Fridge', 'Fridge'], ['Freezer', 'Freezer']]);
+    if (d.storage === 'Freezer') h += '<p class="ig-help">Freezer items have no address.</p>';
+    else h += '<label>Address<select data-f="address"><option value="">Choose…</option>' + opts.map((a) =>
+        '<option value="' + igEsc(a.code) + '"' + (a.code === d.address ? ' selected' : '') + '>' + igEsc(a.code) + ' · ' + igEsc(a.zone) + '</option>').join('') +
+      '</select></label><p class="ig-help">Shelf levels are numbered from the top (1 = top). You can also drag it on the Addresses map.</p>';
+    h += '<label>Stock count</label>' + igOpt('count', d.count, [['Daily', 'Every evening'], ['Sunday', 'Sunday only']]) + '</div>';
+
+    h += '<div class="ig-card"><h3>Demand</h3>' + igOpt('demand', d.demand, [['Recipes + Par', 'Recipes + Par'], ['Usage', 'Usage average']]);
+    if (d.demand === 'Usage') h += '<p class="ig-help">Weekly need = average use from stock counts (last 4 weeks) × 7 days, minus what is on the shelf.</p>';
+    else h += '<p class="ig-help">Weekly need = planned preps (recipes × batches) + Par, minus what is on the shelf.</p>' +
+      '<label>Par (always keep at least, in ' + d.unit + ')<input data-f="par" inputmode="decimal" value="' + igEsc(d.par || '') + '" placeholder="0"></label>';
+    h += '</div>';
+
+    h += '<div class="ig-card"><h3>Packs &amp; prices <span class="ig-sub">HT</span></h3>';
+    if (!ig.suppliers.length) h += '<p class="ig-warn">Add a supplier first (Suppliers tab).</p>';
+    if (!d.packs.length) h += '<p class="ig-warn">⚠ No pack yet: this ingredient cannot be ordered.</p>';
+    d.packs.forEach((p, n) => {
+      const dep = igNum(p.deposit) || 0, price = igNum(p.price);
+      h += '<div class="ig-pack' + (p.usual ? ' pref' : '') + '"><div class="ig-pack-h"><strong>' + (p.usual ? 'Usual pack' : 'Other pack') + '</strong>' +
+        '<button type="button" class="ig-star" data-star="' + n + '" aria-label="Make this the usual pack">' + (p.usual ? '★' : '☆') + '</button></div>' +
+        '<label>Supplier<select data-pk="' + n + '" data-k="supplier"><option value="">Choose…</option>' + ig.suppliers.map((s) =>
+          '<option' + (s.name === p.supplier ? ' selected' : '') + '>' + igEsc(s.name) + '</option>').join('') + '</select></label>' +
+        '<label>Pack (as on the order site)<input data-pk="' + n + '" data-k="pack" value="' + igEsc(p.pack) + '" placeholder="e.g. Carton 6 × 1 L"></label>' +
+        '<div class="ig-three"><label>Size (' + d.unit + ')<input data-pk="' + n + '" data-k="size" inputmode="decimal" value="' + igEsc(p.size ?? '') + '"></label>' +
+        '<label>Price HT €<input data-pk="' + n + '" data-k="price" inputmode="decimal" value="' + igEsc(p.price ?? '') + '"></label>' +
+        '<label>Deposit €<input data-pk="' + n + '" data-k="deposit" inputmode="decimal" value="' + igEsc(p.deposit || '') + '" placeholder="0"></label></div>' +
+        '<label>Supplier ref (optional)<input data-pk="' + n + '" data-k="ref" value="' + igEsc(p.ref || '') + '"></label>' +
+        '<div class="ig-calc" id="ig-calc-' + n + '">' + igCalc(p, d.unit) + '</div>' +
+        '<button type="button" class="ig-link danger" data-delpack="' + n + '">Remove this pack</button></div>';
+    });
+    h += '<button type="button" class="ig-btn ghost" data-act="addpack">+ Add supplier / pack</button>' +
+      '<p class="ig-help">Deposit = glass charge per pack (2 packs = 2 deposits). Not in the cost per kg. Only added to the expected invoice total when an order is made.</p></div>';
+
+    h += '<div class="ig-card"><label>Note<input data-f="note" value="' + igEsc(d.note) + '" maxlength="200"></label></div>';
+    if (igDraft.id) h += '<div class="ig-card ig-used"><h3>Used in</h3><div>' + (d.used && d.used.length ? d.used.map(igEsc).join(' · ') : '<span class="ig-sub">No recipe yet</span>') + '</div></div>';
+    h += '<p id="ig-msg" class="ig-msg"></p><button type="button" class="ig-btn" id="b-ig-save">Save</button>';
+    if (igDraft.id) h += '<button type="button" class="ig-link danger" data-act="remove" style="align-self:center">Remove this ingredient</button>';
+    $('ig-view').innerHTML = h;
+    $('ig-count').textContent = '';
+  }
+
+  function igCalc(p, unit) {
+    const size = igNum(p.size), price = igNum(p.price), dep = igNum(p.deposit) || 0;
+    if (!size || price == null) return 'Enter the size and the price.';
+    return igQty(size, unit) + ' · ' + igPer(p, unit) +
+      (dep > 0 ? '<br>On the order estimate: <b>' + igEur(price + dep) + '</b> per pack (' + igEur(price) + ' + deposit ' + igEur(dep) + ')' : '');
+  }
+
+  function igLeave() {
+    if (igDraft && igDraft.dirty && !confirm('Discard your changes?')) return;
+    if (igSupDraft && igSupDraft.dirty && !confirm('Discard your changes?')) return;
+    igDraft = null; igSupDraft = null;
+    igRender();
+    window.scrollTo(0, 0);
+  }
+
+  const igMsg = (t, cls) => { const m = $('ig-msg'); if (m) { m.textContent = t; m.className = 'ig-msg ' + (cls || ''); } };
+
+  async function igSave() {
+    const d = igDraft.d, btn = $('b-ig-save');
+    const ingredient = { name: d.name, cat: d.cat, unit: d.unit, storage: d.storage, address: d.storage === 'Freezer' ? '' : d.address,
+                         count: d.count, demand: d.demand, par: d.par, note: d.note,
+                         packs: d.packs.map(({ k, ...p }) => p) };
+    btn.disabled = true;
+    igMsg('Saving…', 'meta');
+    try {
+      const r = await api({ action: 'ingSave', token: token(), id: igDraft.id || undefined, ver: igDraft.ver || undefined, ingredient });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) {
+        btn.disabled = false;
+        igMsg(serverMsg(r), 'err');
+        if (r.code === 'CHANGED') loadIngr();
+        return;
+      }
+      const list = ig.ingredients, i = list.findIndex((x) => x.id === r.id);
+      if (r.ingredient) { if (i >= 0) list[i] = r.ingredient; else list.push(r.ingredient); }
+      store.set(IG_STORE, JSON.stringify(ig));
+      toast('✓ Saved: ' + d.name + (r.renamedIn && r.renamedIn.length ? ' · renamed in ' + r.renamedIn.join(', ') : ''));
+      igDraft = null;
+      igRender();
+      window.scrollTo(0, 0);
+      loadIngr();
+    } catch (e) {
+      btn.disabled = false;
+      igMsg('Network problem. Please try again.' + detail(e), 'err');
+    }
+  }
+
+  async function igRemove() {
+    if (!confirm('Remove “' + igDraft.d.name + '” from the list? Recipes that use it are not changed.')) return;
+    try {
+      const r = await api({ action: 'ingRemove', token: token(), id: igDraft.id });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) return igMsg(serverMsg(r), 'err');
+      ig.ingredients = ig.ingredients.filter((x) => x.id !== igDraft.id);
+      toast('Removed: ' + igDraft.d.name);
+      igDraft = null;
+      igRender();
+      loadIngr();
+    } catch (e) { igMsg('Network problem. Please try again.' + detail(e), 'err'); }
+  }
+
+  // ---- 거래처
+  function igSupView() {
+    const how = { Email: 'Order sent by email from the app.', WhatsApp: 'The app opens WhatsApp with the order ready; you press send.',
+                  Website: 'You enter the order on the website; the app shows the list to tick.' };
+    let h = '';
+    if (!ig.suppliers.length) h += '<p class="hint">No suppliers yet.</p>';
+    ig.suppliers.forEach((s, n) => {
+      const used = ig.ingredients.filter((i) => i.packs.some((p) => p.supplier === s.name)).length;
+      const contact = s.by === 'Email' ? s.email : s.by === 'WhatsApp' ? s.whatsapp : s.website;
+      h += '<button type="button" class="ig-card ig-supcard" data-sup="' + n + '"><h3>' + igEsc(s.name) + ' <span class="ig-ch ig-ch-' + s.by + '">' + s.by + '</span></h3>' +
+        (contact || s.contact ? '<div class="ig-sub">' + igEsc([contact, s.contact].filter(Boolean).join(' · ')) + '</div>' : '') +
+        '<div class="ig-two"><div><div class="ig-sub">Order days</div>' + igEsc(s.orderDays || '—') + '</div><div><div class="ig-sub">Delivery</div>' + igEsc(s.delivery || '—') + '</div></div>' +
+        '<div class="ig-two"><div><div class="ig-sub">Minimum order HT</div>' + (s.min ? igEur(s.min) : 'None') + '</div><div><div class="ig-sub">Ingredients</div>' + used + '</div></div>' +
+        '<p class="ig-help">' + how[s.by] + '</p></button>';
+    });
+    h += '<button type="button" class="ig-btn ghost" data-act="newsup">+ New supplier</button>';
+    $('ig-view').innerHTML = h;
+    $('ig-count').textContent = ig.suppliers.length + ' suppliers';
+  }
+
+  function igSupStart(n) {
+    const list = ig.suppliers.map((s) => Object.assign({}, s, { was: s.name }));
+    if (n == null) { list.push({ name: '', by: 'Email', email: '', whatsapp: '', website: '', contact: '', orderDays: '', delivery: '', min: '', note: '', was: '' }); n = list.length - 1; }
+    igSupDraft = { list, i: n, dirty: false, isNew: !list[n].was };
+    igRender();
+    window.scrollTo(0, 0);
+  }
+
+  function igSupForm() {
+    const s = igSupDraft.list[igSupDraft.i];
+    const f = (k, label, extra) => '<label>' + label + '<input data-sf="' + k + '" value="' + igEsc(s[k] ?? '') + '"' + (extra || '') + '></label>';
+    let h = '<button type="button" class="ig-link" data-act="leave">← Suppliers</button><div class="ig-card">' +
+      f('name', 'Name', ' maxlength="80"') + '<label>How we order</label>' + igOpt('by', s.by, [['Email', 'Email'], ['WhatsApp', 'WhatsApp'], ['Website', 'Website']]);
+    if (s.by === 'Email') h += f('email', 'Order email', ' type="email" inputmode="email"');
+    if (s.by === 'WhatsApp') h += f('whatsapp', 'WhatsApp number', ' inputmode="tel" placeholder="+33 6 …"');
+    if (s.by === 'Website') h += f('website', 'Website', ' inputmode="url" placeholder="https://…"');
+    h += f('contact', 'Contact person / account') + '<div class="ig-two">' + f('orderDays', 'Order days', ' placeholder="Mon, Thu"') + f('delivery', 'Delivery', ' placeholder="Tue, Fri"') + '</div>' +
+      f('min', 'Minimum order HT €', ' inputmode="decimal"') + f('note', 'Note') + '</div>' +
+      '<p id="ig-msg" class="ig-msg"></p><button type="button" class="ig-btn" id="b-ig-supsave">Save</button>';
+    if (!igSupDraft.isNew) h += '<button type="button" class="ig-link danger" data-act="delsup" style="align-self:center">Delete this supplier</button>';
+    $('ig-view').innerHTML = h;
+    $('ig-count').textContent = '';
+  }
+
+  async function igSupSave(del) {
+    const list = igSupDraft.list.filter((s, n) => !(del && n === igSupDraft.i));
+    if (del && !confirm('Delete this supplier?')) return;
+    const btn = $('b-ig-supsave');
+    btn.disabled = true;
+    igMsg('Saving…', 'meta');
+    try {
+      const r = await api({ action: 'supSave', token: token(), ver: ig.suppliersVer, suppliers: list });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) { btn.disabled = false; igMsg(serverMsg(r), 'err'); if (r.code === 'CHANGED') loadIngr(); return; }
+      ig.suppliers = r.suppliers; ig.suppliersVer = r.suppliersVer;
+      toast(del ? 'Supplier deleted.' : '✓ Supplier saved.');
+      igSupDraft = null;
+      igRender();
+      loadIngr();
+    } catch (e) { btn.disabled = false; igMsg('Network problem. Please try again.' + detail(e), 'err'); }
+  }
+
+  // ---- 주소 그림
+  const igAt = (code) => ig.ingredients.filter((i) => i.storage !== 'Freezer' && i.address === code);
+  const igChip = (i) => '<span class="ig-ichip' + (igSel === i.id ? ' sel' : '') + '" data-ing="' + igEsc(i.id) + '">' + igEsc(i.name) + '</span>';
+  const igSlot = (code, list) => '<div class="ig-slot' + (list.length ? '' : ' empty') + (igSel ? ' can' : '') + '" data-slot="' + igEsc(code) + '">' + list.map(igChip).join('') + '</div>';
+  const igIsOther = (s) => s.by.toLowerCase() !== 'kitchen';
+
+  function igZoneBar() {
+    let h = '<div class="ig-zbar">';
+    for (const s of ig.shelves) {
+      let lines = '';
+      for (let l = 1; l <= s.levels; l++) lines += '<i class="' + (igAt(s.code + '-' + l).length ? 'full' : '') + '"></i>';
+      h += '<button type="button" class="ig-zb' + (igZone === s.code ? ' on' : '') + (igIsOther(s) ? ' hall' : '') + '" data-zone="' + igEsc(s.code) + '"><b>' + igEsc(s.code) + '</b><span class="ig-mini">' + lines + '</span></button>';
+    }
+    const nf = ig.fridges.reduce((n, f) => n + igAt(f.code).length, 0), nz = ig.ingredients.filter((i) => i.storage === 'Freezer').length;
+    h += '<button type="button" class="ig-zb wide' + (igZone === 'FR' ? ' on' : '') + '" data-zone="FR"><b>Fridges</b><span class="ig-sub">' + nf + ' items</span></button>';
+    h += '<button type="button" class="ig-zb wide last' + (igZone === 'FZ' ? ' on' : '') + '" data-zone="FZ"><b>Freezer</b><span class="ig-sub">' + nz + ' items</span></button>';
+    return h + '</div>';
+  }
+
+  function igZoneBody() {
+    const s = ig.shelves.find((x) => x.code === igZone);
+    let h = '';
+    if (s) {
+      h += '<div class="ig-shelf"><div class="ig-shelf-h"><b>Shelf ' + igEsc(s.code) + '</b>' +
+        '<button type="button" class="ig-who' + (igIsOther(s) ? ' other' : '') + '" data-who="' + igEsc(s.code) + '" aria-haspopup="menu" aria-expanded="' + (igWho === s.code) + '">' + igEsc(s.by) + ' counts ▾</button>' +
+        (igWho === s.code ? '<div class="ig-whomenu" role="menu">' + ig.teams.map((t) =>
+          '<button type="button" role="menuitem" data-team="' + igEsc(t) + '"' + (t === s.by ? ' class="cur"' : '') + '>' + (t === s.by ? '✓ ' : '') + igEsc(t) + '</button>').join('') + '</div>' : '') + '</div>';
+      for (let l = 1; l <= s.levels; l++) h += '<div class="ig-lvl"><div class="ig-lvl-n">' + igEsc(s.code) + '-' + l + '</div>' + igSlot(s.code + '-' + l, igAt(s.code + '-' + l)) + '</div>';
+      h += '<div class="ig-lvctl"><button type="button" data-lv="-1" aria-label="Remove the bottom level">−</button><span>' + s.levels + ' levels</span><button type="button" data-lv="1" aria-label="Add a level">+</button></div></div>';
+    } else if (igZone === 'FR') {
+      const floors = [...new Set(ig.fridges.map((f) => f.floor))];
+      for (const fl of floors) {
+        h += '<div class="ig-gh">' + igEsc(fl) + '</div><div class="ig-fridges">';
+        for (const f of ig.fridges.filter((x) => x.floor === fl)) h += '<div class="ig-fridge"><div class="ig-fridge-h">' + igEsc(f.code) + '</div>' + igSlot(f.code, igAt(f.code)) + '</div>';
+        h += '</div>';
+      }
+    } else {
+      h += '<div class="ig-freezer"><div class="ig-fridge-h">Freezers · no address</div>' + igSlot('FREEZER', ig.ingredients.filter((i) => i.storage === 'Freezer')) + '</div>';
+    }
+    return h;
+  }
+
+  function igAddrView() {
+    if (!ig.shelves.some((s) => s.code === igZone) && igZone !== 'FR' && igZone !== 'FZ') igZone = ig.shelves[0] ? ig.shelves[0].code : 'FR';
+    const none = ig.ingredients.filter((i) => i.storage !== 'Freezer' && !i.address);
+    $('ig-view').innerHTML = '<p class="ig-help" style="margin:0 4px">Tap a shelf to open it. Drag an ingredient to a level; to move it to another shelf, hold it over that shelf letter. ' +
+      'Drop it in the red box to remove its address. You can also tap an ingredient, then tap where it goes.</p>' +
+      '<div class="ig-dock">' + igZoneBar() + '<div class="ig-tray"><div class="ig-tray-h"><span>No address</span><span>' + none.length + '</span></div>' + igSlot('', none) + '</div></div>' +
+      '<div id="ig-zbody" style="display:flex;flex-direction:column;gap:8px">' + igZoneBody() + '</div>';
+    $('ig-count').textContent = ig.shelves.length + ' shelves · ' + ig.fridges.length + ' fridges';
+  }
+
+  async function igPlace(id, code) {
+    const i = igById(id);
+    igSel = null;
+    if (!i) return igRender();
+    const before = { storage: i.storage, address: i.address };
+    if (code === 'FREEZER') { i.storage = 'Freezer'; i.address = ''; }
+    else if (!code) { if (i.storage === 'Freezer') i.storage = ''; i.address = ''; }
+    else { i.storage = ig.fridges.some((f) => f.code === code) ? 'Fridge' : 'Shelf'; i.address = code; }
+    if (before.storage === i.storage && before.address === i.address) return igRender();
+    igRender();
+    try {
+      const r = await api({ action: 'ingMove', token: token(), id, address: code });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) throw new Error(serverMsg(r));
+      i.storage = r.storage; i.address = r.address;
+      store.set(IG_STORE, JSON.stringify(ig));
+      toast(i.name + ' → ' + (code === 'FREEZER' ? 'Freezer' : code || 'No address'));
+    } catch (e) {
+      Object.assign(i, before);
+      toast('Not moved: ' + e.message);
+    }
+    if (currentView === 'ingr' && igTab === 'addr' && !igDrag) igRender();
+  }
+
+  async function igShelf(code, change) {
+    try {
+      const r = await api(Object.assign({ action: 'shelfSave', token: token(), shelf: code }, change));
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) return toast(serverMsg(r));
+      const s = ig.shelves.find((x) => x.code === code);
+      Object.assign(s, r.shelf);
+      store.set(IG_STORE, JSON.stringify(ig));
+      if (change.by) toast('Shelf ' + code + ': now counted by ' + r.shelf.by);
+      igRender();
+    } catch (e) { toast('Network problem. Please try again.' + detail(e)); }
+  }
+
+  // ---- 이벤트
+  $('ig-tabs').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    igTab = b.dataset.tab; igSel = null; igWho = null;
+    igRender();
+    window.scrollTo(0, 0);
+  });
+  $('ig-view').addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.id === 'ig-q') {
+      igQ = t.value; igListView();
+      const q = $('ig-q'); q.focus(); q.setSelectionRange(q.value.length, q.value.length);
+      return;
+    }
+    if (igDraft && t.dataset.f) {
+      igDraft.d[t.dataset.f] = t.value; igDraft.dirty = true;
+      if (t.dataset.rerender) igEditView();
+    } else if (igDraft && t.dataset.pk != null) {
+      const p = igDraft.d.packs[+t.dataset.pk];
+      p[t.dataset.k] = t.value; igDraft.dirty = true;
+      const c = $('ig-calc-' + t.dataset.pk); if (c) c.innerHTML = igCalc(p, igDraft.d.unit);
+    } else if (igSupDraft && t.dataset.sf) {
+      igSupDraft.list[igSupDraft.i][t.dataset.sf] = t.value; igSupDraft.dirty = true;
+    }
+  });
+  $('ig-view').addEventListener('change', (e) => {
+    const t = e.target;
+    if (igDraft && t.dataset.f === 'unit') { igDraft.d.unit = t.value; igDraft.dirty = true; igEditView(); }
+  });
+  $('ig-view').addEventListener('click', (e) => {
+    const t = e.target, act = t.closest('[data-act]');
+    if (igWho && !t.closest('.ig-whomenu') && !t.closest('[data-who]')) { igWho = null; igRender(); return; }
+    if (act) {
+      const a = act.dataset.act;
+      if (a === 'new') return igStartEdit(null);
+      if (a === 'leave') return igLeave();
+      if (a === 'addpack') { igDraft.d.packs.push({ supplier: '', pack: '', size: '', price: '', deposit: '', usual: !igDraft.d.packs.length, ref: '', k: Math.random() }); igDraft.dirty = true; return igEditView(); }
+      if (a === 'remove') return igRemove();
+      if (a === 'newsup') return igSupStart(null);
+      if (a === 'delsup') return igSupSave(true);
+    }
+    if (t.id === 'b-ig-save') return igSave();
+    if (t.id === 'b-ig-supsave') return igSupSave(false);
+    const g = t.closest('[data-group]'); if (g) { igGroup = g.dataset.group; return igListView(); }
+    const o = t.closest('[data-open]'); if (o) return igStartEdit(igById(o.dataset.open));
+    const sc = t.closest('[data-sup]'); if (sc) return igSupStart(+sc.dataset.sup);
+    const opt = t.closest('.ig-opt button');
+    if (opt) {
+      const f = opt.parentElement.dataset.field, v = opt.dataset.val;
+      if (igSupDraft) { igSupDraft.list[igSupDraft.i][f] = v; igSupDraft.dirty = true; return igSupForm(); }
+      if (f === 'storage' && v !== igDraft.d.storage) igDraft.d.address = '';
+      igDraft.d[f] = v; igDraft.dirty = true;
+      return igEditView();
+    }
+    const st = t.closest('[data-star]'); if (st) { igDraft.d.packs.forEach((p, n) => { p.usual = n === +st.dataset.star; }); igDraft.dirty = true; return igEditView(); }
+    const dp = t.closest('[data-delpack]');
+    if (dp) {
+      const n = +dp.dataset.delpack, was = igDraft.d.packs[n].usual;
+      igDraft.d.packs.splice(n, 1);
+      if (was && igDraft.d.packs[0]) igDraft.d.packs[0].usual = true;
+      igDraft.dirty = true;
+      return igEditView();
+    }
+    const w = t.closest('[data-who]'); if (w) { igWho = igWho === w.dataset.who ? null : w.dataset.who; return igRender(); }
+    const tm = t.closest('[data-team]');
+    if (tm) {
+      const s = ig.shelves.find((x) => x.code === igWho);
+      igWho = null;
+      if (s && tm.dataset.team !== s.by) return igShelf(s.code, { by: tm.dataset.team });
+      return igRender();
+    }
+    if (t.closest('.ig-ichip')) return;
+    const sl = t.closest('[data-slot]'); if (sl && igSel) return igPlace(igSel, sl.dataset.slot);
+    const zb = t.closest('[data-zone]'); if (zb) { igZone = zb.dataset.zone; igWho = null; return igRender(); }
+    const lv = t.closest('[data-lv]');
+    if (lv) {
+      const s = ig.shelves.find((x) => x.code === igZone), n = s.levels + +lv.dataset.lv;
+      if (n < 1 || n > 12) return;
+      if (n < s.levels && igAt(s.code + '-' + s.levels).length) return toast(s.code + '-' + s.levels + ' is not empty. Move its items first.');
+      return igShelf(s.code, { levels: n });
+    }
+  });
+
+  // 끌어서 놓기 (마우스·터치 공통). 움직이지 않고 떼면 = 탭 → 고르기, 그다음 자리를 탭하면 놓기.
+  document.addEventListener('pointerdown', (e) => {
+    const c = e.target.closest && e.target.closest('#v-ingr .ig-ichip');
+    if (!c || currentView !== 'ingr') return;
+    igDrag = { id: c.dataset.ing, x: e.clientX, y: e.clientY, chip: c, on: false, hot: null, zt: null, zk: null };
+  });
+  document.addEventListener('pointermove', (e) => {
+    const d = igDrag;
+    if (!d) return;
+    if (!d.on) {
+      if (Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) < 6) return;
+      d.on = true; d.g = d.chip.cloneNode(true); d.g.classList.add('ig-ghost'); document.body.append(d.g); d.chip.classList.add('lift');
+    }
+    e.preventDefault();
+    d.g.style.left = e.clientX + 'px'; d.g.style.top = e.clientY + 'px';
+    const at = document.elementFromPoint(e.clientX, e.clientY), s = at && at.closest('[data-slot]'), z = at && at.closest('[data-zone]');
+    if (d.hot && d.hot !== s) d.hot.classList.remove('hot');
+    if (s) s.classList.add('hot');
+    d.hot = s;
+    const zk = z ? z.dataset.zone : null;
+    if (zk !== d.zk) {
+      clearTimeout(d.zt); d.zk = zk;
+      if (zk && zk !== igZone) d.zt = setTimeout(() => {
+        if (igDrag !== d) return;
+        igZone = zk;
+        for (const b of document.querySelectorAll('#v-ingr .ig-zb')) b.classList.toggle('on', b.dataset.zone === zk);
+        $('ig-zbody').innerHTML = igZoneBody();
+      }, 350);
+    }
+    if (e.clientY > window.innerHeight - 50) window.scrollBy(0, 10); // 아래로만 (위는 선반 그림·주소 없음 칸이 늘 떠 있음)
+  }, { passive: false });
+  function igEndDrag(cancel) {
+    const d = igDrag;
+    if (!d) return;
+    igDrag = null;
+    clearTimeout(d.zt);
+    if (!d.on) { igSel = igSel === d.id ? null : d.id; return igRender(); }
+    d.g.remove(); d.chip.classList.remove('lift');
+    if (d.hot) d.hot.classList.remove('hot');
+    if (!cancel && d.hot) igPlace(d.id, d.hot.dataset.slot); else igRender();
+  }
+  document.addEventListener('pointerup', () => igEndDrag(false));
+  document.addEventListener('pointercancel', () => igEndDrag(true));
+
+  $('b-ingr').addEventListener('click', () => openIngr());
+  $('b-ig-back').addEventListener('click', () => (igDraft || igSupDraft ? igLeave() : goHome()));
+
   // 상단 로고 = 메인 화면 (로그인 전에는 아무 동작 안 함)
   $('b-logo').addEventListener('click', () => {
     if (!token() || currentView === 'login') return;
     if (currentView === 'redit' && reDraft && reDraft.dirty && !confirm('Discard your changes?')) return;
+    if (currentView === 'ingr' && ((igDraft && igDraft.dirty) || (igSupDraft && igSupDraft.dirty)) && !confirm('Discard your changes?')) return;
     if (editingRule) stopEditRule();
     goHome();
   });
@@ -5264,6 +5912,7 @@
       if (currentView === 'recipes') return loadRecipes();
       if (currentView === 'stock') { if (stTab === 'stock') loadStock(); return loadRecipes(); }
       if (currentView === 'chat') return chatRefresh();
+      if (currentView === 'ingr') return loadIngr();
       if (currentView === 'receipt' && !rcNew.length) return openReceipt(rcReturn);
       if (currentView === 'schedule') {
         return openSchedule(schedData ? { sched: schedData.sched, file: schedData.file, tab: schedData.tab } : {}, false, null, true);

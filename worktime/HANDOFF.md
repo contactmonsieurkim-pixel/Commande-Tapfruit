@@ -1,6 +1,6 @@
 # 인수인계 메모 (새 세션은 이 파일부터 읽기)
 
-> 마지막 정리: 2026-10-11 · Recipes(레시피 + Recipe editor + Production log) + Stock(재고 종합본 · 저녁/일요일 재고 조사 · 소비량) 추가
+> 마지막 정리: 2026-10-12 · Ingredients(재료 마스터: 거래처·규격·가격·보관 주소 + 앱 편집기) 추가. 다음 = 원재료 재고 조사 → 주간 Demand·주문 → 입고·변동
 > 설치·사용법은 `README.md`, 이 파일은 **구조 · 결정한 이유 · 작업 방식 · 남은 일**.
 
 ## 1. 한눈에 보기
@@ -20,9 +20,10 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 - **Announcement Records** (보호 + HMAC 체인): `Announcements`, `Confirmations`, `Notifications`, `Logins`, `Our Rules`, `Requests`, `Deleted`, `Receipts`, `Receipt Mails`, `Chat`
 - `Transport Receipts` 폴더 (영수증 `이름 yyyy-MM.jpg`, 회계사에게 보내면 휴지통으로)
 - `Announcement Photos` 폴더 (비공개, 앱에는 API 로 base64 전달)
-- **Recipes** 스프레드시트 (레시피마다 탭 1개 + `Boxes` + `How to`), `Recipe Photos` 폴더, **Production Log** 스프레드시트(`Log` 탭, 보호 안 함)
+- **Recipes** 스프레드시트 (레시피마다 탭 1개 + `Boxes` + `Places` + `How to`), `Recipe Photos` 폴더, **Production Log** 스프레드시트(`Log` 탭, 보호 안 함)
+- **Ingredients** 스프레드시트 (`Ingredients` · `Packs` · `Suppliers` · `Shelves` · `Price history` · `Changes`, 보호 안 함)
 
-## 2. 서버 파일 (Apps Script 에 같은 이름으로 11개 + appsscript.json)
+## 2. 서버 파일 (Apps Script 에 같은 이름으로 12개 + appsscript.json)
 
 | 파일 | 내용 | `setup` 잘림 검사 표식(파일 마지막 함수) |
 |---|---|---|
@@ -37,10 +38,11 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 | `Chat.gs` | 단체 채팅(전체 방 + 팀별 방): 메시지·사진·삭제·알림 끄기, 방별 캐시, 모아서 보내는 푸시(`chatPushRun`) | `chatPushRun` |
 | `Recipes.gs` | 레시피 읽기(시트 탭 → 레시피)·저장(앱 편집기)·사진·박스 목록, 편집기용 점검 `checkRecipes` | `checkRecipes` |
 | `Stock.gs` | 저장 위치(Places 탭), Production log(배치)·옮기기·나누기·정정·빠진 배치, 재고 종합본, 재고 조사(Count/Sunday)·소비량(Use 탭), 편집기용 `checkStock` | `checkStock` |
+| `Ingredients.gs` | 재료 마스터(별도 시트): 재료·규격·가격·보증금·거래처·선반 주소, 앱 편집(Admin), 이름 바꾸면 레시피도 고침, 레시피의 새 재료 자동 추가, 편집기용 `checkIngredients` | `checkIngredients` |
 
-API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend chat chatSend chatDelete chatPhoto chatMute org recipes recipePhoto recipePhotoUpload recipeSave recipeDelete boxSave prodLog prodList prodDelete prodMove prodCorrect stock countView countSave`
+API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend chat chatSend chatDelete chatPhoto chatMute org recipes recipePhoto recipePhotoUpload recipeSave recipeDelete boxSave prodLog prodList prodDelete prodMove prodCorrect stock countView countSave ingView ingSave ingMove ingRemove supSave shelfSave`
 
-스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음), `RECIPE_TEAMS`(선택, 레시피를 보는 팀, 기본 `Kitchen`, 쉼표로 여러 팀) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID RECEIPT_FOLDER_ID ACCOUNTANT_EMAIL RECEIPT_NOTIFIED RECIPE_SHEET_ID RECIPE_PHOTO_FOLDER_ID PROD_SHEET_ID RCP_VER PROD_SEQ COUNT_LAST_daily COUNT_LAST_sunday LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE CHAT_SEQ CHAT_VER_<방> CHAT_PUSH_AT chatr_<이름> chatn_<이름> chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
+스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음), `RECIPE_TEAMS`(선택, 레시피를 보는 팀, 기본 `Kitchen`, 쉼표로 여러 팀) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID RECEIPT_FOLDER_ID ACCOUNTANT_EMAIL RECEIPT_NOTIFIED RECIPE_SHEET_ID RECIPE_PHOTO_FOLDER_ID PROD_SHEET_ID INGREDIENT_SHEET_ID ING_MIGRATED RCP_VER PROD_SEQ COUNT_LAST_daily COUNT_LAST_sunday LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE CHAT_SEQ CHAT_VER_<방> CHAT_PUSH_AT chatr_<이름> chatn_<이름> chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
 
 트리거: `scheduleMorning`(매일 07시대) → 그날 09:00 정각 1회용 `morningRun` 예약. `checkScheduleChanges`(30분마다, 조용한 시간엔 건너뜀).
 `chatPushRun`: 채팅 메시지가 오면 약 1분 뒤 1회용으로 자동 예약(동시에 하나만, 자기 자신을 지움). setup 에서 만들 필요 없음.
@@ -148,7 +150,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - **Not stored (재고로 두지 않는 레시피)**: 편집기 Stock count 의 세 번째 선택(COUNT 줄 `Not stored`). 바로 쓰고 끝나는 프렙. Log production = 만든 기록만(배치·Made by·Made on, 박스·위치 없음, Left 0) → Stock·Count·Sunday 에 안 나옴. 레시피 화면 'Not stored', 목록 칩 'Not stored'.
 - **레시피 목록**: 분류 · 통 크기(왼쪽) + 옅은 배경의 통 수 '2.3 box / Batch' (완성 무게 ÷ 박스당 g, 소수 1자리). 비율 레시피는 '… box / kg base'. 박스당 g(FILL)이 없으면 통 크기만.
 - **무게 표시**: 10 000 g 부터 kg (소수 2자리까지, 예: 12.5 kg). 입력은 계속 g.
-- **재료 목록 (Ingredients 탭)**: 편집기의 재료 이름 칸 = 자동완성(앞글자만 쳐도 목록이 뜸, 단어 시작·포함 순). 목록에 없으면 노란 *New ingredient* + 비슷한 이름이 있으면 *Did you mean …?*(편집 거리 2 이하 또는 앞부분 일치).
+- **재료 목록 (→ 이제 별도 Ingredients 시트, 아래 Ingredients 참고)**: 편집기의 재료 이름 칸 = 자동완성(앞글자만 쳐도 목록이 뜸, 단어 시작·포함 순). 목록에 없으면 노란 *New ingredient* + 비슷한 이름이 있으면 *Did you mean …?*(편집 거리 2 이하 또는 앞부분 일치).
   저장할 때 서버가 대소문자·띄어쓰기·악센트만 다른 이름을 목록의 표기로 맞추고(`ingKey_`), 새 이름은 탭에 자동 추가(Added, First recipe). 목적 = 나중에 주문 시스템에서 같은 재료가 다른 이름으로 갈라지지 않게.
   탭은 setup/첫 저장 때 지금 레시피들의 재료로 채워짐. 시트에서 고치거나 지워도 됨(이미 저장된 레시피의 이름은 그대로 — 바꾸면 레시피 탭도 같이 고칠 것).
 - 캐시: 서버 60초(`rcp_all_<RCP_VER>`, 앱에서 고치면 바로 새로), 폰 `wt_rcp_v1`(열면 바로 + 뒤에서 갱신), 사진은 폰 IndexedDB `rph:<파일 이름>` → **같은 파일 이름으로 사진을 바꾸면 폰에는 옛 사진이 남음** (새 이름 사용).
@@ -172,6 +174,24 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - 레시피 COUNT 줄(편집기 'Stock count': Every evening / Sunday only). Log production 에 Admin 이상만 **Made on**(지난 60일 안, 사용기한도 그 날 기준).
 - Log 탭을 끝에서 3000줄만 읽음(`PROD_SCAN_ROWS`). 몇 년 쓰면 오래된 줄을 다른 탭으로 옮기는 것을 검토.
 
+**Ingredients (재료 마스터)** (2026-10-12)
+- 큰 그림(사장님): 재료마다 거래처·주문 규격·가격·보관 주소 → 매주 Demand → 거래처별 주문(Email / WhatsApp / Website) → 오전 프로덕션 담당(Kitchen 팀 + Admin 이상)이 배달과 대조해 실제 입고량 기록 → 차이(양·송장 가격)는 따로 기록 + 변동 탭 + 알림(Supervisor 는 조용한 시간 무시, Admin 은 지킴). **이번에 만든 것은 1단계(재료 마스터 + 편집기)뿐.**
+- 별도 스프레드시트 **Ingredients**(사장님: 중요하고 자주 바뀌므로 앱에서 편집 + 시트는 따로). 형식은 `Ingredients.gs` 맨 위. 재료는 **ID(ING-001)** 로 연결 → 이름을 바꿔도 끊기지 않음.
+  setup 이 처음 한 번 예전 Recipes 시트의 `Ingredients` 탭(+ 레시피에 쓰인 재료)을 옮기고 그 탭을 숨김(`ING_MIGRATED`). 레시피 편집기 자동완성·이름 맞추기·새 재료 자동 추가는 이제 이 시트.
+- 앱: Manager 폴더 **Ingredients** = **Admin(E열) 이상**(Supervisor 포함). 탭 Ingredients · Suppliers · Addresses.
+  - 재료: 이름(바꾸면 그 재료를 쓰는 **레시피 탭들도 같이 고침**)·분류·단위(g/ml/pcs)·보관(Shelf/Fridge/Freezer)·주소·재고 조사(Every evening / Sunday only)·Demand(Recipes + Par / Usage average, 재료마다)·Par·메모. 연 뒤에 바뀌었으면 `CHANGED`.
+  - 규격(Packs): 재료 하나에 거래처·규격 여러 개, ★ = 기본 주문. 크기(단위 기준)·가격 **HT**·**병 보증금(규격당, 2규격 = 2번)**. kg/L 당 원가에는 보증금 제외, **주문서의 예상 facture 금액에만** 더함(사장님 지시). 병 개수 추적은 안 함.
+  - 가격·보증금이 바뀌면 `Price history`, 모든 수정은 `Changes`(누가·무엇·전→후).
+  - Remove = Active FALSE(행은 남음). 레시피에서 같은 이름을 다시 쓰면 그 행이 다시 살아남(중복 행 안 생김).
+- **주소**: 지하 원재료 선반 7개 A~G(기본 6칸, **칸 번호는 위에서 1**), 주소 `A-1`. **냉장고는 칸 번호 없이** Places 탭 Fridge 의 Short(`F6`) — 프렙 재고와 같은 이름. **냉동은 주소 없음.** 체크 순서 = 선반 A-1 → … → G-n → 냉장고(지하 먼저, 그다음 Places 순서).
+  원재료 선반은 Places 가 아니라 Ingredients 시트 `Shelves` 탭에만(Places 에 넣으면 프렙 일요일 조사에 빈 선반이 나옴).
+  `Shelves`: `Shelf | Floor | Levels | Counted by`. 기본 A~C = Kitchen, **D~G = Service**(홀 서버가 조사).
+- Addresses 화면(사장님 요청으로 다듬음): 위에 선반 A~G 작은 그림(칸마다 선, 재료가 든 칸은 색) + Fridges + Freezer, 그 아래 빨간 **No address** 칸 — 함께 위에 고정(sticky). 고른 선반 하나만 크게(스크롤 짧게).
+  재료를 **끌어서** 칸에 놓기(다른 선반은 작은 그림 위에서 0.35초 멈추면 바뀜), 또는 **눌러서 고르고 → 칸 누르기**. 놓으면 바로 저장(`ingMove`). 위로 자동 스크롤은 없음(지나가다 밀려서 엉뚱한 칸에 떨어졌음), 아래로만.
+  칸 수 **− / +**(1~12, 맨 아래 칸에 재료가 있으면 못 줄임). 조사 담당 = 선반 머리의 `Kitchen counts ▾` → 작은 드롭다운에서 팀 선택(**2번 눌러야 바뀜**, 사장님: 실수 방지. 큰 패널은 "거창하다"고 해서 배지 크기 드롭다운으로).
+  옛 미리보기의 화살표(체크 순서 바꾸기)는 "자리와 재료가 같이 움직여 이해 안 됨"이라 없앰.
+- 남은 단계(사장님과 합의, 순서대로): ① 원재료 재고 조사(Daily/Sunday, Service 담당 선반은 Service 팀이) ② 주간 Demand(Recipes+Par / Usage) → 주문 목록 → 거래처별 분할(보증금 포함 예상 facture) ③ 입고 대조·변동 기록·변동 탭·알림.
+
 ## 4. 작업 방식 (사장님과 합의된 흐름)
 
 - 사장님: 한국어, Mac + iPhone(Chrome/Safari), Supervisor = **Kim namheon**.
@@ -190,7 +210,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 139개, python 의 pycryptodome 필요)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 145개, python 의 pycryptodome 필요)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```
