@@ -202,7 +202,7 @@ function makeEnv(propsInit) {
     },
   };
   vm.createContext(ctx);
-  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs', 'Rules.gs', 'Schedule.gs', 'Receipts.gs', 'Chat.gs', 'Recipes.gs', 'Stock.gs', 'Ingredients.gs']) {
+  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs', 'Rules.gs', 'Schedule.gs', 'Receipts.gs', 'Chat.gs', 'Recipes.gs', 'Stock.gs', 'Ingredients.gs', 'Menus.gs']) {
     vm.runInContext(fs.readFileSync(path.join(GAS, f), 'utf8'), ctx, { filename: f });
   }
   ctx.setup();
@@ -1843,6 +1843,14 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
             { t: 'ing', name: 'Garlic', q: 150, note: 'peeled' }, { t: 'ing', name: 'Pepper', q: 6 }],
   };
 
+  // 새 재료는 Ingredients 앱에서만 → 레시피 테스트에 쓰는 재료를 먼저 등록
+  const addIng = (name, unit) => {
+    const r = C.call({ action: 'ingSave', token: chef, ingredient: { name, unit: unit || 'g', storage: 'Shelf' } });
+    assert.ok(r.ok, JSON.stringify(r));
+    return r.id;
+  };
+  for (const n of ['Soy sauce', 'Sugar', 'Garlic', 'Pepper', 'Bones', 'Water', 'A', 'Salted cabbage', 'Gochugaru', 'Ginger', 'Radish']) addIng(n);
+
   test('recipes: setup makes the Recipes book (Boxes + How to), the Production Log and the photo folder', () => {
     assert.ok(book().getSheetByName('Boxes') && book().getSheetByName('How to'));
     assert.deepStrictEqual(book().getSheetByName('Boxes').getRange(1, 1, 1, 4).getValues()[0], ['Name', 'Capacity', 'Photo', 'Note']);
@@ -1901,9 +1909,11 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.ok(r.ok, JSON.stringify(r));
     const sh = book().getSheetByName('Bulgogi marinade');
     assert.deepStrictEqual(tabRows(sh).map((x) => x[0]),
-      ['Kind', 'RECIPE', 'MODE', 'CATEGORY', 'ING', 'ING', 'STEP', 'ING', 'ING', 'BOX', 'FILL', 'KEEP']);
-    assert.deepStrictEqual(tabRows(sh)[7], ['ING', 'Garlic', '150', 'peeled']);
-    assert.deepStrictEqual(r.recipe.items, BULGOGI.items.map((x) => Object.assign({}, x)));
+      ['Kind', 'RECIPE', 'ID', 'MODE', 'CATEGORY', 'ING', 'ING', 'STEP', 'ING', 'ING', 'BOX', 'FILL', 'KEEP']);
+    assert.match(tabRows(sh)[2][1], /^RCP-\d{3}$/, 'recipe code');
+    assert.deepStrictEqual(tabRows(sh)[8], ['ING', 'Garlic', '150', 'peeled']);
+    assert.match(sh.getRange(9, 5).getValue(), /^ING-\d{3}$/, 'ingredient line saved with its code');
+    assert.deepStrictEqual(r.recipe.items.map(({ code, ...x }) => x), BULGOGI.items.map((x) => Object.assign({}, x)));
     assert.deepStrictEqual([r.recipe.fill, r.recipe.keepDays, r.recipe.keepNote, r.recipe.box], [1700, 5, 'Fridge 0–3 °C', 'GN 1/6 · 150 mm']);
     assert.ok(view(yu).recipes.some((x) => x.id === r.recipe.id), 'kitchen sees it at once');
   });
@@ -1918,7 +1928,7 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.strictEqual(r.recipe.items.slice(-1)[0].text, '=SUM(A1)', 'formula-looking text stays text');
     const again = C.call({ action: 'recipeSave', token: sup, id: r0.id, ver: r0.ver, recipe: edit });
     assert.deepStrictEqual([again.ok, again.code], [false, 'CHANGED'], 'old version');
-    book().getSheetByName('Bulgogi sauce').getRange(5, 3).setValue('1100');
+    book().getSheetByName('Bulgogi sauce').getRange(6, 3).setValue('1100'); // Soy sauce (row 3 = ID)
     const st = C.call({ action: 'recipeSave', token: sup, id: r0.id, ver: r.recipe.ver, recipe: edit });
     assert.deepStrictEqual([st.ok, st.code], [false, 'CHANGED'], 'edited in the sheet');
   });
@@ -2170,7 +2180,7 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     const rows = tabRows(sh);
     const i = rows.findIndex((r) => r[2] === 'Fridge 1') + 1;
     sh.getRange(i, 4, 1, 2).setValues([['K1', 'Sunday']]);
-    C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Bump', items: [{ t: 'ing', name: 'x', q: 1 }] } }); // 앱 편집 = 캐시 갱신
+    C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Bump', items: [{ t: 'ing', name: 'Water', q: 1 }] } }); // 앱 편집 = 캐시 갱신
     const p = view(yu).places.find((x) => x.spot === 'Fridge 1');
     assert.deepStrictEqual([p.short, p.count], ['K1', 'sunday']);
     assert.ok(!C.call({ action: 'countView', token: chef, kind: 'daily' }).places.some((x) => x.short === 'K1'));
@@ -2188,25 +2198,25 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
   const ingBook = () => C.files[C.props.INGREDIENT_SHEET_ID];
   const rowsOf = (sh, w) => Array.from({ length: sh.getLastRow() }, (_, i) => sh.getRange(i + 1, 1, 1, w).getValues()[0]);
 
-  test('ingredients: one list (own spreadsheet); same name with other case/spaces/accents is saved as the listed name; new names are added with an ID', () => {
+  test('ingredients: only from the list (own spreadsheet); new names are refused; same name with other case/accents = the listed one, saved by code', () => {
     const tab = ingBook().getSheetByName('Ingredients');
     const names = () => rowsOf(tab, 13).slice(1).map((r) => r[1]);
-    assert.ok(names().includes('Soy sauce') && names().includes('Sugar'), 'filled from saved recipes');
+    assert.ok(names().includes('Soy sauce') && names().includes('Sugar'));
     assert.ok(!book().getSheetByName('Ingredients'), 'not in the Recipes book any more');
-    const r = C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Dressing', items: [
-      { t: 'ing', name: '  soy   SAUCE ', q: 100 }, { t: 'ing', name: 'Crème fraîche', q: 50 }, { t: 'ing', name: 'creme fraiche', q: 5 }] } });
+    const n0 = tab.getLastRow();
+    const items = [{ t: 'ing', name: '  soy   SAUCE ', q: 100 }, { t: 'ing', name: 'Crème fraîche', q: 50 }, { t: 'ing', name: 'creme fraiche', q: 5 }];
+    let r = C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Dressing', items } });
+    assert.strictEqual(r.ok, false);
+    assert.match(r.error, /Line 2: “Crème fraîche” is not in the ingredient list\. Add it in Manager › Ingredients/);
+    assert.strictEqual(tab.getLastRow(), n0, 'nothing added to the list');
+    const cf = addIng('Crème fraîche');
+    r = C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Dressing', items } });
     assert.ok(r.ok, JSON.stringify(r));
-    assert.deepStrictEqual(r.recipe.items.map((x) => x.name), ['Soy sauce', 'Crème fraîche', 'Crème fraîche']);
-    assert.deepStrictEqual(r.newIngredients, ['Crème fraîche']);
-    const last = rowsOf(tab, 13).slice(-1)[0];
-    assert.match(last[0], /^ING-\d{3}$/);
-    assert.deepStrictEqual([last[1], last[11], last[12]], ['Crème fraîche', '2026-10-09', 'Dressing']);
-    assert.strictEqual(new Set(rowsOf(tab, 1).slice(1).map((x) => x[0])).size, tab.getLastRow() - 1, 'IDs are unique');
-    const again = C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Dressing 2', items: [{ t: 'ing', name: 'CREME FRAICHE', q: 1 }] } });
-    assert.deepStrictEqual([again.recipe.items[0].name, again.newIngredients], ['Crème fraîche', []]);
+    assert.deepStrictEqual(r.recipe.items.map((x) => [x.name, x.code]).slice(1), [['Crème fraîche', cf], ['Crème fraîche', cf]]);
+    const byCode = C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Dressing 2', items: [{ t: 'ing', code: cf, name: 'old name', q: 1 }] } });
+    assert.deepStrictEqual([byCode.ok, byCode.recipe.items[0].name], [true, 'Crème fraîche'], 'the code wins over the typed name');
     const v = view(sup);
-    assert.ok(v.ingredients.includes('Crème fraîche') && v.ingredients.includes('Soy sauce'));
-    assert.strictEqual(v.ingredients.filter((n) => n.toLowerCase() === 'soy sauce').length, 1);
+    assert.ok(v.ingredients.some((i) => i.code === cf && i.name === 'Crème fraîche'));
     assert.ok(!('ingredients' in view(yu)), 'only for the editor');
     assert.ok(!v.recipes.some((x) => x.name === 'Ingredients'), 'the tab is not a recipe');
   });
@@ -2217,7 +2227,8 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     const v = C.call({ action: 'ingView', token: chef });
     assert.ok(v.ok, JSON.stringify(v));
     assert.deepStrictEqual(v.shelves.map((s) => s.code + s.levels + s.by[0]), ['A6K', 'B6K', 'C6K', 'D6S', 'E6S', 'F6S', 'G6S']);
-    assert.deepStrictEqual(v.fridges.map((f) => f.code).slice(0, 3), ["B·L", "B·R", "K1"], "Places fridges by Short (an earlier test renamed F1)");
+    assert.deepStrictEqual(v.fridges.map((f) => f.short).slice(0, 3), ["B·L", "B·R", "K1"], "Places fridges by Short (an earlier test renamed F1)");
+    assert.ok(v.fridges.every((f) => /^PL-\d\d$/.test(f.code)), 'fridge address = place ID');
     assert.ok(/basement/i.test(v.fridges[0].floor), 'basement fridges first');
     assert.ok(v.teams.includes('Kitchen') && v.teams.includes('Service'));
     const soy = v.ingredients.find((i) => i.name === 'Soy sauce');
@@ -2272,7 +2283,7 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     dropCache();
     const uses = view(sup).recipes.filter((x) => x.items.some((it) => it.name === 'White sugar'));
     assert.ok(uses.length >= 1 && !view(sup).recipes.some((x) => x.items.some((it) => it.name === 'Sugar')));
-    assert.ok(view(sup).ingredients.includes('White sugar'));
+    assert.ok(view(sup).ingredients.some((i) => i.name === 'White sugar'));
     assert.ok(C.call({ action: 'ingView', token: chef }).ingredients.find((i) => i.id === sug.id).used.length >= 1);
   });
 
@@ -2286,10 +2297,10 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.strictEqual(C.call({ action: 'ingMove', token: yu, id, address: 'A-1' }).ok, false);
     assert.ok(C.call({ action: 'ingRemove', token: chef, id }).ok);
     assert.ok(!C.call({ action: 'ingView', token: chef }).ingredients.some((i) => i.id === id));
-    const n = ingBook().getSheetByName('Ingredients').getLastRow();
-    C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Garlic oil', items: [{ t: 'ing', name: 'garlic', q: 100 }] } });
-    assert.strictEqual(ingBook().getSheetByName('Ingredients').getLastRow(), n, 'used again in a recipe = the same row comes back (no duplicate)');
-    assert.ok(C.call({ action: 'ingView', token: chef }).ingredients.some((i) => i.id === id));
+    const r = C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Garlic oil', items: [{ t: 'ing', name: 'garlic', q: 100 }] } });
+    assert.strictEqual(r.ok, false, 'a removed ingredient cannot be picked any more');
+    dropCache();
+    assert.ok(view(sup).recipes.some((x) => x.items.some((it) => it.code === id && it.name === 'Garlic')), 'old recipes still show it');
   });
 
   test('shelves: levels + / − (not below a used level), counted by a team; suppliers in use cannot be removed, rename follows', () => {
@@ -2309,6 +2320,37 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.ok(r.ok, JSON.stringify(r));
     assert.ok(C.call({ action: 'ingView', token: chef }).ingredients.find((i) => i.id === soyId).packs.some((p) => p.supplier === 'Metro Paris'));
     assert.strictEqual(C.call({ action: 'supSave', token: chef, ver: sv.suppliersVer, suppliers: [] }).code, 'CHANGED');
+  });
+
+  test('codes: setup links old data by code (recipe IDs, ingredient/box/place codes in recipes, Log place IDs, fridge addresses)', () => {
+    const M = makeEnv({ SDM_META_KEY: keys.K1_SDM_META, SDM_FILE_KEY: keys.K2_SDM_FILE });
+    const rb = M.files[M.props.RECIPE_SHEET_ID], places = rb.getSheetByName('Places');
+    for (let r = 1; r <= places.getLastRow(); r++) places.getRange(r, 6).setValue(''); // 옛 Places 탭 = ID 열 없음
+    rb.getSheetByName('Boxes').getRange(2, 1, 1, 4).setValues([['Bac 5 L', '5 L', '', '']]);
+    const t1 = rb.insertSheet('Old soup');
+    t1.getRange(1, 1, 7, 4).setValues([['Kind', 'Name / text', 'Amount', 'Unit / note'], ['RECIPE', 'Old soup', '', ''], ['MODE', 'Fixed', '', ''],
+      ['ING', 'onion', '100', 'g'], ['ING', 'Old stock', '50', 'g'], ['BOX', 'Bac 5 L', '', ''], ['PLACE', 'Ground floor · Fridge 4', '', '']]);
+    const t2 = rb.insertSheet('Old stock');
+    t2.getRange(1, 1, 3, 4).setValues([['Kind', 'Name / text', 'Amount', 'Unit / note'], ['RECIPE', 'Old stock', '', ''], ['ING', 'Onion', '1000', 'g']]);
+    const ib = M.files[M.props.INGREDIENT_SHEET_ID].getSheetByName('Ingredients');
+    ib.getRange(2, 1, 1, 13).setValues([['ING-001', 'Onion', '', 'g', 'Fridge', 'F4', 'Daily', 'Recipes + Par', '', '', '', '2026-10-01', '']]);
+    const log = M.files[M.props.PROD_SHEET_ID].getSheetByName('Log');
+    log.getRange(2, 1, 1, 18).setValues([['P000001', '2026-10-08', '10:00', 'Old soup', '×1', '150', '1', 'Bac 5 L', 'X', '', 'X', String(t1.getSheetId()),
+      'Ground floor · Fridge 4', '', '', '', '1', '']]);
+    M.ctx.setup();
+    const v = (sh, r, c) => sh.getRange(r, c).getValue();
+    const f4 = places.getRange(1, 1, places.getLastRow(), 6).getValues().find((r) => r[3] === 'F4')[5];
+    assert.match(f4, /^PL-\d\d$/, 'places got IDs');
+    assert.deepStrictEqual([v(t1, 3, 1), v(t2, 3, 1)], ['ID', 'ID']);
+    const soupCode = v(t1, 3, 2), stockCode = v(t2, 3, 2);
+    assert.match(soupCode, /^RCP-\d{3}$/); assert.notStrictEqual(soupCode, stockCode);
+    assert.deepStrictEqual([v(t1, 5, 5), v(t1, 6, 5), v(t1, 7, 5), v(t1, 8, 5)], ['ING-001', stockCode, v(rb.getSheetByName('Boxes'), 2, 5), f4]);
+    assert.match(v(rb.getSheetByName('Boxes'), 2, 5), /^BOX-\d\d$/);
+    assert.strictEqual(v(log, 2, 19), f4, 'Log row got the place ID');
+    assert.strictEqual(v(ib, 2, 6), f4, 'fridge address F4 → place ID');
+    M.ctx.setup();
+    assert.strictEqual(v(t1, 3, 2), soupCode, 'setup again changes nothing');
+    assert.strictEqual(t1.getLastRow(), 8);
   });
 
   test('ingredients: setup moves the old Recipes “Ingredients” tab into the new spreadsheet once and hides it', () => {
@@ -2346,6 +2388,92 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
       assert.ok(!C.call({ action: 'countView', token: chef, kind }).places.some((p) => p.items.some((x) => x.recipeId === r.recipe.id)));
     }
     assert.strictEqual(C.call({ action: 'prodList', token: yu, id: r.recipe.id }).entries.length, 1);
+  });
+
+  test('codes: renaming a box or a place in the sheet keeps recipes and batches linked', () => {
+    const v = view(sup), boxes = v.boxes.map((b) => Object.assign({}, b));
+    assert.ok(boxes.every((b) => /^BOX-\d\d$/.test(b.id)), 'boxes have IDs');
+    const gn = boxes.find((b) => b.name === 'GN 1/6 · 150 mm');
+    gn.name = 'GN 1/6 deep';
+    assert.ok(C.call({ action: 'boxSave', token: sup, boxes, ver: v.boxesVer }).ok);
+    assert.strictEqual(bulgogi().box, 'GN 1/6 deep', 'recipe follows the box ID');
+    const log = C.call({ action: 'prodLog', token: yu, id: bulgogi().id, place: 'Ground floor · Fridge 4', mult: 1, boxes: 1 });
+    assert.ok(log.ok, JSON.stringify(log));
+    assert.match(log.entry.placeId, /^PL-\d\d$/);
+    const places = book().getSheetByName('Places'), row = tabRows(places).findIndex((r) => r[2] === 'Fridge 4') + 1;
+    places.getRange(row, 3).setValue('Fridge 4 (left)');
+    C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Bump 2', items: [{ t: 'ing', name: 'Water', q: 1 }] } });
+    const it = C.call({ action: 'stock', token: yu }).items.find((x) => x.recipeId === bulgogi().id);
+    assert.ok(it.lots.some((e) => e.id === log.entry.id && e.place === 'Ground floor · Fridge 4 (left)'), 'batch follows the place ID');
+    assert.ok(C.call({ action: 'countView', token: chef, kind: 'daily' }).places.find((p) => p.place === 'Ground floor · Fridge 4 (left)').items
+      .some((x) => x.recipeId === bulgogi().id));
+    places.getRange(row, 3).setValue('Fridge 4');
+    C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Bump 3', items: [{ t: 'ing', name: 'Water', q: 1 }] } });
+  });
+
+  test('codes: renaming a recipe keeps homemade lines (shown with the new name, saved by RCP code)', () => {
+    const broth = view(sup).recipes.find((x) => x.name === 'Beef broth');
+    const ramen = view(sup).recipes.find((x) => x.name === 'Ramen soup');
+    assert.strictEqual(ramen.items[0].code, broth.code);
+    assert.strictEqual(ramen.items[0].recipe, broth.id, 'homemade link = recipe id for the app');
+    const r = C.call({ action: 'recipeSave', token: sup, id: broth.id, ver: broth.ver, recipe: Object.assign({}, broth, { name: 'Beef stock' }) });
+    assert.ok(r.ok, JSON.stringify(r));
+    const after = view(sup).recipes.find((x) => x.id === ramen.id);
+    assert.deepStrictEqual([after.items[0].name, after.items[0].code], ['Beef stock', broth.code]);
+    assert.strictEqual(book().getSheetByName('Ramen soup').getRange(5, 2).getValue(), 'Beef stock', 'sheet text updated too');
+  });
+
+  test('menus: supervisor only; menu → components (recipe, ingredient, or a new recipe to write); shared components; portions optional', () => {
+    assert.strictEqual(C.call({ action: 'menuView', token: chef }).ok, false, 'admin is not enough');
+    let v = C.call({ action: 'menuEdit', token: sup, op: 'add', name: 'Bibimbap' });
+    assert.ok(v.ok, JSON.stringify(v));
+    const bib = v.done;
+    assert.match(bib, /^MENU-001$/);
+    assert.strictEqual(C.call({ action: 'menuEdit', token: sup, op: 'add', name: 'bibimbap' }).ok, false, 'same name twice');
+    const soy = v.ingredients.find((i) => i.name === 'Soy sauce').code, bul = bulgogi().code;
+    v = C.call({ action: 'menuEdit', token: sup, op: 'partAdd', menu: bib, link: bul });
+    const cBul = v.done;
+    v = C.call({ action: 'menuEdit', token: sup, op: 'partAdd', menu: bib, link: soy });
+    v = C.call({ action: 'menuEdit', token: sup, op: 'partAdd', menu: bib, newRecipe: 'Namul mix' });
+    assert.ok(v.ok, JSON.stringify(v));
+    const m = v.menus.find((x) => x.id === bib);
+    assert.deepStrictEqual(m.parts.map((p) => [p.name, p.kind, p.todo, p.portion]), [['Bulgogi sauce', 'rcp', false, null], ['Soy sauce', 'ing', false, null], ['Namul mix', 'rcp', true, null]]);
+    const namul = v.recipes.find((r) => r.name === 'Namul mix');
+    assert.ok(namul.todo && /^RCP-\d{3}$/.test(namul.code), 'empty recipe made, to write');
+    assert.ok(view(sup).recipes.find((r) => r.name === 'Namul mix').todo);
+    assert.strictEqual(C.call({ action: 'menuEdit', token: sup, op: 'partAdd', menu: bib, link: bul }).ok, false, 'already in the menu');
+    assert.strictEqual(C.call({ action: 'menuEdit', token: sup, op: 'partAdd', menu: bib, link: 'ING-999' }).ok, false);
+    assert.strictEqual(C.call({ action: 'menuEdit', token: sup, op: 'partAdd', menu: bib, newRecipe: 'bulgogi SAUCE' }).ok, false, 'already a recipe');
+    // 공유: 다른 메뉴가 같은 컴포넌트
+    const tt = C.call({ action: 'menuEdit', token: sup, op: 'add', name: 'Tteokbokki' }).done;
+    v = C.call({ action: 'menuEdit', token: sup, op: 'partAdd', menu: tt, cmp: cBul });
+    assert.strictEqual(v.components.filter((c) => c.link === bul).length, 1, 'one component per recipe, shared');
+    v = C.call({ action: 'menuEdit', token: sup, op: 'portion', menu: bib, cmp: cBul, portion: '60' });
+    v = C.call({ action: 'menuEdit', token: sup, op: 'portion', menu: tt, cmp: cBul, portion: '45,5' });
+    assert.deepStrictEqual([v.menus.find((x) => x.id === bib).parts[0].portion, v.menus.find((x) => x.id === tt).parts[0].portion], [60, 45.5]);
+    assert.strictEqual(C.call({ action: 'menuEdit', token: sup, op: 'portion', menu: bib, cmp: cBul, portion: 'lots' }).ok, false);
+    v = C.call({ action: 'menuEdit', token: sup, op: 'portion', menu: bib, cmp: cBul, portion: '' });
+    assert.strictEqual(v.menus.find((x) => x.id === bib).parts[0].portion, null, 'portion can be emptied');
+    v = C.call({ action: 'menuEdit', token: sup, op: 'partRemove', menu: tt, cmp: cBul });
+    assert.strictEqual(v.menus.find((x) => x.id === tt).parts.length, 0);
+    v = C.call({ action: 'menuEdit', token: sup, op: 'rename', menu: tt, name: 'Tteokbokki (spicy)' });
+    assert.ok(v.menus.some((x) => x.name === 'Tteokbokki (spicy)'));
+    v = C.call({ action: 'menuEdit', token: sup, op: 'remove', menu: tt });
+    assert.ok(!v.menus.some((x) => x.id === tt));
+    assert.ok(C.ctx.checkMenus() >= 1);
+  });
+
+  test('menus: recipe to write → 09:00 push + mail to the supervisor, once a day, until it has ingredients', () => {
+    C.sent.push.length = 0; C.sent.mail.length = 0;
+    C.call({ action: 'subscribe', token: sup, sub: { endpoint: SUP_ENDPOINT, keys: {
+      p256dh: supKey.getPublicKey().toString('base64url'), auth: supAuth.toString('base64url') } } });
+    C.ctx.notifyTodoRecipes_();
+    assert.ok(C.sent.push.length >= 1, 'push to the supervisor');
+    assert.ok(C.sent.mail.some((m) => /recipe.* to write/.test(m.subject) && /Namul mix/.test(m.htmlBody)));
+    assert.strictEqual(C.ctx.notifyTodoRecipes_(), 0, 'once a day');
+    const namul = view(sup).recipes.find((r) => r.name === 'Namul mix');
+    const r = C.call({ action: 'recipeSave', token: sup, id: namul.id, ver: namul.ver, recipe: Object.assign({}, namul, { items: [{ t: 'ing', name: 'Water', q: 10 }] }) });
+    assert.ok(r.ok && !r.recipe.todo && r.recipe.code === namul.code, 'filled in, same code');
   });
 
   test('recipes: delete = hidden tab (not in the list, still in the file)', () => {

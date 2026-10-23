@@ -587,4 +587,9 @@ function morningRun() {
   } catch (err3) {
     console.error(err3);
   }
+  try {
+    notifyTodoRecipes_(); // 아직 쓰지 않은 레시피(To write) → Supervisor
+  } catch (err4) {
+    console.error(err4);
+  }
 }

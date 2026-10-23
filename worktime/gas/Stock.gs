@@ -1,12 +1,14 @@
 // Stock — Production log(배치) · 저장 위치 · 재고 · 저녁 재고 조사(Count) · 일요일 조사(Sunday) · 소비량
 //
 // "Recipes" 스프레드시트 'Places' 탭 (시트에서 언제든 수정):
-//   Floor | Type | Spot | Short | Count
+//   Floor | Type | Spot | Short | Count | ID
 //   Type: Fridge / Freezer / Shelf.  Short: 화면에 쓰는 짧은 주소(F4, B·L …).  Count: Daily (매일 저녁) / Sunday (일요일 조사)
+//   ID = PL-01 … (자동, 바꾸지 말 것). 배치·레시피·원재료 주소는 ID 로 연결 → Spot·Short 이름을 바꿔도 끊기지 않음.
 //   기록에 들어가는 이름 = 'Floor · Spot' (선반은 'Floor · Shelf · Spot', 이름에 shelf 가 있으면 그대로) — 예: 'Ground floor · Fridge 4'
 //
 // "Production Log" 스프레드시트 (PROD_SHEET_ID, 보호하지 않음 = 손으로 고칠 수 있음):
-//   Log         : 배치(만든 것) 한 줄 = 한 배치. Left = 지금 남은 박스 (빈칸 = Boxes 그대로). 0 이 되면 재고에서 빠짐.
+//   Log         : 배치(만든 것) 한 줄 = 한 배치. Left = 지금 남은 양 (빈칸 = Boxes 그대로). 0 이 되면 재고에서 빠짐.
+//                 양의 단위 = 레시피의 COUNTIN (Boxes 기본 / Pieces / Grams). Place ID = 위치 ID (위치 이름을 바꿔도 따라감).
 //   Stock moves : 재고가 바뀐 모든 일 — PRODUCE 만듦 · MOVE 옮김 · CORRECT 정정(Admin) · COUNT 조사로 줄어듦 · WASTE 버림 · DELETE
 //   Use         : 조사할 때마다 레시피별 한 줄 — Before(앱 재고) · Counted(센 양) · Used(소비) · Wasted(버림) · Corrected(앱보다 많음)
 // 소비량은 조사(COUNT)에서만 생김. 늦게 적은 생산, 이동, 정정은 소비량에 들어가지 않음.
@@ -14,10 +16,10 @@
 // 권한: 보기·기록·옮기기 = 레시피를 볼 수 있는 사람. 조사·정정·빠진 배치 추가·날짜 지정 = Admin(E열) 또는 Supervisor.
 
 var PROD_HEAD = ['ID', 'Date', 'Time', 'Recipe', 'Batch', 'Total (g)', 'Boxes', 'Box', 'Made by', 'Use by',
-                 'Logged by', 'Recipe ID', 'Location', 'Moved at', 'Moved by', 'Split from', 'Left', 'Note'];
+                 'Logged by', 'Recipe ID', 'Location', 'Moved at', 'Moved by', 'Split from', 'Left', 'Note', 'Place ID'];
 var MOVES_HEAD = ['At', 'Type', 'Lot', 'Recipe', 'Recipe ID', 'Change', 'Left after', 'Location', 'By', 'Note'];
 var USE_HEAD = ['Date', 'Count', 'Recipe', 'Recipe ID', 'Days', 'Before', 'Counted', 'Used', 'Wasted', 'Corrected', 'By'];
-var PLACES_HEAD = ['Floor', 'Type', 'Spot', 'Short', 'Count'];
+var PLACES_HEAD = ['Floor', 'Type', 'Spot', 'Short', 'Count', 'ID'];
 var PLACES_DEFAULT = [
   ['Ground floor', 'Fridge', 'Fridge 1', 'F1', 'Daily'], ['Ground floor', 'Fridge', 'Fridge 4', 'F4', 'Daily'],
   ['Ground floor', 'Fridge', 'Fridge 6', 'F6', 'Daily'], ['Ground floor', 'Fridge', 'Fridge 7', 'F7', 'Daily'],
@@ -35,8 +37,8 @@ var LATE_MAX_DAYS = 60;          // 'Made on' 으로 지정할 수 있는 가장
 function ensurePlaces_(ss) {
   if (ss.getSheetByName('Places')) return;
   var sh = ss.insertSheet('Places');
-  sh.getRange(1, 1, PLACES_DEFAULT.length + 1, 5).setValues([PLACES_HEAD].concat(PLACES_DEFAULT));
-  sh.getRange(1, 1, 1, 5).setFontWeight('bold');
+  sh.getRange(1, 1, PLACES_DEFAULT.length + 1, 6).setValues([PLACES_HEAD].concat(PLACES_DEFAULT.map(function (r, i) { return r.concat([codeOf_('PL', i + 1, 2)]); })));
+  sh.getRange(1, 1, 1, 6).setFontWeight('bold');
   sh.setFrozenRows(1);
 }
 
@@ -90,12 +92,21 @@ function prodPlaces_() {
     var ss = recipeBook_();
     ensurePlaces_(ss);
     var sh = ss.getSheetByName('Places'), n = sh.getLastRow() - 1;
-    var rows = n > 0 ? sh.getRange(2, 1, n, 5).getDisplayValues() : [];
-    list = rows.map(function (r) { return r.map(function (v) { return String(v).trim(); }); })
+    if (!sh.getRange(1, 6).getValue()) sh.getRange(1, 6).setValue('ID').setFontWeight('bold');
+    var rows = n > 0 ? sh.getRange(2, 1, n, 6).getDisplayValues() : [];
+    rows = rows.map(function (r) { return r.map(function (v) { return String(v).trim(); }); });
+    // ID 가 없는 줄(시트에서 새로 추가한 위치)에 PL-xx 를 붙임
+    var max = Number(props_.getProperty('PLACE_SEQ') || 0);
+    rows.forEach(function (r) { var m = /^PL-(\d+)$/i.exec(r[5]); if (m) max = Math.max(max, +m[1]); });
+    rows.forEach(function (r, i) {
+      if (r[0] && r[2] && !r[5]) { r[5] = codeOf_('PL', ++max, 2); sh.getRange(i + 2, 6).setValue(r[5]); }
+    });
+    props_.setProperty('PLACE_SEQ', String(max));
+    list = rows
       .filter(function (r) { return r[0] && r[2]; })
       .map(function (r) {
         var type = /^sh/i.test(r[1]) ? 'Shelf' : /^fr(ee|ig)?z/i.test(r[1]) || /^freezer/i.test(r[1]) ? 'Freezer' : 'Fridge';
-        return { floor: r[0], type: type, spot: r[2], short: r[3] || r[2],
+        return { id: r[5].toUpperCase(), floor: r[0], type: type, spot: r[2], short: r[3] || r[2],
                  count: /^d/i.test(r[4]) ? 'daily' : /^s|^w/i.test(r[4]) ? 'sunday' : (type === 'Fridge' ? 'daily' : 'sunday'),
                  group: type === 'Shelf' ? 'Shelf' : 'Fridge',
                  label: r[0] + ' · ' + (type === 'Shelf' && !/shelf/i.test(r[2]) ? 'Shelf · ' : '') + r[2] };
@@ -106,9 +117,21 @@ function prodPlaces_() {
   return list;
 }
 
+/** 이름(label) 또는 ID 로 위치 찾기. */
 function prodPlace_(label) {
   var want = String(label || '').trim().toLowerCase();
-  return want ? prodPlaces_().filter(function (p) { return p.label.toLowerCase() === want; })[0] || null : null;
+  return want ? prodPlaces_().filter(function (p) { return p.label.toLowerCase() === want || p.id.toLowerCase() === want; })[0] || null : null;
+}
+
+function prodPlaceById_(id) {
+  var want = String(id || '').trim().toUpperCase();
+  return want ? prodPlaces_().filter(function (p) { return p.id === want; })[0] || null : null;
+}
+
+/** 배치 줄의 지금 위치 이름 (Place ID 가 있으면 그 위치의 지금 이름). */
+function placeLabelOf_(c) {
+  var p = prodPlaceById_(c[18]);
+  return p ? p.label : String(c[12] || '');
 }
 
 // ------------------------------------------------------------------ 배치 (Log 탭의 한 줄)
@@ -151,7 +174,7 @@ function prodEntry_(c, emp) {
   return { id: String(c[0]), date: String(c[1]), time: String(c[2]), recipe: String(c[3]), batch: String(c[4]),
            total: Number(c[5]) || 0, boxes: Number(c[6]) || 0, box: String(c[7]), madeBy: String(c[8]),
            useBy: String(c[9]), loggedBy: String(c[10]), recipeId: String(c[11]),
-           place: String(c[12] || ''), movedAt: String(c[13] || ''), movedBy: String(c[14] || ''), splitFrom: String(c[15] || ''),
+           place: placeLabelOf_(c), placeId: String(c[18] || ''), movedAt: String(c[13] || ''), movedBy: String(c[14] || ''), splitFrom: String(c[15] || ''),
            left: lotLeft_(c), note: String(c[17] || ''), expired: !!c[9] && String(c[9]) < today,
            canDelete: !!emp.supervisor || (String(c[10]) === emp.name && String(c[1]) === today && !c[15]) };
 }
@@ -227,7 +250,7 @@ function writeLot_(o) {
   var time = o.date === today ? Utilities.formatDate(new Date(), TZ, 'HH:mm') : '';
   var useBy = o.r.keepDays != null ? addDaysIso_(o.date, o.r.keepDays) : '';
   var cells = [id, o.date, time, o.r.name, o.batch, o.total, o.boxes, o.box, o.maker, useBy, o.emp.name, o.r.id,
-               o.place.label, '', '', '', o.boxes, o.note || ''];
+               o.place.label, '', '', '', o.boxes, o.note || '', o.place.id];
   appendRows_(prodSheet_(), [cells], [[1, 5], [8, 10]]); // Total, Boxes(F·G) 는 숫자 (시트에서 합계 가능)
   appendRows_(prodTab_('Stock moves', MOVES_HEAD), [moveRow_('PRODUCE', cells, o.boxes, o.boxes, o.place.label, o.emp.name, o.note)]);
   return cells;
@@ -292,7 +315,7 @@ function prodLogNotStored_(req, emp, r) {
   var cells;
   try {
     var time = date === todayIsoParis_() ? Utilities.formatDate(new Date(), TZ, 'HH:mm') : '';
-    cells = [nextLotId_(), date, time, r.name, b.batch, b.total, '', '', maker, '', emp.name, r.id, '', '', '', '', 0, note];
+    cells = [nextLotId_(), date, time, r.name, b.batch, b.total, '', '', maker, '', emp.name, r.id, '', '', '', '', 0, note, ''];
     appendRows_(prodSheet_(), [cells], [[1, 5], [8, 10]]);
   } finally {
     lock.releaseLock();
@@ -317,7 +340,7 @@ function prodDelete_(req) {
     if (!id || i < 0) fail_('This entry is not in the log any more.');
     if (!prodEntry_(rec.rows[i], emp).canDelete) fail_('You can only delete what you logged today.');
     var c = rec.rows[i];
-    appendRows_(prodTab_('Stock moves', MOVES_HEAD), [moveRow_('DELETE', c, -lotLeft_(c), 0, String(c[12]), emp.name)]);
+    appendRows_(prodTab_('Stock moves', MOVES_HEAD), [moveRow_('DELETE', c, -lotLeft_(c), 0, placeLabelOf_(c), emp.name)]);
     rec.sh.deleteRow(rec.first + i);
   } finally {
     lock.releaseLock();
@@ -334,23 +357,25 @@ function prodDelete_(req) {
  */
 function moveLot_(rec, i, n, place, emp, note) {
   var row = rec.rows[i], at = nowMinParis_(), left = lotLeft_(row), moves = prodTab_('Stock moves', MOVES_HEAD);
+  var fromLabel = placeLabelOf_(row);
   if (n >= left - 1e-9) {
-    var from = String(row[12]);
-    row[12] = place.label; row[13] = at; row[14] = emp.name;
+    var from = fromLabel;
+    row[12] = place.label; row[13] = at; row[14] = emp.name; row[18] = place.id;
     rec.sh.getRange(rec.first + i, 13, 1, 3).setNumberFormat('@').setValues([[place.label, at, emp.name]]);
+    rec.sh.getRange(rec.first + i, 19).setValue(place.id);
     appendRows_(moves, [moveRow_('MOVE', row, 0, left, place.label, emp.name, 'from ' + from + (note ? ' · ' + note : ''))]);
     return { entry: row, moved: null };
   }
-  if (place.label === String(row[12])) fail_('It is already there. Choose another place.');
+  if (place.label === fromLabel) fail_('It is already there. Choose another place.');
   var boxes = Number(row[6]) || 0, total = Number(row[5]) || 0, keepBoxes = round1_(boxes - n), keepLeft = round1_(left - n);
   var keepTotal = row[5] === '' ? '' : Math.round(total * keepBoxes / boxes);
   var cells = [nextLotId_()].concat(row.slice(1, 5).map(String),
-    [row[5] === '' ? '' : total - keepTotal, n], row.slice(7, 12).map(String), [place.label, at, emp.name, String(row[0]), n, String(row[17] || '')]);
+    [row[5] === '' ? '' : total - keepTotal, n], row.slice(7, 12).map(String), [place.label, at, emp.name, String(row[0]), n, String(row[17] || ''), place.id]);
   row[5] = keepTotal; row[6] = keepBoxes; row[16] = keepLeft;
   rec.sh.getRange(rec.first + i, 6, 1, 2).setValues([[keepTotal, keepBoxes]]);
   rec.sh.getRange(rec.first + i, 17).setValue(keepLeft);
   appendRows_(rec.sh, [cells], [[1, 5], [8, 10]]);
-  appendRows_(moves, [moveRow_('MOVE', cells, 0, n, place.label, emp.name, 'from ' + row[12] + ' (' + row[0] + ')' + (note ? ' · ' + note : ''))]);
+  appendRows_(moves, [moveRow_('MOVE', cells, 0, n, place.label, emp.name, 'from ' + fromLabel + ' (' + row[0] + ')' + (note ? ' · ' + note : ''))]);
   return { entry: row, moved: cells };
 }
 
@@ -396,7 +421,7 @@ function prodCorrect_(req) {
     if (Math.abs(before - left) < 1e-9) return { ok: true, entry: prodEntry_(c, emp) };
     setLeft_(rec, i, left);
     appendRows_(prodTab_('Stock moves', MOVES_HEAD),
-      [moveRow_('CORRECT', c, round1_(left - before), left, String(c[12]), emp.name, String(req.note || '').slice(0, 200))]);
+      [moveRow_('CORRECT', c, round1_(left - before), left, placeLabelOf_(c), emp.name, String(req.note || '').slice(0, 200))]);
   } finally {
     lock.releaseLock();
   }
@@ -506,7 +531,7 @@ function countView_(req) {
 
 /** 레시피의 배치들(이 위치) — 오래된 것부터 (사용기한, 만든 날). */
 function lotsAt_(rec, recipeId, placeLabel) {
-  return liveLots_(rec).filter(function (i) { return String(rec.rows[i][11]) === recipeId && String(rec.rows[i][12]) === placeLabel; })
+  return liveLots_(rec).filter(function (i) { return String(rec.rows[i][11]) === recipeId && placeLabelOf_(rec.rows[i]) === placeLabel; })
     .sort(function (a, b) {
       var x = rec.rows[a], y = rec.rows[b];
       return String(x[9] || '9999') < String(y[9] || '9999') ? -1 : String(x[9] || '9999') > String(y[9] || '9999') ? 1

@@ -3,9 +3,9 @@
 // "Ingredients" 스프레드시트 (setup() 이 만듦, INGREDIENT_SHEET_ID):
 //   Ingredients   : ID | Name | Category | Unit | Storage | Address | Count | Demand | Par | Note | Active | Added | First recipe
 //                   ID = ING-001 (이름을 바꿔도 연결 유지). Unit = g / ml / pcs. Storage = Shelf / Fridge / Freezer.
-//                   Address = 'A-1'(지하 선반-칸, 칸은 위에서 1) 또는 냉장고 Short('F6', Recipes 시트 Places 탭). 냉동 = 주소 없음.
+//                   Address = 'A-1'(지하 선반-칸, 칸은 위에서 1) 또는 냉장고의 위치 ID('PL-07', Recipes 시트 Places 탭 — 앱은 Short 'F6' 로 보여줌). 냉동 = 주소 없음.
 //                   Count = Daily / Sunday (원재료 재고 조사). Demand = Recipes + Par / Usage (주간 수요 계산 방식).
-//                   Active = FALSE 면 목록에서 빠짐(지우지 않음). 레시피에서 새 이름이 나오면 자동 추가.
+//                   Active = FALSE 면 목록에서 빠짐(지우지 않음). 새 재료는 이 앱에서만 추가 (레시피 편집기는 이 목록에서 고르기만).
 //   Packs         : Ingredient ID | Ingredient | Supplier | Pack | Size | Price HT | Deposit | Usual | Supplier ref | Updated | By
 //                   재료 하나에 여러 줄(거래처·규격). Size = Unit 기준 양(1 L 병 = 1000 ml). Usual = TRUE 인 줄이 기본 주문.
 //                   Deposit = 규격당 병 보증금. kg 당 원가에는 넣지 않고, 주문서의 예상 facture 금액에만 더함.
@@ -143,12 +143,12 @@ function readShelves_(ss) {
   });
 }
 
-/** 냉장고 = Recipes 시트 Places 탭의 Fridge (지하 먼저, 그다음 Places 순서). 주소 = Short. */
+/** 냉장고 = Recipes 시트 Places 탭의 Fridge (지하 먼저, 그다음 Places 순서). 주소 = 위치 ID, 화면 = Short. */
 function ingFridges_() {
   var list = prodPlaces_().filter(function (p) { return p.type === 'Fridge'; });
   var base = list.filter(function (p) { return /basement/i.test(p.floor); });
   return base.concat(list.filter(function (p) { return base.indexOf(p) < 0; })).map(function (p) {
-    return { code: String(p.short || p.spot).toUpperCase(), floor: p.floor, label: p.label };
+    return { code: p.id, short: p.short || p.spot, floor: p.floor, label: p.label };
   });
 }
 
@@ -177,12 +177,11 @@ function ingUser_(req) {
 function ingView_(req) {
   ingUser_(req);
   var ss = ensureIngBook_(), list = readIngMaster_(ss), suppliers = readSuppliers_(ss), shelves = readShelves_(ss), fridges = ingFridges_();
-  var used = {}, keyToId = {};
-  list.forEach(function (i) { keyToId[ingKey_(i.name)] = i.id; });
+  var used = {};
   recipesAll_().recipes.forEach(function (r) {
     var seen = {};
     r.items.forEach(function (it) {
-      var id = (it.t === 'ing' || it.t === 'base') && keyToId[ingKey_(it.name)];
+      var id = (it.t === 'ing' || it.t === 'base') && /^ING-/.test(it.code || '') && it.code;
       if (id && !seen[id]) { seen[id] = true; (used[id] = used[id] || []).push(r.name); }
     });
   });
@@ -311,7 +310,7 @@ function ingSave_(req) {
       appendRows_(ss.getSheetByName('Price history'), hist);
     }
     ingLog_(ss, emp, id, c.name, changes);
-    var renamed = old && old.name !== c.name ? ingRenameInRecipes_(old.name, c.name) : [];
+    var renamed = old && old.name !== c.name ? codeRenameInRecipes_(id, c.name) : [];
     SpreadsheetApp.flush();
     bumpRecipes_();
     out = { ok: true, id: id, renamedIn: renamed };
@@ -334,24 +333,6 @@ function ingWritePacks_(ss, id, c, emp) {
   sh.clearContents();
   sh.getRange(1, 1, rows.length + 1, PACK_HEAD.length).setValues([PACK_HEAD].concat(rows.map(function (r) { return r.map(safeCell_); })));
   sh.getRange(1, 1, 1, PACK_HEAD.length).setFontWeight('bold');
-}
-
-/** 레시피 탭들의 ING/BASE 줄에서 옛 이름(대소문자·악센트 무시)을 새 이름으로. 고친 레시피 이름 목록. */
-function ingRenameInRecipes_(from, to) {
-  var key = ingKey_(from), touched = [];
-  recipeTabs_(recipeBook_()).forEach(function (sh) {
-    var vals = recipeValues_(sh), hit = false, name = sh.getName();
-    vals.forEach(function (r, i) {
-      var k = String(r[0]).trim().toUpperCase();
-      if (k === 'RECIPE') name = String(r[1]).trim() || name;
-      if ((k === 'ING' || k === 'BASE') && ingKey_(r[1]) === key) {
-        sh.getRange(i + 1, 2).setValue(safeCell_(to));
-        hit = true;
-      }
-    });
-    if (hit) touched.push(name);
-  });
-  return touched;
 }
 
 /** 주소 그림에서 끌어 놓기: 보관·주소만 바꿈. address = 'A-1' / 'F6' / 'FREEZER' / '' (주소 없음). */
@@ -485,23 +466,15 @@ function shelfSave_(req) {
 
 // ------------------------------------------------------------------ 레시피 편집기와 연결
 
-/** 레시피 자동완성용 이름 목록 (Active 만, 시트 순서). */
-function ingNames_() {
-  return readIngMaster_(ensureIngBook_()).filter(function (i) { return i.active; }).map(function (i) { return i.name; });
-}
-
-/** 레시피 저장 때 나온 새 재료 이름들을 추가 (ID 자동). 앱에서 지운(Active FALSE) 같은 이름이 있으면 그 줄을 다시 살림. */
-function ingAddFromRecipe_(names, recipeName) {
-  if (!names.length) return;
-  var ss = ensureIngBook_(), all = readIngMaster_(ss), max = 0, today = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'), sh = ss.getSheetByName('Ingredients');
-  all.forEach(function (i) { var m = /^ING-(\d+)$/.exec(i.id); if (m) max = Math.max(max, +m[1]); });
-  var rows = [];
-  names.forEach(function (n) {
-    var off = all.filter(function (i) { return !i.active && ingKey_(i.name) === ingKey_(n); })[0];
-    if (off) sh.getRange(off.row, 11).setValue('');
-    else rows.push([ingId_(max + rows.length + 1), n, '', 'g', '', '', 'Sunday', 'Recipes + Par', '', '', '', today, recipeName]);
+/** setup: 예전 주소(냉장고 Short 'F6')를 위치 ID('PL-07')로. 여러 번 실행해도 안전. */
+function ingAddressesToIds_() {
+  var ss = ensureIngBook_(), sh = ss.getSheetByName('Ingredients'), byShort = {}, n = 0;
+  ingFridges_().forEach(function (f) { byShort[String(f.short).toUpperCase()] = f.code; });
+  readIngMaster_(ss).forEach(function (i) {
+    var to = byShort[i.address];
+    if (to && to !== i.address) { sh.getRange(i.row, 6).setValue(to); n++; }
   });
-  appendRows_(sh, rows);
+  return n;
 }
 
 /** 편집기에서 실행: 재료 수, 규격이 없는 재료, 주소가 없는 재료, 모르는 주소·거래처를 실행 로그에. */

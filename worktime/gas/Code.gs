@@ -27,6 +27,8 @@ function setup() {
   ensureScheduleConfig_(config);
   ensureOrgConfig_(config);
   var recipes = ensureRecipes_();
+  ensureMenus_();
+  ensureCodes_();
   vapidKeys_();
   if (!props_.getProperty('VAPID_SUBJECT')) {
     props_.setProperty('VAPID_SUBJECT', 'mailto:' + Session.getEffectiveUser().getEmail());
@@ -44,7 +46,7 @@ function checkFiles_() {
                'Announce.gs': 'morningRun', 'Supervisor.gs': 'recordLogin_', 'Rules.gs': 'announceRule_',
                'Schedule.gs': 'checkSchedule', 'Receipts.gs': 'notifyReceipts_',
                'Chat.gs': 'chatPushRun', 'Recipes.gs': 'checkRecipes', 'Stock.gs': 'checkStock',
-               'Ingredients.gs': 'checkIngredients' };
+               'Ingredients.gs': 'checkIngredients', 'Menus.gs': 'checkMenus' };
   var missing = Object.keys(last).filter(function (f) { return typeof this[last[f]] !== 'function'; }, this);
   if (typeof props_ === 'undefined' || typeof TZ === 'undefined' || typeof DEFAULT_FOLDER_ID === 'undefined') {
     missing.push('Code.gs (맨 윗부분: var DEFAULT_FOLDER_ID ... var props_)');
@@ -105,6 +107,7 @@ function doPost(e) {
       recipes: recipesView_, recipePhoto: recipePhoto_, recipePhotoUpload: recipePhotoUpload_,
       recipeSave: recipeSave_, recipeDelete: recipeDelete_, boxSave: boxSave_,
       prodLog: prodLog_, prodList: prodList_, prodDelete: prodDelete_, prodMove: prodMove_, prodCorrect: prodCorrect_, stock: stockView_, countView: countView_, countSave: countSave_,
+      menuView: menuView_, menuEdit: menuEdit_,
       ingView: ingView_, ingSave: ingSave_, ingMove: ingMove_, ingRemove: ingRemove_, supSave: supSave_, shelfSave: shelfSave_,
     };
     var fn = handlers[req.action];
