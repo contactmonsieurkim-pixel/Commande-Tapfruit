@@ -175,6 +175,23 @@ function menuEdit_(req) {
   return out;
 }
 
+// ------------------------------------------------------------------ Portion estim (Kitchen 팀 + Supervisor)
+
+/**
+ * 메뉴별 컴포넌트의 남은 양 (모든 주소 합계) — 포션 계산은 화면에서 (총량 ÷ 1인분).
+ * items = 프렙 재고(레시피별, Stock 과 같은 모양 + code · unit · amount(g 또는 개수)), raw = 원재료 마지막 조사 양.
+ */
+function portionsView_(req) {
+  var emp = recipeUser_(req), st = stockView_(req), d = menuData_(), ss = ensureIngBook_(), stock = rawStock_(ss), fr = {};
+  ingFridges_().forEach(function (f) { fr[f.code] = f.short; });
+  var raw = readIngMaster_(ss).filter(function (i) { return stock[i.id]; }).map(function (i) {
+    return { id: i.id, name: i.name, unit: i.unit, qty: stock[i.id].qty, at: stock[i.id].at, address: i.address,
+             short: i.storage === 'Freezer' ? 'Freezer' : fr[i.address] || i.address };
+  });
+  return { ok: true, today: st.today, lastCount: st.lastCount, menus: d.menus, items: st.items, raw: raw,
+           canCount: !!(emp.admin || emp.supervisor), canEdit: !!emp.supervisor };
+}
+
 // ------------------------------------------------------------------ 09:00 알림: 아직 쓰지 않은 레시피
 
 /** 재료가 하나도 없는 레시피(To write)가 있으면 Supervisor 에게 푸시 + 메일 (하루 한 번, morningRun). */

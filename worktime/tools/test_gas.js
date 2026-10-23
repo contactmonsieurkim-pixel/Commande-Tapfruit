@@ -2476,6 +2476,72 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.ok(r.ok && !r.recipe.todo && r.recipe.code === namul.code, 'filled in, same code');
   });
 
+  test('count units: a recipe counted in pieces (log, move, count, correct use whole pieces; no box needed)', () => {
+    const r = C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Mandu', countUnit: 'pcs', items: [{ t: 'ing', name: 'Water', q: 100 }] } });
+    assert.ok(r.ok, JSON.stringify(r));
+    assert.strictEqual(r.recipe.countUnit, 'pcs');
+    assert.ok(tabRows(book().getSheetByName('Mandu')).some((x) => x[0] === 'COUNTIN' && x[1] === 'Pieces'));
+    const log = C.call({ action: 'prodLog', token: yu, id: r.recipe.id, mult: 1, boxes: 180, place: 'Ground floor · Freezer 9' });
+    assert.ok(log.ok, JSON.stringify(log));
+    assert.strictEqual(log.entry.boxes, 180);
+    assert.strictEqual(C.call({ action: 'prodLog', token: yu, id: r.recipe.id, mult: 1, boxes: 2.5, place: 'Ground floor · Freezer 9' }).ok, false, 'whole pieces');
+    const it = C.call({ action: 'stock', token: yu }).items.find((x) => x.recipeId === r.recipe.id);
+    assert.deepStrictEqual([it.unit, it.total, it.amount], ['pcs', 180, 180]);
+    const cv = C.call({ action: 'countView', token: chef, kind: 'sunday' });
+    const row = cv.places.find((p) => p.short === 'Z9').items.find((x) => x.recipeId === r.recipe.id);
+    assert.strictEqual(row.unit, 'pcs');
+    const sv = C.call({ action: 'countSave', token: chef, kind: 'sunday', counts: [{ place: 'Ground floor · Freezer 9', recipeId: r.recipe.id, boxes: 150 }] });
+    assert.ok(sv.ok, JSON.stringify(sv));
+    assert.strictEqual(sv.used[0].used, 30);
+  });
+
+  test('raw ingredients: counted at their address (fridge screen, shelf screen, freezer items); last count = stock', () => {
+    const v = C.call({ action: 'ingView', token: chef });
+    const f = v.fridges[0], save = (name, patch) => {
+      const i = C.call({ action: 'ingView', token: chef }).ingredients.find((x) => x.name === name);
+      const r = C.call({ action: 'ingSave', token: chef, id: i.id, ver: i.ver, ingredient: Object.assign({}, i, patch) });
+      assert.ok(r.ok, JSON.stringify(r));
+      return r.ingredient;
+    };
+    const egg = C.call({ action: 'ingSave', token: chef, ingredient: { name: 'Egg', unit: 'pcs', storage: 'Fridge', address: f.code, count: 'Daily' } });
+    assert.ok(egg.ok, JSON.stringify(egg));
+    save('Radish', { storage: 'Shelf', address: 'A-3', count: 'Sunday' });
+    save('Ginger', { storage: 'Freezer', address: '', count: 'Sunday' });
+    let cv = C.call({ action: 'countView', token: chef, kind: 'daily' });
+    const fs = cv.raw.find((x) => x.placeId === f.code);
+    assert.deepStrictEqual(fs.items.map((x) => [x.name, x.unit, x.before]), [['Egg', 'pcs', null]]);
+    assert.ok(!cv.raw.some((x) => x.shelf), 'Sunday ingredients are not in the evening count');
+    let r = C.call({ action: 'countSave', token: chef, kind: 'daily', counts: [], raw: [{ id: egg.id, qty: 42 }] });
+    assert.ok(r.ok, JSON.stringify(r));
+    cv = C.call({ action: 'countView', token: chef, kind: 'sunday' });
+    assert.deepStrictEqual(cv.raw.find((x) => x.shelf === 'A').items.map((x) => [x.name, x.address]), [['Radish', 'A-3']]);
+    assert.ok(cv.raw.find((x) => x.freezer).items.some((x) => x.name === 'Ginger'));
+    assert.strictEqual(C.call({ action: 'countSave', token: chef, kind: 'sunday', raw: [{ id: egg.id, qty: 'lots' }] }).ok, false);
+    assert.strictEqual(C.call({ action: 'countSave', token: yu, kind: 'daily', raw: [{ id: egg.id, qty: 1 }] }).ok, false, 'managers only');
+    const cnt = rowsOf(ingBook().getSheetByName('Counts'), 9);
+    assert.deepStrictEqual(cnt.slice(-1)[0].slice(1, 9).map(String), ['Daily', egg.id, 'Egg', f.code, '', '42', 'pcs', 'Chef Admin']);
+    assert.strictEqual(C.call({ action: 'countView', token: chef, kind: 'daily' }).raw.find((x) => x.placeId === f.code).items[0].before, 42);
+  });
+
+  test('portion estim: menus with prep stock (grams from the batches) and raw stock; kitchen can see it', () => {
+    const egg = C.call({ action: 'ingView', token: chef }).ingredients.find((x) => x.name === 'Egg');
+    const bib = C.call({ action: 'menuView', token: sup }).menus.find((m) => m.name === 'Bibimbap');
+    let v = C.call({ action: 'menuEdit', token: sup, op: 'partAdd', menu: bib.id, link: egg.id });
+    const cEgg = v.done;
+    v = C.call({ action: 'menuEdit', token: sup, op: 'portion', menu: bib.id, cmp: cEgg, portion: 1 });
+    const p = C.call({ action: 'portions', token: yu });
+    assert.ok(p.ok, JSON.stringify(p));
+    assert.strictEqual(C.call({ action: 'portions', token: waiter }).ok, false);
+    const m = p.menus.find((x) => x.id === bib.id);
+    const eggPart = m.parts.find((x) => x.link === egg.id);
+    assert.deepStrictEqual([eggPart.kind, eggPart.unit, eggPart.portion], ['ing', 'pcs', 1]);
+    assert.strictEqual(p.raw.find((x) => x.id === egg.id).qty, 42);
+    const bulPart = m.parts.find((x) => x.kind === 'rcp' && !x.todo);
+    const it = p.items.find((x) => x.recipeId === bulPart.recipeId);
+    assert.ok(it && it.amount > 0 && it.code === bulPart.link, 'prep stock in grams, linked by code');
+    assert.strictEqual(p.canEdit, false);
+  });
+
   test('recipes: delete = hidden tab (not in the list, still in the file)', () => {
     const id = bulgogi().id;
     assert.strictEqual(C.call({ action: 'recipeDelete', token: yu, id }).ok, false);

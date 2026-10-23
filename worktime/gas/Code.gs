@@ -107,7 +107,7 @@ function doPost(e) {
       recipes: recipesView_, recipePhoto: recipePhoto_, recipePhotoUpload: recipePhotoUpload_,
       recipeSave: recipeSave_, recipeDelete: recipeDelete_, boxSave: boxSave_,
       prodLog: prodLog_, prodList: prodList_, prodDelete: prodDelete_, prodMove: prodMove_, prodCorrect: prodCorrect_, stock: stockView_, countView: countView_, countSave: countSave_,
-      menuView: menuView_, menuEdit: menuEdit_,
+      menuView: menuView_, menuEdit: menuEdit_, portions: portionsView_,
       ingView: ingView_, ingSave: ingSave_, ingMove: ingMove_, ingRemove: ingRemove_, supSave: supSave_, shelfSave: shelfSave_,
     };
     var fn = handlers[req.action];

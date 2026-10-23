@@ -14,6 +14,8 @@
 //   Shelves       : Shelf | Floor | Levels | Counted by   (지하 원재료 선반. 줄 순서 = 체크 순서, Counted by = 팀 이름)
 //   Price history : 가격·보증금이 바뀔 때마다 한 줄 (앱에서 저장할 때).
 //   Changes       : 앱에서 바꾼 것 한 줄씩 (누가 · 무엇을 · 전 → 후).
+//   Counts        : 원재료 재고 조사 한 줄씩 — At | Kind | Ingredient ID | Ingredient | Address | Before | Counted | Unit | By
+//                   지금 재고 = 그 재료의 마지막 Counted. Daily 재료는 저녁 Count, Sunday 재료는 일요일 조사에 나옴(주소별 화면).
 // 레시피 편집기의 재료 자동완성·이름 맞추기도 이 시트의 Ingredients 탭을 씀 (예전 Recipes 시트의 Ingredients 탭은 setup 때 옮기고 숨김).
 
 var ING_HEAD = ['ID', 'Name', 'Category', 'Unit', 'Storage', 'Address', 'Count', 'Demand', 'Par', 'Note', 'Active', 'Added', 'First recipe'];
@@ -22,6 +24,7 @@ var SUP_HEAD = ['Name', 'Order by', 'Email', 'WhatsApp', 'Website', 'Contact', '
 var SHELF_HEAD = ['Shelf', 'Floor', 'Levels', 'Counted by'];
 var PRICE_HEAD = ['At', 'Ingredient ID', 'Ingredient', 'Supplier', 'Pack', 'Old price', 'New price', 'Old deposit', 'New deposit', 'By'];
 var CHANGE_HEAD = ['At', 'By', 'Ingredient ID', 'Ingredient', 'What', 'Before', 'After'];
+var RAWCOUNT_HEAD = ['At', 'Kind', 'Ingredient ID', 'Ingredient', 'Address', 'Before', 'Counted', 'Unit', 'By'];
 var SHELF_DEFAULT = [['A', 'Basement', 6, 'Kitchen'], ['B', 'Basement', 6, 'Kitchen'], ['C', 'Basement', 6, 'Kitchen'],
                      ['D', 'Basement', 6, 'Service'], ['E', 'Basement', 6, 'Service'], ['F', 'Basement', 6, 'Service'],
                      ['G', 'Basement', 6, 'Service']];
@@ -65,6 +68,7 @@ function ensureIngBook_() {
   if (sh.fresh && sh.sh.getLastRow() < 2) sh.sh.getRange(2, 1, SHELF_DEFAULT.length, 4).setValues(SHELF_DEFAULT);
   ingTab_(ss, 'Price history', PRICE_HEAD, ['A:E', 'J:J']);
   ingTab_(ss, 'Changes', CHANGE_HEAD, ['A:G']);
+  ingTab_(ss, 'Counts', RAWCOUNT_HEAD, ['A:E', 'H:I']);
   if (ing.sh.getLastRow() < 2 && !props_.getProperty('ING_MIGRATED')) ingMigrate_(ing.sh);
   return ss;
 }
@@ -465,6 +469,62 @@ function shelfSave_(req) {
 }
 
 // ------------------------------------------------------------------ 레시피 편집기와 연결
+
+// ------------------------------------------------------------------ 원재료 재고 (주소별 조사)
+
+/** 재료마다 마지막으로 센 양. { ING-001: { qty, at, address } } */
+function rawStock_(ss) {
+  ss = ss || ensureIngBook_();
+  var sh = ss.getSheetByName('Counts') || ingTab_(ss, 'Counts', RAWCOUNT_HEAD, ['A:E', 'H:I']).sh, last = sh.getLastRow(), out = {};
+  if (last < 2) return out;
+  var n = Math.min(last - 1, 3000);
+  sh.getRange(last - n + 1, 1, n, RAWCOUNT_HEAD.length).getValues().forEach(function (r) {
+    var id = String(r[2]).trim(), q = ingNum_(r[6]);
+    if (id && q !== null) out[id] = { qty: q, at: String(r[0]), address: String(r[4]) };
+  });
+  return out;
+}
+
+/**
+ * 조사 화면에 넣을 원재료. kind = 'daily' (Count 가 Daily 인 재료) / 'sunday' (나머지).
+ * → [{ placeId(냉장고면 위치 ID) | shelf(선반 글자) | freezer, title, short, items: [{ id, name, unit, address, before }] }]
+ *   냉장고 재료는 그 냉장고 화면에 합쳐지고, 선반은 선반 하나 = 화면 하나(칸 순서), 냉동 재료는 'Freezer items' 한 화면.
+ */
+function rawCountScreens_(kind) {
+  var ss = ensureIngBook_(), stock = rawStock_(ss), shelves = readShelves_(ss), fr = {}, out = [];
+  ingFridges_().forEach(function (f) { fr[f.code] = f; });
+  var list = readIngMaster_(ss).filter(function (i) { return i.active && (kind === 'daily' ? i.count === 'Daily' : i.count !== 'Daily'); });
+  var item = function (i) { return { id: i.id, name: i.name, unit: i.unit, address: i.address, short: fr[i.address] ? fr[i.address].short : i.address,
+                                     before: stock[i.id] ? stock[i.id].qty : null }; };
+  var byFridge = {};
+  list.forEach(function (i) { if (i.storage !== 'Freezer' && fr[i.address]) (byFridge[i.address] = byFridge[i.address] || []).push(item(i)); });
+  Object.keys(byFridge).forEach(function (id) { out.push({ placeId: id, title: fr[id].label, short: fr[id].short, items: byFridge[id] }); });
+  shelves.forEach(function (sh) {
+    var items = list.filter(function (i) { var m = /^([A-Z0-9]+)-(\d+)$/.exec(i.address); return i.storage !== 'Freezer' && m && m[1] === sh.code && !fr[i.address]; })
+      .sort(function (a, b) { return +a.address.split('-')[1] - +b.address.split('-')[1] || (a.name < b.name ? -1 : 1); }).map(item);
+    if (items.length) out.push({ shelf: sh.code, title: sh.floor + ' · Shelf ' + sh.code, short: sh.code, by: sh.by, items: items });
+  });
+  var frozen = list.filter(function (i) { return i.storage === 'Freezer'; }).map(item);
+  if (frozen.length) out.push({ freezer: true, title: 'Freezer items', short: 'Frz', items: frozen });
+  return out;
+}
+
+/** 조사 저장의 원재료 부분: raw = [{ id, qty }] (화면에 나온 줄 모두). Counts 탭에 한 줄씩. */
+function rawCountSave_(raw, kind, emp) {
+  if (!Array.isArray(raw) || !raw.length) return 0;
+  var ss = ensureIngBook_(), all = {}, stock = rawStock_(ss), at = nowMinParis_(), rows = [];
+  readIngMaster_(ss).forEach(function (i) { all[i.id] = i; });
+  raw.forEach(function (x) {
+    var i = all[String(x.id || '')];
+    if (!i) fail_('Unknown ingredient: ' + x.id);
+    var q = ingNum_(x.qty);
+    if (q === null || q < 0 || q > 10000000) fail_(i.name + ': please enter a number (' + i.unit + ').');
+    q = Math.round(q * 10) / 10;
+    rows.push([at, kind === 'sunday' ? 'Sunday' : 'Daily', i.id, i.name, i.address, stock[i.id] ? stock[i.id].qty : '', q, i.unit, emp.name]);
+  });
+  appendRows_(ss.getSheetByName('Counts'), rows);
+  return rows.length;
+}
 
 /** setup: 예전 주소(냉장고 Short 'F6')를 위치 ID('PL-07')로. 여러 번 실행해도 안전. */
 function ingAddressesToIds_() {

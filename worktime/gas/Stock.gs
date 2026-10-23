@@ -156,6 +156,23 @@ function nowMinParis_() { return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-d
 
 function round1_(n) { return Math.round(n * 10) / 10; }
 
+/** 레시피가 재고를 세는 단위: 'box' (기본) / 'pcs' / 'g'. */
+function unitOfRecipe_(id) {
+  var r = recipeById_(id);
+  return r ? r.countUnit || 'box' : 'box';
+}
+
+var UNIT_WORD = { box: 'boxes', pcs: 'pieces', g: 'grams' };
+
+/** 양 검사 — 박스: 소수 1자리(최대 999), 개수: 정수(최대 99 999), g: 정수(최대 10 000 000). */
+function qtyNum_(v, label, allowZero, unit) {
+  if (!unit || unit === 'box') return boxesNum_(v, label, allowZero);
+  var n = recipeNum_(v), max = unit === 'pcs' ? 99999 : 10000000;
+  if (n === null || isNaN(n) || n < 0 || (!allowZero && n === 0) || n > max) fail_(label + ': please enter a number of ' + UNIT_WORD[unit] + '.');
+  if (Math.abs(n - Math.round(n)) > 1e-9) fail_(label + ': whole ' + UNIT_WORD[unit] + ' only.');
+  return Math.round(n);
+}
+
 /** 박스 수 검사 (0 < n ≤ max, 소수 1자리). allowZero = 재고 조사·정정. */
 function boxesNum_(v, label, allowZero, max) {
   var n = recipeNum_(v);
@@ -276,10 +293,10 @@ function prodRecipe_(id) {
 function prodLog_(req) {
   var emp = recipeUser_(req), all = recipesAll_(), r = prodRecipe_(req.id), admin = emp.admin || emp.supervisor;
   if (r.count === 'none' && !req.missing) return prodLogNotStored_(req, emp, r);
-  var boxes = boxesNum_(req.boxes, 'Boxes');
+  var unit = r.countUnit || 'box', boxes = qtyNum_(req.boxes, unit === 'box' ? 'Boxes' : unit === 'pcs' ? 'Pieces' : 'Grams', false, unit);
   var box = String(req.box || r.box || '').trim();
-  if (!box) fail_('Please choose the box.');
-  if (!(all.boxes.some(function (b) { return b.name === box; }) || box === r.box)) fail_('Unknown box: ' + box);
+  if (!box && unit === 'box') fail_('Please choose the box.');
+  if (box && !(all.boxes.some(function (b) { return b.name === box; }) || box === r.box)) fail_('Unknown box: ' + box);
   var maker = prodMaker_(emp, req.madeBy);
   var place = prodPlace_(req.place);
   if (!place) fail_(req.place ? 'Unknown place: ' + req.place : 'Please choose where it is stored.');
@@ -390,7 +407,7 @@ function prodMove_(req) {
     if (!id || i < 0) fail_('This entry is not in the log any more.');
     var left = lotLeft_(rec.rows[i]);
     if (!(left > 0)) fail_('This batch is used up.');
-    var n = req.boxes == null || req.boxes === '' ? left : boxesNum_(req.boxes, 'Boxes to move');
+    var n = req.boxes == null || req.boxes === '' ? left : qtyNum_(req.boxes, 'Amount to move', false, unitOfRecipe_(rec.rows[i][11]));
     if (n > left + 1e-9) fail_('Boxes to move: between 0.1 and ' + left + '.');
     out = moveLot_(rec, i, n, place, emp);
   } finally {
@@ -409,7 +426,7 @@ function stockAdmin_(req) {
 
 /** 배치의 남은 박스를 바로잡음. 소비량이 아니라 CORRECT 로 기록. */
 function prodCorrect_(req) {
-  var emp = stockAdmin_(req), id = String(req.entry || ''), left = boxesNum_(req.left, 'Boxes left', true);
+  var emp = stockAdmin_(req), id = String(req.entry || '');
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   var c;
@@ -417,6 +434,7 @@ function prodCorrect_(req) {
     var rec = prodRecent_(), i = findLot_(rec, id);
     if (!id || i < 0) fail_('This entry is not in the log any more.');
     c = rec.rows[i];
+    var left = qtyNum_(req.left, 'Left', true, unitOfRecipe_(c[11]));
     var before = lotLeft_(c);
     if (Math.abs(before - left) < 1e-9) return { ok: true, entry: prodEntry_(c, emp) };
     setLeft_(rec, i, left);
@@ -460,12 +478,20 @@ function useAverages_() {
 
 /** 종합본: 레시피마다 합계, 위치별 분량, 배치들, 하루 평균, 남은 일수. */
 function stockView_(req) {
-  var emp = recipeUser_(req), rec = prodRecent_(), avg = useAverages_(), places = prodPlaces_(), items = {};
+  var emp = recipeUser_(req), rec = prodRecent_(), avg = useAverages_(), places = prodPlaces_(), items = {}, recipes = {};
+  recipesAll_().recipes.forEach(function (r) { recipes[r.id] = r; });
   var order = places.map(function (p) { return p.label; });
   liveLots_(rec).forEach(function (i) {
-    var c = rec.rows[i], id = String(c[11]), e = prodEntry_(c, emp);
-    var it = items[id] || (items[id] = { recipeId: id, recipe: e.recipe, total: 0, where: {}, lots: [], expired: false });
+    var c = rec.rows[i], id = String(c[11]), e = prodEntry_(c, emp), r = recipes[id] || {}, unit = r.countUnit || 'box';
+    var it = items[id] || (items[id] = { recipeId: id, recipe: r.name || e.recipe, code: r.code || '', unit: unit, total: 0, amount: 0, where: {}, lots: [], expired: false });
     it.total = round1_(it.total + e.left);
+    // 포션 계산용 양: 개수 = 그대로, g = 그대로, 박스 = 그 배치의 g (Total × 남은/처음) 또는 박스당 g(FILL)
+    if (it.amount != null) {
+      if (unit !== 'box') it.amount += e.left;
+      else if (e.total > 0 && e.boxes > 0) it.amount += e.total * e.left / e.boxes;
+      else if (r.fill > 0) it.amount += r.fill * e.left;
+      else it.amount = null;
+    }
     var wk = e.place + '\n' + e.box;
     it.where[wk] = round1_((it.where[wk] || 0) + e.left);
     it.lots.push(e);
@@ -478,6 +504,7 @@ function stockView_(req) {
     delete it.where;
     it.avg = a;
     it.daysLeft = a > 0 ? Math.round(it.total / a * 10) / 10 : null;
+    if (it.amount != null) it.amount = Math.round(it.amount);
     return it;
   }).sort(function (x, y) {
     var dx = x.daysLeft == null ? 1e9 : x.daysLeft, dy = y.daysLeft == null ? 1e9 : y.daysLeft;
@@ -508,7 +535,8 @@ function countView_(req) {
     var e = prodEntry_(rec.rows[i], emp), p = prodPlace_(e.place);
     if (!inCount_(kind, p, recipes[e.recipeId])) return;
     var key = (p ? p.label : e.place) + '\n' + e.recipeId;
-    var x = at[key] || (at[key] = { place: p ? p.label : e.place, recipeId: e.recipeId, recipe: e.recipe, left: 0, expired: false, box: e.box });
+    var rr = recipes[e.recipeId] || {};
+    var x = at[key] || (at[key] = { place: p ? p.label : e.place, recipeId: e.recipeId, recipe: rr.name || e.recipe, left: 0, expired: false, box: e.box, unit: rr.countUnit || 'box' });
     x.left = round1_(x.left + e.left);
     if (x.box !== e.box) x.box = 'mixed';
     if (e.expired) x.expired = true;
@@ -526,7 +554,8 @@ function countView_(req) {
     g.items.push(x);
   });
   return { ok: true, kind: kind, places: out, last: props_.getProperty('COUNT_LAST_' + kind) || '',
-           recipes: recipesAll_().recipes.map(function (r) { return { id: r.id, name: r.name, box: r.box }; }) };
+           recipes: recipesAll_().recipes.map(function (r) { return { id: r.id, name: r.name, box: r.box, unit: r.countUnit || 'box' }; }),
+           raw: rawCountScreens_(kind) };
 }
 
 /** 레시피의 배치들(이 위치) — 오래된 것부터 (사용기한, 만든 날). */
@@ -551,7 +580,7 @@ function countSave_(req) {
   var emp = stockAdmin_(req), kind = countKind_(req.kind), today = todayIsoParis_();
   var added = Array.isArray(req.added) ? req.added : [], moves = Array.isArray(req.moves) ? req.moves : [];
   var counts = Array.isArray(req.counts) ? req.counts : [];
-  if (added.length + moves.length + counts.length > 2000) fail_('Too many lines.');
+  if (added.length + moves.length + counts.length + (Array.isArray(req.raw) ? req.raw.length : 0) > 2000) fail_('Too many lines.');
   var place = function (label) { var p = prodPlace_(label); if (!p) fail_('Unknown place: ' + label); return p; };
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -562,13 +591,13 @@ function countSave_(req) {
     var all = recipesAll_();
     added.forEach(function (a) {
       var r = prodRecipe_(a.recipeId), p = place(a.place);
-      writeLot_({ emp: emp, r: r, boxes: boxesNum_(a.boxes, r.name), box: r.box || (all.boxes[0] && all.boxes[0].name) || '',
+      writeLot_({ emp: emp, r: r, boxes: qtyNum_(a.boxes, r.name, false, r.countUnit), box: r.box || (r.countUnit && r.countUnit !== 'box' ? '' : (all.boxes[0] && all.boxes[0].name) || ''),
                   maker: emp.name, place: p, date: madeOn_(emp, a.madeOn), batch: 'added at count', total: '',
                   note: 'Found at ' + kind + ' count ' + nowMinParis_() + ' by ' + emp.name });
     });
     var rec = prodRecent_();
     moves.forEach(function (m) {
-      var from = place(m.from), to = place(m.to), n = boxesNum_(m.boxes, 'Move');
+      var from = place(m.from), to = place(m.to), n = qtyNum_(m.boxes, 'Move', false, unitOfRecipe_(m.recipeId));
       lotsAt_(rec, String(m.recipeId), from.label).forEach(function (i) {
         if (n <= 1e-9) return;
         var take = Math.min(n, lotLeft_(rec.rows[i]));
@@ -580,7 +609,7 @@ function countSave_(req) {
     var moveRows = [];
     counts.forEach(function (x) {
       var p = place(x.place), id = String(x.recipeId), lots = lotsAt_(rec, id, p.label);
-      var counted = boxesNum_(x.boxes, 'Count', true);
+      var counted = qtyNum_(x.boxes, 'Count', true, unitOfRecipe_(id));
       var name = lots.length ? String(rec.rows[lots[0]][3]) : ((all.recipes.filter(function (r) { return r.id === id; })[0] || {}).name || id);
       var s = sum(id, name), before = lots.reduce(function (n, i) { return n + lotLeft_(rec.rows[i]); }, 0);
       s.before = round1_(s.before + before);
@@ -627,6 +656,7 @@ function countSave_(req) {
       return [nowMinParis_(), kind === 'sunday' ? 'Sunday' : 'Daily', s.recipe, id, days, s.before, s.counted, s.used, s.wasted, s.corrected, emp.name];
     });
     appendRows_(use, useRows, [[1, 4]]);
+    rawCountSave_(req.raw, kind, emp); // 원재료 (Ingredients 시트 Counts 탭)
     props_.setProperty('COUNT_LAST_' + kind, nowMinParis_() + ' · ' + emp.name);
   } finally {
     lock.releaseLock();
