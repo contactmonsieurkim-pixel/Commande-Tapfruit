@@ -469,7 +469,7 @@ function recipeRows_(r, ctx) {
   if (mode === 'percent' && !bases) fail_('A Percent recipe needs a base ingredient (the one you weigh).');
   var box = rcpText_(r.box, 100, 'The box');
   if (box) {
-    var bx = (ctx.boxes || []).filter(function (b) { return b.name === box || (r.boxId && b.id === r.boxId); })[0];
+    var bx = (ctx.boxes || []).filter(function (b) { return b.name === box; })[0] || (ctx.boxes || []).filter(function (b) { return r.boxId && b.id === r.boxId; })[0];
     rows.push(bx ? row('BOX', bx.name, '', '', bx.id) : row('BOX', box)); // 목록에 없는 박스 = 이름만 (시트에서 Boxes 탭에 추가하면 연결됨)
   }
   if (r.fill !== '' && r.fill != null) {
@@ -589,6 +589,21 @@ function recipeStub_(name) {
   SpreadsheetApp.flush();
   bumpRecipes_();
   return code;
+}
+
+/** 레시피 이름만 바꾸기 (메뉴 편집기의 컴포넌트 이름). 탭 이름·RECIPE 줄·홈메이드 줄. */
+function recipeRename_(code, name) {
+  var ss = recipeBook_(), all = recipesAll_(), r = all.recipes.filter(function (x) { return x.code === code; })[0];
+  if (!r) fail_('Recipe ' + code + ' not found.');
+  if (r.name === name) return;
+  var clash = all.recipes.filter(function (x) { return x.code !== code && ingKey_(x.name) === ingKey_(name); })[0];
+  if (clash) fail_('A recipe called “' + clash.name + '” already exists.');
+  var sh = recipeSheetById_(ss, r.id), vals = recipeValues_(sh);
+  vals.forEach(function (row, i) { if (String(row[0]).trim().toUpperCase() === 'RECIPE') sh.getRange(i + 1, 2).setValue(safeCell_(name)); });
+  sh.setName(recipeTabName_(ss, name, sh));
+  codeRenameInRecipes_(code, name);
+  SpreadsheetApp.flush();
+  bumpRecipes_();
 }
 
 /** 레시피 탭들에서 E 열 코드가 code 인 재료 줄의 이름(B)을 새 이름으로 (시트를 읽기 쉽게; 앱은 코드로 찾음). */

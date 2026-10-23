@@ -102,6 +102,8 @@ function nextCode_(ids, kind) {
  *   add {name} · rename {menu, name} · remove {menu}
  *   partAdd {menu, cmp} 이미 있는 컴포넌트 | {menu, link: 'RCP-…'|'ING-…'} | {menu, newRecipe: 이름} (빈 레시피 To write 를 만듦)
  *   portion {menu, cmp, portion} (빈칸 = 모름) · partRemove {menu, cmp}
+ *   cmpRename {cmp, name} = 연결된 레시피(또는 재료)의 이름을 바꿈 (모든 메뉴·레시피에 그대로 보임)
+ *   cmpDelete {cmp} = 컴포넌트를 모든 메뉴에서 빼고 지움 (레시피·재료 자체는 남음)
  * → menuView 와 같은 모양 + done (새로 만든 것의 코드)
  */
 function menuEdit_(req) {
@@ -165,6 +167,21 @@ function menuEdit_(req) {
     } else if (op === 'partRemove') {
       var m4 = menu(), p4 = mb.parts.filter(function (p) { return p.menu === m4.id && p.cmp === String(req.cmp || '').toUpperCase(); })[0];
       if (p4) psh.deleteRow(p4.row);
+    } else if (op === 'cmpRename') {
+      var c5 = mb.comps[String(req.cmp || '').toUpperCase()];
+      if (!c5) fail_('This component is not in the list any more.', 'CHANGED');
+      var n5 = rcpText_(req.name, 100, 'The name').replace(/\s+/g, ' ');
+      if (!n5) fail_('Please enter the name.');
+      if (/^RCP-/.test(c5.link)) recipeRename_(c5.link, n5);
+      else ingRename_(c5.link, n5, menuEditor_(req));
+      ss.getSheetByName('Components').getRange(c5.row, 3).setValue(safeCell_(n5));
+      mb.parts.forEach(function (p) { if (p.cmp === c5.id) psh.getRange(p.row, 4).setValue(safeCell_(n5)); });
+    } else if (op === 'cmpDelete') {
+      var c6 = mb.comps[String(req.cmp || '').toUpperCase()];
+      if (!c6) fail_('This component is not in the list any more.', 'CHANGED');
+      mb.parts.filter(function (p) { return p.cmp === c6.id; }).sort(function (a, b) { return b.row - a.row; })
+        .forEach(function (p) { psh.deleteRow(p.row); });
+      ss.getSheetByName('Components').deleteRow(c6.row);
     } else fail_('Unknown change.');
     SpreadsheetApp.flush();
   } finally {

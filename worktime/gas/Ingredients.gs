@@ -339,6 +339,20 @@ function ingWritePacks_(ss, id, c, emp) {
   sh.getRange(1, 1, 1, PACK_HEAD.length).setFontWeight('bold');
 }
 
+/** 재료 이름만 바꾸기 (메뉴 편집기의 컴포넌트 이름). 레시피 줄 이름도. */
+function ingRename_(id, name, emp) {
+  var ss = ensureIngBook_(), all = readIngMaster_(ss), i = all.filter(function (x) { return x.id === id; })[0];
+  if (!i) fail_('Ingredient ' + id + ' not found.');
+  if (i.name === name) return;
+  var clash = all.filter(function (x) { return x !== i && x.active && ingKey_(x.name) === ingKey_(name); })[0];
+  if (clash) fail_('“' + clash.name + '” already exists (' + clash.id + ').');
+  ss.getSheetByName('Ingredients').getRange(i.row, 2).setValue(safeCell_(name));
+  ingLog_(ss, emp, id, name, [['Name', i.name, name]]);
+  codeRenameInRecipes_(id, name);
+  SpreadsheetApp.flush();
+  bumpRecipes_();
+}
+
 /** 주소 그림에서 끌어 놓기: 보관·주소만 바꿈. address = 'A-1' / 'F6' / 'FREEZER' / '' (주소 없음). */
 function ingMove_(req) {
   var emp = ingUser_(req);

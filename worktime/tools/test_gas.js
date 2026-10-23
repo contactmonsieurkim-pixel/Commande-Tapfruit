@@ -2460,6 +2460,20 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.ok(v.menus.some((x) => x.name === 'Tteokbokki (spicy)'));
     v = C.call({ action: 'menuEdit', token: sup, op: 'remove', menu: tt });
     assert.ok(!v.menus.some((x) => x.id === tt));
+    // 컴포넌트 이름 바꾸기 = 연결된 레시피·재료의 이름, 지우기 = 모든 메뉴에서 빠짐 (레시피는 남음)
+    const cNamul = v.menus.find((x) => x.id === bib).parts.find((p) => p.name === 'Namul mix').cmp;
+    v = C.call({ action: 'menuEdit', token: sup, op: 'cmpRename', cmp: cNamul, name: 'Namul (3 kinds)' });
+    assert.ok(v.ok, JSON.stringify(v));
+    assert.ok(v.recipes.some((r) => r.name === 'Namul (3 kinds)') && book().getSheetByName('Namul (3 kinds)'));
+    const cSoy = v.menus.find((x) => x.id === bib).parts.find((p) => p.name === 'Soy sauce').cmp;
+    v = C.call({ action: 'menuEdit', token: sup, op: 'cmpRename', cmp: cSoy, name: 'Soy sauce (light)' });
+    assert.ok(v.ingredients.some((i) => i.name === 'Soy sauce (light)'));
+    assert.strictEqual(C.call({ action: 'menuEdit', token: sup, op: 'cmpRename', cmp: cSoy, name: 'Water' }).ok, false, 'name taken');
+    v = C.call({ action: 'menuEdit', token: sup, op: 'cmpRename', cmp: cSoy, name: 'Soy sauce' });
+    v = C.call({ action: 'menuEdit', token: sup, op: 'cmpRename', cmp: cNamul, name: 'Namul mix' });
+    const extra = C.call({ action: 'menuEdit', token: sup, op: 'partAdd', menu: bib, link: v.ingredients.find((i) => i.name === 'Water').code }).done;
+    v = C.call({ action: 'menuEdit', token: sup, op: 'cmpDelete', cmp: extra });
+    assert.ok(!v.components.some((c) => c.id === extra) && !v.menus.find((x) => x.id === bib).parts.some((p) => p.cmp === extra));
     assert.ok(C.ctx.checkMenus() >= 1);
   });
 
