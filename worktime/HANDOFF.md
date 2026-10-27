@@ -1,6 +1,6 @@
 # 인수인계 메모 (새 세션은 이 파일부터 읽기)
 
-> 마지막 정리: 2026-10-12 · Ingredients(재료 마스터: 거래처·규격·가격·보관 주소 + 앱 편집기) 추가. 다음 = 원재료 재고 조사 → 주간 Demand·주문 → 입고·변동
+> 마지막 정리: 2026-10-23 · 메뉴·컴포넌트·포션 추산(Stock 앱 = Portion estim · Count · Menu editor · Recipe editor), 모든 것을 코드로 연결, 원재료 재고 조사. 다음 = 주간 Demand·주문 → 입고·변동
 > 설치·사용법은 `README.md`, 이 파일은 **구조 · 결정한 이유 · 작업 방식 · 남은 일**.
 
 ## 1. 한눈에 보기
@@ -21,9 +21,10 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 - `Transport Receipts` 폴더 (영수증 `이름 yyyy-MM.jpg`, 회계사에게 보내면 휴지통으로)
 - `Announcement Photos` 폴더 (비공개, 앱에는 API 로 base64 전달)
 - **Recipes** 스프레드시트 (레시피마다 탭 1개 + `Boxes` + `Places` + `How to`), `Recipe Photos` 폴더, **Production Log** 스프레드시트(`Log` 탭, 보호 안 함)
-- **Ingredients** 스프레드시트 (`Ingredients` · `Packs` · `Suppliers` · `Shelves` · `Price history` · `Changes`, 보호 안 함)
+- **Ingredients** 스프레드시트 (`Ingredients` · `Packs` · `Suppliers` · `Shelves` · `Price history` · `Changes` · `Counts`, 보호 안 함)
+- **Menus** 스프레드시트 (`Menus` · `Components` · `Parts`, 보호 안 함)
 
-## 2. 서버 파일 (Apps Script 에 같은 이름으로 12개 + appsscript.json)
+## 2. 서버 파일 (Apps Script 에 같은 이름으로 13개 + appsscript.json)
 
 | 파일 | 내용 | `setup` 잘림 검사 표식(파일 마지막 함수) |
 |---|---|---|
@@ -38,11 +39,12 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 | `Chat.gs` | 단체 채팅(전체 방 + 팀별 방): 메시지·사진·삭제·알림 끄기, 방별 캐시, 모아서 보내는 푸시(`chatPushRun`) | `chatPushRun` |
 | `Recipes.gs` | 레시피 읽기(시트 탭 → 레시피)·저장(앱 편집기)·사진·박스 목록, 편집기용 점검 `checkRecipes` | `checkRecipes` |
 | `Stock.gs` | 저장 위치(Places 탭), Production log(배치)·옮기기·나누기·정정·빠진 배치, 재고 종합본, 재고 조사(Count/Sunday)·소비량(Use 탭), 편집기용 `checkStock` | `checkStock` |
-| `Ingredients.gs` | 재료 마스터(별도 시트): 재료·규격·가격·보증금·거래처·선반 주소, 앱 편집(Admin), 이름 바꾸면 레시피도 고침, 레시피의 새 재료 자동 추가, 편집기용 `checkIngredients` | `checkIngredients` |
+| `Ingredients.gs` | 재료 마스터(별도 시트): 재료·규격·가격·보증금·거래처·선반 주소, 앱 편집(Admin), 원재료 재고 조사(Counts), 편집기용 `checkIngredients` | `checkIngredients` |
+| `Menus.gs` | 메뉴·컴포넌트·1인분(Supervisor), 빈 레시피(To write) + 09:00 알림, Portion estim 데이터, 편집기용 `checkMenus` | `checkMenus` |
 
-API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend chat chatSend chatDelete chatPhoto chatMute org recipes recipePhoto recipePhotoUpload recipeSave recipeDelete boxSave prodLog prodList prodDelete prodMove prodCorrect stock countView countSave ingView ingSave ingMove ingRemove supSave shelfSave`
+API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend chat chatSend chatDelete chatPhoto chatMute org recipes recipePhoto recipePhotoUpload recipeSave recipeDelete boxSave prodLog prodList prodDelete prodMove prodCorrect stock countView countSave ingView ingSave ingMove ingRemove supSave shelfSave menuView menuEdit portions`
 
-스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음), `RECIPE_TEAMS`(선택, 레시피를 보는 팀, 기본 `Kitchen`, 쉼표로 여러 팀) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID RECEIPT_FOLDER_ID ACCOUNTANT_EMAIL RECEIPT_NOTIFIED RECIPE_SHEET_ID RECIPE_PHOTO_FOLDER_ID PROD_SHEET_ID INGREDIENT_SHEET_ID ING_MIGRATED RCP_VER PROD_SEQ COUNT_LAST_daily COUNT_LAST_sunday LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE CHAT_SEQ CHAT_VER_<방> CHAT_PUSH_AT chatr_<이름> chatn_<이름> chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
+스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음), `RECIPE_TEAMS`(선택, 레시피를 보는 팀, 기본 `Kitchen`, 쉼표로 여러 팀) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID RECEIPT_FOLDER_ID ACCOUNTANT_EMAIL RECEIPT_NOTIFIED RECIPE_SHEET_ID RECIPE_PHOTO_FOLDER_ID PROD_SHEET_ID INGREDIENT_SHEET_ID ING_MIGRATED MENU_SHEET_ID RCP_CODE_SEQ BOX_SEQ PLACE_SEQ TODO_NOTIFIED RCP_VER PROD_SEQ COUNT_LAST_daily COUNT_LAST_sunday LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE CHAT_SEQ CHAT_VER_<방> CHAT_PUSH_AT chatr_<이름> chatn_<이름> chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
 
 트리거: `scheduleMorning`(매일 07시대) → 그날 09:00 정각 1회용 `morningRun` 예약. `checkScheduleChanges`(30분마다, 조용한 시간엔 건너뜀).
 `chatPushRun`: 채팅 메시지가 오면 약 1분 뒤 1회용으로 자동 예약(동시에 하나만, 자기 자신을 지움). setup 에서 만들 필요 없음.
@@ -138,10 +140,10 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
   레시피마다 기본 위치(PLACE 줄, 편집기 'Usual place') → 미리 선택. 없으면 이 폰에서 마지막으로 고른 곳.
   **일부만 옮기기**: Move 에서 박스 수를 줄이면 원래 줄은 남은 수로 줄고(Total 도 비율대로) 옮긴 만큼은 새 줄(새 ID, `Split from` = 원래 ID). 합계는 그대로 → 생산량이 두 번 세어지지 않음.
   **Move = 누구나**(레시피를 볼 수 있는 사람): 레시피 화면 *Recently logged* 또는 Stock 앱에서 품목을 눌러 → Location 을 바꾸고 Moved at / Moved by 기록.
-- **Recipe editor** (Manager 폴더, Supervisor 만): 레시피 목록 → 편집(이름·분류·Fixed/Percent·줄 추가/순서/삭제·보관) → Save = 그 탭을 통째로 다시 씀(탭 이름도 레시피 이름으로). 
+- **Recipe editor** (Stock 앱의 탭, Supervisor 만 — 2026-10-23 전에는 Manager 폴더): 레시피 목록 → 편집(이름·분류·Fixed/Percent·줄 추가/순서/삭제·보관) → Save = 그 탭을 통째로 다시 씀(탭 이름도 레시피 이름으로). 
   열어 둔 사이에 시트에서 바뀌었으면 `CHANGED` 로 거절(덮어쓰지 않음, 다시 열기). **Delete = 탭 숨기기**(시트에서 숨김 해제하면 복구, Production log 는 그대로).
   사진: 고르는 즉시 줄여서(1280px) `Recipe Photos` 폴더에 `<레시피이름>-yyyyMMdd-HHmmss.jpg` 로 올리고 그 파일 이름을 PHOTO 줄에 넣음. 사장님이 Drive 에 직접 올리고 파일 이름을 적어도 됨.
-  **Boxes**: 박스 목록(Capacity·Name·Note·사진) 편집 = `Boxes` 탭을 다시 씀. 박스 이름을 바꾸면 그 박스를 쓰던 레시피에서 다시 골라야 함(이름으로 연결).
+  **Boxes**: 박스 목록(Capacity·Name·Note·사진) 편집 = `Boxes` 탭을 다시 씀. 박스는 ID 로 연결 → 이름을 바꿔도 레시피가 따라감.
 - **홈메이드 재료**: 재료 이름 = 다른 레시피 이름(대소문자·악센트 무시)이면 그 줄에 *↳ Homemade · open recipe* → 그 레시피로 이동.
   이동한 레시피 위에 'Needed for 원래 레시피: 1 100 g' + 정량이면 *Make ×0.2*(필요량 ÷ 1 batch 완성 무게, 0.05 단위 올림), 비율(기준 재료 1개)이면 *Weigh about … of 기준 재료*.
   Back 버튼 = '← 원래 레시피'(여러 단계도 차례로). 편집기 자동완성에 레시피 이름도 나오고(작은 'recipe' 표시), 저장할 때 레시피 이름의 표기로 맞춤.
@@ -190,7 +192,27 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
   재료를 **끌어서** 칸에 놓기(다른 선반은 작은 그림 위에서 0.35초 멈추면 바뀜), 또는 **눌러서 고르고 → 칸 누르기**. 놓으면 바로 저장(`ingMove`). 위로 자동 스크롤은 없음(지나가다 밀려서 엉뚱한 칸에 떨어졌음), 아래로만.
   칸 수 **− / +**(1~12, 맨 아래 칸에 재료가 있으면 못 줄임). 조사 담당 = 선반 머리의 `Kitchen counts ▾` → 작은 드롭다운에서 팀 선택(**2번 눌러야 바뀜**, 사장님: 실수 방지. 큰 패널은 "거창하다"고 해서 배지 크기 드롭다운으로).
   옛 미리보기의 화살표(체크 순서 바꾸기)는 "자리와 재료가 같이 움직여 이해 안 됨"이라 없앰.
-- 남은 단계(사장님과 합의, 순서대로): ① 원재료 재고 조사(Daily/Sunday, Service 담당 선반은 Service 팀이) ② 주간 Demand(Recipes+Par / Usage) → 주문 목록 → 거래처별 분할(보증금 포함 예상 facture) ③ 입고 대조·변동 기록·변동 탭·알림.
+- 남은 단계(사장님과 합의, 순서대로): ② 주간 Demand(Recipes+Par / Usage) → 주문 목록 → 거래처별 분할(보증금 포함 예상 facture) ③ 입고 대조·변동 기록·변동 탭·알림.
+  ①(원재료 재고 조사)은 2026-10-23 에 Count 화면에 들어감(아래). 아직 안 한 것: **Service 팀이 D~G 선반만 조사하는 화면**(지금 Count = Admin 이상), 원재료의 소비량·남은 일수(입고 기록이 생겨야 계산 가능).
+
+**코드로 연결 (2026-10-23, 사장님: "이름을 수정하더라도 오류가 나지 않도록, 레시피든 컴포넌트든 전부")**
+- 메뉴 `MENU-001` · 컴포넌트 `CMP-001` · 레시피 `RCP-001`(탭의 `ID` 줄) · 재료 `ING-001` · 박스 `BOX-01`(Boxes 탭 E열) · 위치 `PL-01`(Places 탭 F열).
+- 레시피 탭은 5열: E = 코드 (ING/BASE 줄 = ING- 또는 홈메이드 RCP-, BOX 줄 = BOX-, PLACE 줄 = PL-). 앱은 코드로 지금 이름을 찾아 보여줌 → 이름을 바꿔도 연결 유지(시트의 B열 이름도 같이 고쳐 둠).
+- Production Log 에 `Place ID` 열(19번째) → 위치 이름(Spot)을 바꿔도 배치가 따라감. 원재료의 냉장고 주소 = 위치 ID(앱은 Short 로 보여줌).
+- `setup` 의 `ensureCodes_` 가 기존 데이터에 코드를 붙임(여러 번 실행해도 안전). 시트에서 새로 만든 레시피 탭은 앱이 읽을 때 ID 줄을 넣고, 새 박스·위치 줄에도 ID 를 붙임.
+- **새 재료는 Ingredients 앱에서만**(사장님: 같은 재료가 여러 이름으로 갈라짐 방지). 레시피 편집기 재료 칸은 목록(재료 + 다른 레시피)에서 고르기만, 목록에 없으면 빨간 *Not in the ingredient list* + *Did you mean …?*, 저장 안 됨(서버도 거절). 지운(Active FALSE) 재료는 새로 고를 수 없음(예전 레시피에는 그대로 보임).
+
+**메뉴 · 컴포넌트 · Portion estim (2026-10-23)**
+- Stock 앱 = 탭 **Portion estim · Count · Menu editor · Recipe editor** (사장님이 정한 순서). Portion estim = 레시피를 보는 사람 모두, Count = Admin 이상(안에서 Evening / Sunday), Menu editor·Recipe editor = Supervisor. 예전 Stock 탭(레시피별 목록)은 Portion estim 맨 아래 *Not on a menu* 로, Manager 폴더의 Recipe editor 아이콘은 없앰(Recipe editor 는 v-redit 화면 + 같은 탭 줄).
+- **Menu editor**: 메뉴 이름만 넣고 추가 → 메뉴 안에서 *Add a component* 에 이름 → 컴포넌트·레시피·재료가 바로 뜸(누르면 연결). 새 이름이면 "Does it need a recipe?" Yes = 빈 레시피(To write, RCP 코드)를 만들어 연결, No = 재료 목록에서만(없으면 Ingredients 에서 먼저).
+  컴포넌트 = 레시피 또는 재료 하나(Link), **여러 메뉴가 같이 씀**(재고도 같이). 1인분(Portion)은 메뉴마다, **비워 둬도 됨**(나중에 입력). 단위 = 재료 단위 또는 레시피가 Pieces 면 pcs, 아니면 g.
+  이름 바꾸기·지우기(사장님 요청): 메뉴 = Rename / Delete(Active FALSE), 컴포넌트 ⋯ = 이름 바꾸기(연결된 레시피·재료 이름이 바뀜) · 이 메뉴에서 빼기 · 모든 메뉴에서 지우기(레시피·재료는 남음) · 레시피 열기.
+- **To write**: 재료가 하나도 없는 레시피. Recipe editor 맨 위 목록, 매일 09:00 `morningRun` → Supervisor 푸시 + 메일(하루 한 번 `TODO_NOTIFIED`, 링크 `?view=todo`). 재료를 넣고 저장하면 끝.
+- **Portion estim**: 메뉴마다 컴포넌트의 **모든 주소 합계** + 주소별 양 + **≈ 남은 포션 = 총량 ÷ 1인분**. 박스로 세는 프렙의 g = 배치 Total × 남은/처음 박스(없으면 박스당 g FILL). 메뉴 머리 = 가장 적은 컴포넌트 기준 ≈ 몇 그릇(▼ fewest).
+  빨강 = 남은 일수 2일 미만(Stock 탭과 같은 기준, 하루 평균은 Use 탭). 1인분이 비면 *portion?*, 센 적 없으면 *not counted*, 박스당 g 을 모르면 *box size?*. 프렙 줄을 누르면 예전처럼 위치별 배치(Move · Correct · Delete · + Missing batch).
+- **세는 단위**(레시피마다, 편집기 Stock count 아래 *Count in*): Boxes(기본) / Pieces / Grams → 레시피 탭 `COUNTIN` 줄. Log production·Move·Correct·Count·Missing batch 가 그 단위(개수·g 은 정수). 박스가 아니면 박스 고르기 없음.
+- **원재료 재고 조사**: Count 화면에 같이. 재료 Count = Daily → 저녁 Count, Sunday → 일요일. 냉장고 재료는 그 냉장고 화면에(파란 *raw*), 지하 선반은 선반 하나 = 화면 하나(칸 순서), 냉동 재료는 *Freezer items* 한 화면. 한 번도 안 센 것은 빨간 `?`.
+  저장 = Ingredients 시트 `Counts` 탭(재료마다 마지막 값 = 지금 재고). Portion estim 의 재료 컴포넌트는 이 값.
 
 ## 4. 작업 방식 (사장님과 합의된 흐름)
 
@@ -210,7 +232,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 145개, python 의 pycryptodome 필요)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 153개, python 의 pycryptodome 필요)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```

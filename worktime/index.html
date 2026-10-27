@@ -503,6 +503,9 @@
                border-radius: 6px; background: var(--brand-soft); color: var(--brand); white-space: nowrap; }
     .rc-mode.pct { background: var(--warn-bg); color: var(--warn-ink); }
     .rc-warn { flex: none; font-size: 12px; font-weight: 700; color: var(--warn-ink); background: var(--warn-bg); border-radius: 8px; padding: 1px 7px; }
+    .rc-todo { flex: none; font-size: 11px; font-weight: 700; color: var(--warn-ink); background: var(--warn-bg); border-radius: 6px; padding: 1px 7px; }
+    .re-todo-h { display: flex; align-items: center; gap: 6px; }
+    .re-todo-h .badge { margin: 0; }
     .rc-head .meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .rc-head h2 { font-size: 22px; margin: 4px 0 0; overflow-wrap: anywhere; }
     .rc-scale { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; margin: 12px 0;
@@ -604,7 +607,72 @@
     .rc-dock { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); display: flex; gap: 8px; margin-top: 14px; z-index: 4; }
     .rc-dock button { margin: 0; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
     #v-redit.re-on { padding-bottom: 24px; }
-    #v-redit.re-on .back-fab { display: none; }
+    #v-redit.re-on .back-fab, #v-redit.re-on .st-tabs { display: none; }
+    .st-tabs { flex-wrap: wrap; }
+    /* Portion estim */
+    .cn-kind { margin: 0 0 10px; }
+    /* Menu editor */
+    .me-list { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 12px; }
+    button.me-row { display: flex; align-items: center; gap: 10px; width: 100%; margin: 0; padding: 12px; border: 0; border-top: 1px solid var(--line); border-radius: 0;
+                    background: none; color: var(--text); text-align: left; font-weight: 400; font-size: 16px; }
+    .me-list > :first-child { border-top: 0; }
+    .me-row .nm { flex: 1; min-width: 0; font-weight: 600; display: flex; flex-direction: column; gap: 2px; }
+    .me-row .nm small { font-weight: 400; font-size: 13px; color: var(--muted); }
+    .me-code { font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); letter-spacing: .3px; }
+    .me-chip { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; white-space: nowrap; }
+    .me-chip.rcp { background: var(--brand-soft); color: var(--brand); }
+    .me-chip.todo { background: var(--warn-bg); color: var(--warn-ink); }
+    .me-chip.ing { background: var(--blue-bg); color: var(--blue-text); }
+    .me-chip.miss { background: var(--err); color: #fff; }
+    .me-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+    .me-card label { margin-top: 0; }
+    .me-card > button { margin-top: 10px; }
+    .me-mh { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+    .me-mh h2 { margin: 0; font-size: 19px; }
+    .me-acts { display: flex; gap: 12px; flex: none; }
+    .me-acts .danger, .danger { color: var(--err) !important; }
+    .me-back { margin: 0 0 8px !important; }
+    .me-part { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--line); }
+    button.me-pn { flex: 1; min-width: 0; width: auto; margin: 0; padding: 0; background: none; color: var(--text); text-align: left; font-weight: 400; font-size: 16px;
+                   display: flex; flex-direction: column; gap: 3px; }
+    .me-pn small { font-size: 12px; }
+    .me-por { display: flex; align-items: center; gap: 4px; margin: 0; flex: none; }
+    .me-por input { width: 66px; font-size: 16px; padding: 6px 7px; text-align: right; font-variant-numeric: tabular-nums; }
+    .me-por input.empty { border-style: dashed; }
+    .me-por span { font-size: 13px; color: var(--muted); width: 24px; }
+    button.me-more { width: 34px; height: 34px; margin: 0; padding: 0; background: none; color: var(--muted); font-size: 20px; flex: none; }
+    .me-sugs { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-top: 8px; }
+    .me-sh { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); padding: 6px 10px 2px; background: var(--bg); }
+    button.me-sug { display: flex; justify-content: space-between; gap: 8px; width: 100%; margin: 0; padding: 9px 10px; border-radius: 0; border-top: 1px solid var(--line);
+                    background: var(--card); color: var(--text); text-align: left; font-weight: 400; font-size: 15px; }
+    .me-ask { border: 2px solid var(--brand); border-radius: 12px; padding: 12px; margin-top: 10px; }
+    .me-yn { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+    .me-yn button { margin: 0; padding: 10px 6px; background: var(--bg); color: var(--text); border: 1px solid var(--line); font-size: 15px; display: flex; flex-direction: column; }
+    .me-yn button small { font-weight: 400; font-size: 12px; color: var(--muted); }
+    .me-yn button.on { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
+    .me-warn { background: var(--warn-bg); color: var(--warn-ink); border-radius: 10px; padding: 10px; font-size: 14px; margin: 8px 0 0; }
+    .cn-raw { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; color: var(--blue-text); background: var(--blue-bg); border-radius: 5px; padding: 0 5px; }
+    .cn-row.need .v { color: var(--err); }
+    .pe-legend { font-size: 12px; color: var(--muted); margin: -4px 2px 10px; }
+    .pe-menu { background: var(--card); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; margin-bottom: 12px; }
+    .pe-mh { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 12px 12px 8px; }
+    .pe-mt { display: flex; flex-direction: column; min-width: 0; }
+    .pe-mt b { font-size: 18px; }
+    .pe-mt small, .pe-serv small { font-size: 12px; color: var(--muted); }
+    .pe-serv { text-align: right; font-variant-numeric: tabular-nums; flex: none; }
+    .pe-serv b { font-size: 20px; display: block; }
+    .pe-serv.low b { color: var(--err); }
+    button.pe-row { display: grid; grid-template-columns: 1fr auto auto; gap: 2px 10px; align-items: center; width: 100%; margin: 0; padding: 9px 12px;
+                    border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; color: var(--text); text-align: left; font-weight: 400; font-size: 15px; }
+    button.pe-row:disabled { opacity: 1; }
+    .pe-row .nm { font-weight: 600; min-width: 0; overflow-wrap: anywhere; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .pe-row .q { text-align: right; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .pe-row .por { text-align: right; min-width: 88px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .pe-row .por small { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
+    .pe-row.low .por, .pe-row.low .por small { color: var(--err); }
+    .pe-where { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+    .pe-where em { font-style: normal; font-size: 12px; color: var(--muted); background: var(--bg); border-radius: 6px; padding: 1px 6px; }
+    .pe-fewest { font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 6px; background: var(--text); color: var(--bg); }
     /* 재료 이름 자동완성 */
     .ac { position: relative; flex: 1; min-width: 0; }
     .ac > input { width: 100%; }
@@ -615,7 +683,8 @@
     .ac-list button:first-child { border-top: 0; }
     .ac-note { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; }
     .ac-note:not(:empty) { margin-top: 5px; }
-    .ac-new { font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 7px; background: var(--warn-bg); color: var(--warn-ink); }
+    .ac-new { font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 7px; background: var(--err); color: #fff; }
+    .ac-how { font-size: 12px; }
     .ac-note .link { color: var(--brand); font-size: 13px; padding: 0; }
     .ac-home { font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 7px; background: var(--brand-soft); color: var(--brand); margin-left: 8px; }
     .rc-sub { display: block; width: auto; margin: 3px 0 0; padding: 0; background: none; border: 0; color: var(--brand); font-size: 13px; font-weight: 600; text-align: left; }
@@ -873,7 +942,6 @@
         <button id="b-inbox" class="app hidden" type="button"><span class="app-ic ic-inbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span><span class="app-name">Requests inbox</span></button>
         <button id="b-team" class="app hidden" type="button"><span class="app-ic ic-team"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="app-name">Team status</span></button>
         <button id="b-receipts" class="app hidden" type="button"><span class="app-ic ic-acct"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg></span><span class="app-name">To accountant</span></button>
-        <button id="b-redit" class="app hidden" type="button"><span class="app-ic ic-redit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4"/><path d="M2 6h4M2 10h4M2 14h4M2 18h4"/><path d="M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/></svg></span><span class="app-name">Recipe editor</span></button>
         <button id="b-ingr" class="app hidden" type="button"><span class="app-ic ic-ingr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></span><span class="app-name">Ingredients</span></button>
       </div>
     </div>
@@ -1035,16 +1103,18 @@
     <button id="b-rc-list-back" class="back-fab" type="button">← Back</button>
   </section>
 
-  <!-- Stock: 재고 종합본 (Kitchen 팀 + Supervisor) · Count / Sunday 재고 조사 (Admin 이상) -->
+  <!-- Stock 앱: Portion estim (Kitchen 팀 + Supervisor) · Count (저녁/일요일, Admin 이상) · Menu editor (Supervisor) · Recipe editor = v-redit -->
   <section id="v-stock" class="hidden">
-    <div id="st-tabs" class="seg rc-tabs"><button type="button" data-t="stock" class="on">Stock</button><button type="button" data-t="count" class="hidden">Count</button><button type="button" data-t="sunday" class="hidden">Sunday</button></div>
+    <div id="st-tabs" class="seg rc-tabs st-tabs"><button type="button" data-t="portion" class="on">Portion estim</button><button type="button" data-t="count" class="hidden">Count</button><button type="button" data-t="menus" class="hidden">Menu editor</button><button type="button" data-t="recipes" class="hidden">Recipe editor</button></div>
     <div id="rc-stock"></div>
     <div id="rc-count" class="hidden"></div>
+    <div id="rc-menus" class="hidden"></div>
     <button id="b-st-back" class="back-fab" type="button">← Back</button>
   </section>
 
-  <!-- Supervisor 전용: Recipe editor (앱에서 고치면 시트 탭을 다시 씀) -->
+  <!-- Supervisor 전용: Recipe editor (Stock 앱의 탭, 앱에서 고치면 시트 탭을 다시 씀) -->
   <section id="v-redit" class="hidden">
+    <div class="seg rc-tabs st-tabs"><button type="button" data-t="portion">Portion estim</button><button type="button" data-t="count" class="hidden">Count</button><button type="button" data-t="menus" class="hidden">Menu editor</button><button type="button" data-t="recipes" class="on">Recipe editor</button></div>
     <div id="re-list-box">
       <h2 class="feed-title">Recipe editor</h2>
       <div class="rc-tools"><button id="b-re-new" type="button">+ New recipe</button><button id="b-re-boxes" type="button" class="secondary">Boxes</button></div>
@@ -1247,7 +1317,7 @@
     const admin = store.get('wt_admin') === '1', sup = store.get('wt_sup') === '1';
     $('b-admin').classList.toggle('hidden', !admin);
     $('b-ingr').classList.toggle('hidden', !admin);
-    for (const id of ['b-inbox', 'b-team', 'b-receipts', 'b-redit']) $(id).classList.toggle('hidden', !sup);
+    for (const id of ['b-inbox', 'b-team', 'b-receipts']) $(id).classList.toggle('hidden', !sup);
     $('b-recipes').classList.toggle('hidden', store.get('wt_rcp') !== '1');
     $('b-stock').classList.toggle('hidden', store.get('wt_rcp') !== '1');
     const inside = [...document.querySelectorAll('#folder .app:not(.hidden) .app-ic')];
@@ -1294,7 +1364,7 @@
     if (q.has('p') && q.has('a') && q.has('c')) {
       sessionStorage.setItem('wt_pending', JSON.stringify({ a: q.get('a'), p: q.get('p'), c: q.get('c') }));
     }
-    if (['ann', 'rules', 'requests', 'schedule', 'receipt', 'receipts', 'chat'].includes(q.get('view'))) sessionStorage.setItem('wt_view', q.get('view'));
+    if (['ann', 'rules', 'requests', 'schedule', 'receipt', 'receipts', 'chat', 'todo'].includes(q.get('view'))) sessionStorage.setItem('wt_view', q.get('view'));
     if (q.get('view') === 'chat' && q.get('room')) sessionStorage.setItem('wt_chat_room', q.get('room'));
     if (location.search) history.replaceState(null, '', location.pathname);
     const raw = sessionStorage.getItem('wt_pending');
@@ -3368,6 +3438,7 @@
       if (view === 'schedule') return openSchedule({}, true, null, 'fresh');
       if (view === 'receipt') return openReceipt('home');
       if (view === 'receipts') return openReceipts();
+      if (view === 'todo') return openEditor(); // 09:00 알림: 아직 쓰지 않은 레시피 (Recipe editor 맨 위 To write)
       if (view === 'chat') {
         const room = sessionStorage.getItem('wt_chat_room');
         sessionStorage.removeItem('wt_chat_room');
@@ -3581,7 +3652,7 @@
   let rcpShown = null;           // 그려 둔 레시피의 버전 (바뀌었을 때만 다시 그림)
   let rcpProd = { id: null, entries: [] };
   const rcpState = { q: '', cat: 'All', mult: {}, bases: {}, done: {} };
-  let stTab = 'stock';            // Stock 화면 탭: stock · count · sunday
+  let stTab = 'portion';          // Stock 앱 탭: portion · count · menus · recipes
   let rcpStock = null;           // Stock 화면: 서버 stock (레시피별 합계·위치·배치·하루 평균)
   const rcpPhotos = new Map();
   const MULTS = [0.5, 1, 2, 3];
@@ -3752,7 +3823,7 @@
         window.scrollTo(0, y);
       }
     } else if (currentView === 'redit' && !reDraft) renderReList();
-    else if (currentView === 'stock' && stTab === 'stock' && rcpStock) renderStock(); // 짧은 주소·박스 용량이 바뀌었을 수 있음
+    else if (currentView === 'stock' && stTab === 'portion' && pd) renderStock(); // 짧은 주소·박스 용량이 바뀌었을 수 있음
   }
 
   async function openRecipes() {
@@ -3798,6 +3869,7 @@
       t.append(line);
     }
     b.append(t);
+    if (r.todo) b.append(el('span', 'rc-todo', 'To write'));
     if (warn && r.warnings && r.warnings.length) b.append(el('span', 'rc-warn', '⚠ ' + r.warnings.length));
     b.append(el('span', 'rc-mode' + (r.mode === 'percent' ? ' pct' : ''), r.mode === 'percent' ? '%' : 'Fixed'), el('span', 'chev'));
     b.addEventListener('click', onClick);
@@ -3937,7 +4009,7 @@
         const nm = el('span', 'nm', it.name);
         const sub = [it.t === 'base' ? (pct ? 'base' : '') : pct ? it.q + '%' : '', it.note].filter(Boolean).join(' · ');
         if (sub) nm.append(el('small', null, sub));
-        const home = it.name && rcpByName(it.name);
+        const home = it.recipe && rcpData.recipes.find((x) => x.id === it.recipe);
         if (home && home.id !== r.id) { // 홈메이드 재료 = 다른 레시피 → 눌러서 그 레시피로 (필요한 양과 함께)
           const go = el('button', 'rc-sub', '↳ Homemade · open recipe');
           go.type = 'button';
@@ -4075,7 +4147,7 @@
     };
     rcpProd.entries = fix(rcpProd.entries);
     renderProd();
-    if (currentView === 'stock' && stTab === 'stock') loadStock(); else rcpStock = null;
+    if (currentView === 'stock' && stTab === 'portion') loadStock(); else { rcpStock = null; pd = null; }
   }
 
   // ---------------------------------------------------------------- 저장 위치 고르기 (층 → 냉장고/선반 → 자리)
@@ -4156,7 +4228,7 @@
     cancel.addEventListener('click', closeRcSheet);
     save.addEventListener('click', async () => {
       const raw = inp.value.trim(), n = rcpNum(raw);
-      if (!/^\d+([.,]\d)?$/.test(raw) || !(n > 0) || n > e.left) { msg.textContent = 'Boxes to move: between 0.1 and ' + fmtB(e.left) + '.'; return inp.focus(); }
+      if (!qtyOk(raw, recipeUnit(e.recipeId)) || n > e.left) { msg.textContent = 'To move: between ' + (recipeUnit(e.recipeId) === 'box' ? '0.1' : '1') + ' and ' + fmtB(e.left) + '.'; return inp.focus(); }
       if (!place) { msg.textContent = 'Choose the new place.'; return; }
       if (place === e.place) return closeRcSheet();
       save.disabled = true; msg.textContent = '';
@@ -4178,35 +4250,50 @@
       }
     });
     row.append(cancel, save);
-    sheet.append(head, el('div', 'rc-lab', 'How many boxes'), stp, el('div', 'rc-lab', 'New place'), placePicker('', (v) => { place = v; }), msg, row);
+    sheet.append(head, el('div', 'rc-lab', 'How many ' + unitWord(recipeUnit(e.recipeId))), stp, el('div', 'rc-lab', 'New place'), placePicker('', (v) => { place = v; }), msg, row);
     openRcSheet(sheet);
   }
 
-  // ---------------------------------------------------------------- Stock 앱 (홈 아이콘): Stock(종합본) · Count(매일) · Sunday(일요일 조사)
-  /** Count·Sunday 탭은 Admin 이상에게만. */
+  // ---------------------------------------------------------------- Stock 앱 (홈 아이콘): Portion estim · Count · Menu editor · Recipe editor
+  // Portion estim = 누구나(Kitchen 팀 + Supervisor), Count = Admin 이상, Menu editor · Recipe editor = Supervisor.
+  // Recipe editor 는 따로 있는 화면(v-redit)이지만 같은 탭 줄을 씀.
+  let cntKind = 'daily';          // Count 탭: Evening(daily) / Sunday
+  function stTabOk(t) {
+    if (t === 'portion') return true;
+    if (!rcpData) return false;
+    return t === 'count' ? !!rcpData.canCount : !!rcpData.canEdit;
+  }
   function syncStockTabs() {
-    const canCount = !!(rcpData && rcpData.canCount);
-    if ((stTab === 'count' || stTab === 'sunday') && rcpData && !canCount) stTab = 'stock';
-    $('st-tabs').querySelectorAll('button').forEach((b) => {
+    if (rcpData && !stTabOk(stTab)) stTab = 'portion';
+    document.querySelectorAll('.st-tabs').forEach((bar) => bar.querySelectorAll('button').forEach((b) => {
       b.classList.toggle('on', b.dataset.t === stTab);
-      if (b.dataset.t === 'count' || b.dataset.t === 'sunday') b.classList.toggle('hidden', !canCount);
-    });
+      if (b.dataset.t !== 'portion') b.classList.toggle('hidden', !stTabOk(b.dataset.t));
+    }));
   }
 
   function setStockTab(t) {
+    if (currentView === 'redit' && reDraft && reDraft.dirty && t !== 'recipes' && !confirm('Discard your changes?')) return;
     stTab = t;
     syncStockTabs();
     t = stTab;
-    $('rc-stock').classList.toggle('hidden', t !== 'stock');
-    $('rc-count').classList.toggle('hidden', t === 'stock');
-    if (t === 'stock') { renderStock(); loadStock(); }
-    else openCount(t === 'sunday' ? 'sunday' : 'daily');
+    if (t === 'recipes') { if (currentView !== 'redit' || reDraft) openEditor(); return; }
+    if (currentView !== 'stock') { rcpSaved(); show('stock'); }
+    $('rc-stock').classList.toggle('hidden', t !== 'portion');
+    $('rc-count').classList.toggle('hidden', t !== 'count');
+    $('rc-menus').classList.toggle('hidden', t !== 'menus');
+    if (t === 'portion') { renderStock(); loadStock(); }
+    else if (t === 'count') openCount(cntKind);
+    else openMenus();
   }
-  $('st-tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) { setStockTab(b.dataset.t); window.scrollTo(0, 0); } });
+  document.querySelectorAll('.st-tabs').forEach((bar) => bar.addEventListener('click', (e) => {
+    const b = e.target.closest('button');
+    if (b) { setStockTab(b.dataset.t); window.scrollTo(0, 0); }
+  }));
 
   async function openStock() {
     rcpSaved();
     show('stock');
+    if (stTab === 'recipes') stTab = 'portion';
     setStockTab(stTab);
     loadRecipes(); // 위치 목록·권한·레시피 (Missing batch 용)
   }
@@ -4218,18 +4305,28 @@
   const fmtB = (n) => String(Math.round(n * 10) / 10);
   /** 보관 통 = 박스 용량 (없으면 박스 이름). */
   const unitOf = (box) => (box === 'mixed' ? 'mixed' : (rcpBox(box) || {}).capacity || box || '');
+  /** 레시피가 재고를 세는 단위 box / pcs / g. */
+  const recipeUnit = (id) => ((rcpData && rcpData.recipes.find((x) => x.id === id)) || {}).countUnit || 'box';
+  /** 양 + 단위: 박스는 통 용량(없으면 'box'), 개수 'pcs', 무게 'g'. */
+  const qtyUnit = (unit, box) => (unit === 'pcs' ? 'pcs' : unit === 'g' ? 'g' : unitOf(box) || 'box');
+  const unitWord = (unit) => (unit === 'pcs' ? 'pieces' : unit === 'g' ? 'grams' : 'boxes');
+  /** 입력 검사: 박스 = 소수 1자리, 개수·g = 정수. */
+  const qtyOk = (raw, unit, allowZero) => (unit === 'pcs' || unit === 'g' ? /^\d+$/ : /^\d+([.,]\d)?$/).test(String(raw).trim()) && (allowZero ? rcpNum(raw) >= 0 : rcpNum(raw) > 0);
+  const qtyMsg = (unit) => (unit === 'pcs' ? 'Pieces: a whole number.' : unit === 'g' ? 'Grams: a whole number.' : 'Boxes: a number, one decimal at most.');
 
-  // ---------------------------------------------------------------- Stock (종합본): 레시피마다 한 줄
+  // ---------------------------------------------------------------- Portion estim: 메뉴별 컴포넌트 총량(모든 주소 합계) ≈ 남은 포션
+  let pd = null;                  // 서버 portions 결과
   async function loadStock() {
     try {
-      const r = await api({ action: 'stock', token: token() });
+      const r = await api({ action: 'portions', token: token() });
       if (r.code === 'AUTH') return logout(r.error);
-      if (!r.ok) { if (!rcpStock) $('rc-stock').replaceChildren(el('p', 'err', serverMsg(r))); return; }
-      rcpStock = r;
-      if (currentView === 'stock' && stTab === 'stock') renderStock();
+      if (!r.ok) { if (!pd) $('rc-stock').replaceChildren(el('p', 'err', serverMsg(r))); return; }
+      pd = r;
+      rcpStock = { items: r.items, lastCount: r.lastCount };
+      if (currentView === 'stock' && stTab === 'portion') renderStock();
       if (!$('rc-scrim').classList.contains('hidden') && stockSheetFor) openStockItem(stockSheetFor, true);
     } catch (e) {
-      if (!rcpStock) $('rc-stock').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
+      if (!pd) $('rc-stock').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
     }
   }
 
@@ -4241,36 +4338,300 @@
     return isoLabel(new Date(Date.UTC(y, m - 1, d + Math.floor(days), 12)).toISOString().slice(0, 10), { month: undefined });
   }
 
+  /** 포션 계산용 양 표시: g → 1,4 kg, ml → L, pcs → 42 pcs. */
+  const amountText = (n, u) => (u === 'pcs' ? Math.round(n) + ' pcs' : u === 'ml' ? (n >= 1000 ? fmtB(n / 1000) + ' L' : Math.round(n) + ' ml') : fmtW(n));
+
   function renderStock() {
     const box = $('rc-stock');
-    if (!rcpStock) return box.replaceChildren(el('p', 'hint', 'Loading…'));
+    if (!pd) return box.replaceChildren(el('p', 'hint', 'Loading…'));
     const head = el('div', 'st-head');
-    head.append(el('h2', 'feed-title', 'Stock'), el('span', 'meta', rcpStock.lastCount.daily ? 'counted ' + rcpStock.lastCount.daily.replace(/^\d{4}-/, '') : 'not counted yet'));
-    const list = el('div', 'st-list');
-    for (const it of rcpStock.items) {
-      const b = el('button', 'st-item'), nm = el('span', 'nm'), name = el('b', null, it.recipe), where = el('span', 'where');
-      b.type = 'button';
-      if (it.expired) name.append(el('span', 'st-dot'));
-      const units = [...new Set(it.places.map((p) => p.box))];
-      it.places.forEach((p, i) => {
-        if (i) where.append(' · ');
-        where.append(el('em', null, shortOf(p.place)), ' ' + fmtB(p.left) + (units.length > 1 ? ' ' + unitOf(p.box) : ''));
+    head.append(el('h2', 'feed-title', 'Portion estim'), el('span', 'meta', pd.lastCount.daily ? 'counted ' + pd.lastCount.daily.replace(/^\d{4}-/, '') : 'not counted yet'));
+    const out = [head, el('p', 'pe-legend', 'Total = all places added up · ≈ portions = total ÷ portion · red = less than 2 days left')];
+    const byCode = {}, raw = {}, onMenu = new Set();
+    pd.items.forEach((it) => { if (it.code) byCode[it.code] = it; });
+    pd.raw.forEach((x) => { raw[x.id] = x; });
+    for (const m of pd.menus) {
+      const rows = m.parts.map((p) => {
+        onMenu.add(p.link);
+        const st = p.kind === 'rcp' ? byCode[p.link] : raw[p.link];
+        const total = !st ? null : p.kind === 'rcp' ? st.amount : st.qty;
+        const days = p.kind === 'rcp' && st ? st.daysLeft : null;
+        return { p, st, total, days, por: total != null && p.portion ? total / p.portion : null };
       });
-      nm.append(name, where);
-      const left = el('span', 'left' + (it.daysLeft != null && it.daysLeft < 2 ? ' low' : ''));
-      if (it.daysLeft != null) left.append(el('b', null, untilLabel(it.daysLeft)), fmtB(it.daysLeft) + ' days');
-      else left.append(el('b', null, '–'), it.avg === 0 ? 'no use yet' : 'not counted');
-      const tot = el('span', 'tot', fmtB(it.total));
-      tot.append(el('small', null, units.length > 1 ? 'mixed' : unitOf(units[0])));
-      b.append(nm, tot, left);
-      b.addEventListener('click', () => openStockItem(it.recipeId));
-      list.append(b);
+      const known = rows.filter((x) => x.por != null);
+      const lim = known.reduce((a, x) => (!a || x.por < a.por ? x : a), null);
+      const red = rows.some((x) => x.days != null && x.days < 2);
+      const card = el('div', 'pe-menu'), mh = el('div', 'pe-mh'), t = el('div', 'pe-mt');
+      t.append(el('b', null, m.name));
+      if (lim && known.length > 1) t.append(el('small', null, 'limited by ' + lim.p.name));
+      const serv = el('div', 'pe-serv' + (red ? ' low' : ''));
+      if (lim) serv.append(el('b', null, '≈ ' + Math.floor(lim.por)), el('small', null, 'servings' + (known.length < rows.length ? ' · not all known' : '')));
+      else serv.append(el('small', null, rows.length ? 'servings unknown' : 'no components yet'));
+      mh.append(t, serv);
+      card.append(mh);
+      for (const x of rows) {
+        const low = x.days != null && x.days < 2;
+        const b = el('button', 'pe-row' + (low ? ' low' : '')), nm = el('span', 'nm', x.p.name);
+        b.type = 'button';
+        if (x.p.todo) nm.append(el('span', 'rc-todo', 'To write'));
+        if (lim === x && known.length > 1) nm.append(el('span', 'pe-fewest', '▼ fewest'));
+        if (x.st && x.st.expired) nm.append(el('span', 'st-dot'));
+        const qty = el('span', 'q', x.total == null ? '—' : amountText(x.total, x.p.unit));
+        const por = el('span', 'por');
+        if (!x.st) por.append(el('small', null, 'not counted'));
+        else if (x.total == null) por.append(el('small', null, 'box size?'));
+        else if (x.p.portion == null) por.append(el('small', null, 'portion?'));
+        else por.append('≈ ' + Math.floor(x.por), el('small', null, 'portions' + (x.days != null ? ' · ' + fmtB(x.days) + ' days' : '')));
+        b.append(nm, qty, por);
+        const where = el('span', 'pe-where');
+        if (x.p.kind === 'rcp' && x.st) x.st.places.forEach((q) => where.append(el('em', null, shortOf(q.place) + ' ' + fmtB(q.left) + ' ' + qtyUnit(x.st.unit, q.box))));
+        if (x.p.kind === 'ing' && x.st) where.append(el('em', null, x.st.short + ' ' + fmtB(x.st.qty) + ' ' + x.st.unit));
+        if (where.children.length) b.append(where);
+        if (x.p.kind === 'rcp' && x.p.recipeId) b.addEventListener('click', () => openStockItem(x.p.recipeId));
+        else b.disabled = !x.st;
+        card.append(b);
+      }
+      out.push(card);
     }
-    const out = [head, rcpStock.items.length ? list : el('p', 'hint', 'Nothing in stock.')];
-    const codes = ((rcpData && rcpData.places) || []).map((p) => p.short + ' ' + p.spot).join(' · ');
-    if (codes) out.push(el('p', 'st-codes', codes));
+    // 메뉴에 없는 프렙 (예전 Stock 목록처럼): 남은 일수 순
+    const other = pd.items.filter((it) => !onMenu.has(it.code));
+    if (other.length) {
+      out.push(el('div', 'rc-lab', 'Not on a menu'));
+      const list = el('div', 'st-list');
+      for (const it of other) {
+        const b = el('button', 'st-item'), nm = el('span', 'nm'), name = el('b', null, it.recipe), where = el('span', 'where');
+        b.type = 'button';
+        if (it.expired) name.append(el('span', 'st-dot'));
+        it.places.forEach((p, i) => { if (i) where.append(' · '); where.append(el('em', null, shortOf(p.place)), ' ' + fmtB(p.left)); });
+        nm.append(name, where);
+        const left = el('span', 'left' + (it.daysLeft != null && it.daysLeft < 2 ? ' low' : ''));
+        if (it.daysLeft != null) left.append(el('b', null, untilLabel(it.daysLeft)), fmtB(it.daysLeft) + ' days');
+        else left.append(el('b', null, '–'), it.avg === 0 ? 'no use yet' : 'not counted');
+        const units = [...new Set(it.places.map((p) => p.box))];
+        const tot = el('span', 'tot', fmtB(it.total));
+        tot.append(el('small', null, it.unit !== 'box' ? it.unit : units.length > 1 ? 'mixed' : unitOf(units[0])));
+        b.append(nm, tot, left);
+        b.addEventListener('click', () => openStockItem(it.recipeId));
+        list.append(b);
+      }
+      out.push(list);
+    }
+    if (!pd.menus.length && !other.length) out.push(el('p', 'hint', pd.canEdit ? 'No menus yet. Add them in the Menu editor tab.' : 'Nothing in stock yet.'));
     box.replaceChildren(...out);
   }
+
+  // ---------------------------------------------------------------- Menu editor (Supervisor): 메뉴 → 컴포넌트 → 1인분
+  // 바꾸는 즉시 저장 (menuEdit). 컴포넌트는 여러 메뉴가 같이 씀. 새 이름이면 "레시피 필요?" → Yes = 빈 레시피(To write), No = 재료 목록에서만.
+  let md = null, meOpen = null, meQ = '', meNew = null, meBusy = false;
+  const meOpenDirty = () => meBusy;
+  const meEsc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  async function openMenus() {
+    renderMenus();
+    await loadMenus();
+  }
+  async function loadMenus() {
+    try {
+      const r = await api({ action: 'menuView', token: token() });
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) { if (!md) $('rc-menus').replaceChildren(el('p', 'err', serverMsg(r))); return; }
+      md = r;
+      if (currentView === 'stock' && stTab === 'menus') renderMenus();
+    } catch (e) {
+      if (!md) $('rc-menus').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
+    }
+  }
+  /** menuEdit 한 번 → 결과로 전체를 다시 그림. */
+  async function meEdit(body, okMsg) {
+    if (meBusy) return null;
+    meBusy = true;
+    try {
+      const r = await api(Object.assign({ action: 'menuEdit', token: token() }, body));
+      if (r.code === 'AUTH') { logout(r.error); return null; }
+      if (!r.ok) { toast(serverMsg(r)); if (r.code === 'CHANGED') loadMenus(); return null; }
+      md = r;
+      if (okMsg) toast(okMsg);
+      renderMenus();
+      loadRecipes(); // 새 빈 레시피·이름이 Recipe editor 에도 바로
+      return r;
+    } catch (e) { toast('Network problem. Please try again.' + detail(e)); return null; }
+    finally { meBusy = false; }
+  }
+
+  const meChip = (p) => (p.kind === 'ing' ? '<span class="me-chip ing">Ingredient · ' + meEsc(p.link) + '</span>'
+    : p.todo ? '<span class="me-chip todo">To write · ' + meEsc(p.link) + '</span>' : '<span class="me-chip rcp">Recipe · ' + meEsc(p.link) + '</span>');
+
+  function renderMenus() {
+    const box = $('rc-menus');
+    if (!md) return box.replaceChildren(el('p', 'hint', 'Loading…'));
+    const m = meOpen && md.menus.find((x) => x.id === meOpen);
+    if (meOpen && !m) meOpen = null;
+    if (m) return renderMenu(m);
+    let h = '<div class="st-head"><h2 class="feed-title">Menu editor</h2><span class="meta">' + md.menus.length + ' menus</span></div><div class="me-list">';
+    if (!md.menus.length) h += '<p class="hint" style="padding:12px">No menus yet. Add the first one below.</p>';
+    for (const x of md.menus) {
+      const todo = x.parts.filter((p) => p.todo).length, miss = x.parts.filter((p) => p.portion == null).length;
+      h += '<button type="button" class="me-row" data-menu="' + meEsc(x.id) + '"><span class="nm">' + meEsc(x.name) + ' <small class="me-code">' + meEsc(x.id) + '</small>' +
+        '<small>' + (x.parts.map((p) => meEsc(p.name)).join(' · ') || 'no components yet') + '</small>' +
+        (todo || miss ? '<small>' + (todo ? '<span class="me-chip todo">' + todo + ' to write</span> ' : '') + (miss ? '<span class="me-chip miss">' + miss + ' portion' + (miss > 1 ? 's' : '') + ' missing</span>' : '') + '</small>' : '') +
+        '</span><span class="chev"></span></button>';
+    }
+    h += '</div><div class="me-card"><label for="me-new-menu">New menu</label><input id="me-new-menu" type="text" placeholder="e.g. Japchae" maxlength="80">' +
+      '<button type="button" id="b-me-add">+ Add menu</button><p class="meta">Start with the name only, then add its components.</p></div>';
+    box.innerHTML = h;
+  }
+
+  function meSuggest(m) {
+    const k = ingKey(meQ);
+    if (!k) return null;
+    const has = (n) => ingKey(n).includes(k), inMenu = (cmp) => m.parts.some((p) => p.cmp === cmp);
+    const linked = new Set(md.components.map((c) => c.link));
+    return {
+      comps: md.components.filter((c) => has(c.name) && !inMenu(c.id)).slice(0, 6),
+      rcps: md.recipes.filter((r) => has(r.name) && !linked.has(r.code)).slice(0, 6),
+      ings: md.ingredients.filter((i) => has(i.name) && !linked.has(i.code)).slice(0, 6),
+      exact: md.components.concat(md.recipes, md.ingredients).some((x) => ingKey(x.name) === k),
+    };
+  }
+
+  function renderMenu(m) {
+    let h = '<button type="button" class="link me-back" data-act="back">← Menu editor</button>' +
+      '<div class="me-card"><div class="me-mh"><h2>' + meEsc(m.name) + ' <small class="me-code">' + meEsc(m.id) + '</small></h2>' +
+      '<span class="me-acts"><button type="button" class="link" data-act="rename">Rename</button><button type="button" class="link danger" data-act="delmenu">Delete</button></span></div>' +
+      '<p class="meta">Portion = how much goes on one plate. You can leave it empty and fill it in later.</p></div><div class="me-list">';
+    if (!m.parts.length) h += '<p class="hint" style="padding:12px">No component yet. Add the first one below.</p>';
+    m.parts.forEach((p) => {
+      const others = md.menus.filter((x) => x.id !== m.id && x.parts.some((q) => q.cmp === p.cmp)).map((x) => x.name);
+      h += '<div class="me-part"><button type="button" class="me-pn" data-part="' + meEsc(p.cmp) + '"><b>' + meEsc(p.name) + '</b> <small class="me-code">' + meEsc(p.cmp) + '</small>' +
+        '<small>' + meChip(p) + (others.length ? ' <span class="meta">also in ' + meEsc(others.join(', ')) + '</span>' : '') + (p.missing ? ' <span class="me-chip miss">link missing</span>' : '') + '</small></button>' +
+        '<label class="me-por"><input type="text" inputmode="decimal" data-portion="' + meEsc(p.cmp) + '" value="' + (p.portion == null ? '' : p.portion) + '" placeholder="—" aria-label="Portion of ' + meEsc(p.name) + '" class="' + (p.portion == null ? 'empty' : '') + '"><span>' + meEsc(p.unit) + '</span></label>' +
+        '<button type="button" class="me-more" data-part="' + meEsc(p.cmp) + '" aria-label="More for ' + meEsc(p.name) + '">⋯</button></div>';
+    });
+    h += '</div><div class="me-card"><label for="me-q">Add a component</label><input id="me-q" type="text" autocomplete="off" placeholder="Type: rice, sauce, egg…" value="' + meEsc(meQ) + '">';
+    const sg = meSuggest(m);
+    if (sg) {
+      const sec = (title, list, kind) => !list.length ? '' : '<div class="me-sh">' + title + '</div>' + list.map((x) =>
+        '<button type="button" class="me-sug" data-add="' + kind + ':' + meEsc(kind === 'cmp' ? x.id : x.code) + '"><span>' + meEsc(x.name) + '</span>' +
+        (kind === 'cmp' ? meChip({ kind: x.kind, link: x.link, todo: x.todo }) : kind === 'rcp' ? meChip({ kind: 'rcp', link: x.code, todo: x.todo }) : '<span class="me-chip ing">' + meEsc(x.code) + '</span>') + '</button>').join('');
+      const body = sec('Components (shared with other menus)', sg.comps, 'cmp') + sec('Recipes', sg.rcps, 'rcp') + sec('Ingredients', sg.ings, 'ing');
+      if (body) h += '<div class="me-sugs">' + body + '</div>';
+      if (!sg.exact) {
+        h += '<div class="me-ask"><div><b>“' + meEsc(meQ.trim()) + '”</b> is new. Does it need a recipe?</div><div class="me-yn">' +
+          '<button type="button" data-new="yes" class="' + (meNew === 'yes' ? 'on' : '') + '">Yes<small>we make it</small></button>' +
+          '<button type="button" data-new="no" class="' + (meNew === 'no' ? 'on' : '') + '">No<small>bought / raw</small></button></div>';
+        if (meNew === 'yes') h += '<p class="meta">Creates an empty recipe marked <span class="me-chip todo">To write</span>. You get a reminder at 09:00 until it has ingredients.</p><button type="button" data-act="mkyes">Add “' + meEsc(meQ.trim()) + '”</button>';
+        if (meNew === 'no') h += '<p class="me-warn">Raw items must come from the Ingredients list, so one product never has two names. Pick it above, or add it first in Manager › Ingredients.</p>';
+        h += '</div>';
+      }
+    }
+    h += '</div>';
+    $('rc-menus').innerHTML = h;
+    if (meQ) { const q = $('me-q'); q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
+  }
+
+  /** 컴포넌트 하나: 이름 바꾸기 · 이 메뉴에서 빼기 · 모든 메뉴에서 지우기 · 레시피 열기. */
+  function openPartSheet(m, p) {
+    const sheet = el('div', 'oc-sheet rc-sheet'), head = el('div');
+    sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+    head.append(el('div', 'oc-pos', p.cmp + ' · ' + (p.kind === 'rcp' ? 'recipe ' : 'ingredient ') + p.link), el('h2', null, p.name));
+    const inp = el('input');
+    inp.id = 'me-rename'; inp.type = 'text'; inp.value = p.name; inp.maxLength = 100;
+    const lab = el('label', null, 'Name');
+    lab.htmlFor = inp.id;
+    const msg = el('p', 'meta', p.kind === 'rcp' ? 'Renames the recipe too (everywhere it is used).' : 'Renames the ingredient too (Ingredients list and recipes).');
+    const btn = (text, cls, fn) => { const b = el('button', cls, text); b.type = 'button'; b.addEventListener('click', fn); return b; };
+    const save = btn('Save name', null, async () => {
+      const n = inp.value.trim();
+      if (!n || n === p.name) return closeRcSheet();
+      if (await meEdit({ op: 'cmpRename', cmp: p.cmp, name: n }, '✓ Renamed: ' + n)) closeRcSheet();
+    });
+    const out = [head, lab, inp, msg, save];
+    if (p.kind === 'rcp' && p.recipeId) out.push(btn(p.todo ? 'Write the recipe' : 'Open in Recipe editor', 'secondary', () => {
+      closeRcSheet(); setStockTab('recipes');
+      const go = () => { const r = rcpData && rcpData.recipes.find((x) => x.id === p.recipeId); if (r) editRecipe(r); };
+      if (rcpData && rcpData.recipes.some((x) => x.id === p.recipeId)) go(); else loadRecipes().then(go);
+    }));
+    out.push(btn('Remove from ' + m.name, 'secondary', async () => {
+      if (await meEdit({ op: 'partRemove', menu: m.id, cmp: p.cmp }, p.name + ' removed from ' + m.name)) closeRcSheet();
+    }));
+    out.push(btn('Delete this component everywhere', 'secondary danger', async () => {
+      const others = md.menus.filter((x) => x.parts.some((q) => q.cmp === p.cmp)).map((x) => x.name);
+      if (!confirm('Delete “' + p.name + '” from ' + others.join(', ') + '?\n\nThe ' + (p.kind === 'rcp' ? 'recipe' : 'ingredient') + ' itself stays.')) return;
+      if (await meEdit({ op: 'cmpDelete', cmp: p.cmp }, 'Component deleted')) closeRcSheet();
+    }));
+    out.push(btn('Close', 'link', closeRcSheet));
+    sheet.append(...out);
+    openRcSheet(sheet);
+  }
+
+  $('rc-menus').addEventListener('click', async (e) => {
+    const t = e.target, m = meOpen && md && md.menus.find((x) => x.id === meOpen);
+    const row = t.closest('[data-menu]');
+    if (row) { meOpen = row.dataset.menu; meQ = ''; meNew = null; renderMenus(); window.scrollTo(0, 0); return; }
+    if (t.id === 'b-me-add') {
+      const n = $('me-new-menu').value.trim();
+      if (!n) return $('me-new-menu').focus();
+      const r = await meEdit({ op: 'add', name: n }, 'Menu added: ' + n);
+      if (r) { meOpen = r.done; renderMenus(); }
+      return;
+    }
+    const act = t.closest('[data-act]');
+    if (act) {
+      const a = act.dataset.act;
+      if (a === 'back') { meOpen = null; meQ = ''; meNew = null; renderMenus(); window.scrollTo(0, 0); return; }
+      if (a === 'rename') {
+        const sheet = el('div', 'oc-sheet rc-sheet'), inp = el('input'), lab = el('label', null, 'Menu name');
+        sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
+        inp.id = 'me-menu-name'; inp.type = 'text'; inp.value = m.name; inp.maxLength = 80; lab.htmlFor = inp.id;
+        const ok = el('button', null, 'Save'), cancel = el('button', 'secondary', 'Cancel');
+        ok.type = 'button'; cancel.type = 'button';
+        cancel.addEventListener('click', closeRcSheet);
+        ok.addEventListener('click', async () => { const n = inp.value.trim(); if (!n || n === m.name) return closeRcSheet(); if (await meEdit({ op: 'rename', menu: m.id, name: n }, '✓ Renamed')) closeRcSheet(); });
+        const head = el('div');
+        head.append(el('div', 'oc-pos', m.id), el('h2', null, 'Rename menu'));
+        const r2 = el('div', 'row');
+        r2.append(cancel, ok);
+        sheet.append(head, lab, inp, r2);
+        openRcSheet(sheet);
+        return;
+      }
+      if (a === 'delmenu') {
+        if (!confirm('Delete the menu “' + m.name + '”?\n\nIts components and recipes stay (other menus keep them).')) return;
+        if (await meEdit({ op: 'remove', menu: m.id }, 'Menu deleted')) { meOpen = null; renderMenus(); }
+        return;
+      }
+      if (a === 'mkyes') {
+        const n = meQ.trim();
+        if (await meEdit({ op: 'partAdd', menu: m.id, newRecipe: n }, n + ' added · empty recipe to write')) { meQ = ''; meNew = null; renderMenus(); }
+        return;
+      }
+    }
+    const nw = t.closest('[data-new]');
+    if (nw) { meNew = nw.dataset.new; renderMenus(); return; }
+    const add = t.closest('[data-add]');
+    if (add) {
+      const [kind, code] = add.dataset.add.split(':');
+      const body = kind === 'cmp' ? { op: 'partAdd', menu: m.id, cmp: code } : { op: 'partAdd', menu: m.id, link: code };
+      if (await meEdit(body, 'Added. The portion can wait.')) { meQ = ''; meNew = null; renderMenus(); }
+      return;
+    }
+    const part = t.closest('[data-part]');
+    if (part && m) { const p = m.parts.find((x) => x.cmp === part.dataset.part); if (p) openPartSheet(m, p); }
+  });
+  $('rc-menus').addEventListener('input', (e) => {
+    if (e.target.id === 'me-q') { meQ = e.target.value; meNew = null; renderMenus(); }
+  });
+  $('rc-menus').addEventListener('change', (e) => {
+    const t = e.target;
+    if (t.dataset.portion == null) return;
+    const v = t.value.trim().replace(',', '.');
+    if (v !== '' && !(Number(v) > 0)) { toast('Portion: a number, or empty.'); return; }
+    meEdit({ op: 'portion', menu: meOpen, cmp: t.dataset.portion, portion: v }, 'Portion saved');
+  });
+  $('rc-menus').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.id === 'me-new-menu') { e.preventDefault(); $('b-me-add').click(); }
+    if (e.key === 'Enter' && e.target.dataset.portion != null) e.target.blur();
+  });
 
   let stockSheetFor = null;
   /** 품목 하나: 위치별 배치 (Move · Correct · Delete) + 빠진 배치 추가. */
@@ -4281,7 +4642,7 @@
     stockSheetFor = recipeId;
     const admin = !!rcpData.canCount, sheet = el('div', 'oc-sheet rc-sheet'), head = el('div');
     sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
-    head.append(el('div', 'oc-pos', it ? fmtB(it.total) + ' boxes' + (it.avg ? ' · uses about ' + fmtB(it.avg) + ' a day' : '') : 'Not in stock'),
+    head.append(el('div', 'oc-pos', it ? fmtB(it.total) + ' ' + unitWord(it.unit) + (it.avg ? ' · uses about ' + fmtB(it.avg) + ' a day' : '') : 'Not in stock'),
                 el('h2', null, it ? it.recipe : r.name));
     const lots = el('div');
     const order = (rcpData.places || []).map((p) => p.label);
@@ -4298,7 +4659,7 @@
         if (admin) mk('Correct', 'move', () => openCorrectSheet(e));
         if (e.canDelete) mk('Delete', '', () => deleteProd(e, acts.lastChild));
         const n = el('span', 'n', fmtB(e.left));
-        n.append(el('small', 'meta', ' ' + unitOf(e.box)));
+        n.append(el('small', 'meta', ' ' + qtyUnit(recipeUnit(e.recipeId), e.box)));
         row.append(w, n, acts);
         lots.append(row);
       });
@@ -4324,7 +4685,6 @@
     inp.className = 'st-num';
     return inp;
   }
-  const boxesOk = (raw, allowZero) => /^\d+([.,]\d)?$/.test(raw.trim()) && (allowZero ? rcpNum(raw) >= 0 : rcpNum(raw) > 0);
 
   function openCorrectSheet(e) {
     const sheet = el('div', 'oc-sheet rc-sheet'), head = el('div'), inp = boxesInput('st-correct', e.left, 'Boxes left');
@@ -4334,7 +4694,7 @@
     cancel.type = 'button'; save.type = 'button';
     cancel.addEventListener('click', () => openStockItem(e.recipeId));
     save.addEventListener('click', async () => {
-      if (!boxesOk(inp.value, true)) { msg.textContent = 'Boxes: a number, one decimal at most.'; return; }
+      if (!qtyOk(inp.value, recipeUnit(e.recipeId), true)) { msg.textContent = qtyMsg(recipeUnit(e.recipeId)); return; }
       save.disabled = true;
       try {
         const r = await api({ action: 'prodCorrect', token: token(), entry: e.id, left: rcpNum(inp.value) });
@@ -4346,7 +4706,7 @@
       } catch (err) { msg.textContent = 'Network problem.' + detail(err); save.disabled = false; }
     });
     row.append(cancel, save);
-    const lab = el('label', null, 'Boxes really there');
+    const lab = el('label', null, 'Really there (' + unitWord(recipeUnit(e.recipeId)) + ')');
     lab.htmlFor = inp.id;
     sheet.append(head, lab, inp, el('p', 'meta', 'Use this when the app is wrong. It is not counted as use.'), msg, row);
     openRcSheet(sheet);
@@ -4370,7 +4730,7 @@
     cancel.type = 'button'; save.type = 'button';
     cancel.addEventListener('click', () => openStockItem(r.id));
     save.addEventListener('click', async () => {
-      if (!boxesOk(inp.value)) { msg.textContent = 'Boxes: a number, one decimal at most.'; return; }
+      if (!qtyOk(inp.value, r.countUnit)) { msg.textContent = qtyMsg(r.countUnit); return; }
       if (!place) { msg.textContent = 'Choose where it is.'; return; }
       save.disabled = true;
       try {
@@ -4383,7 +4743,7 @@
       } catch (err) { msg.textContent = 'Network problem.' + detail(err); save.disabled = false; }
     });
     row.append(cancel, save);
-    const l1 = el('label', null, 'Boxes'), l2 = el('label', null, 'Made on');
+    const l1 = el('label', null, unitWord(r.countUnit).replace(/^./, (c) => c.toUpperCase())), l2 = el('label', null, 'Made on');
     l1.htmlFor = inp.id; l2.htmlFor = date.id;
     sheet.append(head, l1, inp, l2, date, el('div', 'rc-lab', 'Where'), placePicker(place, (v) => { place = v; }), msg, row);
     openRcSheet(sheet);
@@ -4406,6 +4766,16 @@
       if (s && s.ok) rcpStock = s;
       if (!cnt || cnt.kind !== kind) return;
       cnt.places = r.places.filter((p) => kind === 'daily' || p.items.length || (placeOf(p.place) || {}).count === 'sunday');
+      // 원재료: 냉장고 재료는 그 냉장고 화면에, 선반은 선반 하나 = 화면 하나, 냉동 재료는 한 화면
+      for (const rs of r.raw || []) {
+        if (rs.placeId) {
+          const byId = (q) => (placeOf(q.place) || {}).id === rs.placeId;
+          let p = cnt.places.find(byId);
+          if (!p) { p = r.places.find(byId); if (p) cnt.places.push(p); }
+          if (p) { p.raw = rs.items; continue; }
+        }
+        cnt.places.push({ place: 'raw:' + (rs.shelf || rs.placeId || 'freezer'), short: rs.short, floor: rs.by ? 'counted by ' + rs.by : '', title: rs.title, items: [], raw: rs.items, rawOnly: true });
+      }
       cnt.recipes = r.recipes;
       cnt.last = r.last;
       renderCount();
@@ -4419,11 +4789,11 @@
     if (!cnt || !cnt.places) return box.replaceChildren(el('p', 'hint', 'Loading…'));
     const title = cnt.kind === 'sunday' ? 'Sunday count' : 'Evening count';
     if (cnt.done) return box.replaceChildren(...countDone());
-    if (!cnt.places.length) return box.replaceChildren(el('h2', 'feed-title', title), el('p', 'hint', 'Nothing to count.'));
+    if (!cnt.places.length) return box.replaceChildren(countKindSeg(), el('h2', 'feed-title', title), el('p', 'hint', 'Nothing to count.'));
     if (cnt.review) return box.replaceChildren(...countReview(title));
     const p = cnt.places[cnt.step], next = cnt.places[cnt.step + 1];
     const top = el('div', 'cn-top');
-    top.append(el('h2', null, (placeOf(p.place) || {}).spot || p.place),
+    top.append(el('h2', null, p.title || (placeOf(p.place) || {}).spot || p.place),
                el('span', 'meta', p.short + ' · ' + (p.floor || '') + ' · ' + (cnt.step + 1) + ' / ' + cnt.places.length));
     const bar = el('div', 'cn-bar'), fill = el('i');
     fill.style.width = ((cnt.step + 1) / cnt.places.length * 100) + '%';
@@ -4436,14 +4806,27 @@
       if (x.expired) nm.append(el('span', 'st-dot'));
       b.append(nm);
       if (changed) b.append(el('span', 'was', fmtB(x.left)));
-      b.append(el('span', 'v', cnt.waste[k] ? '🗑 0' : fmtB(v != null ? v : x.left)), el('span', 'u', unitOf(x.box)));
+      b.append(el('span', 'v', cnt.waste[k] ? '🗑 0' : fmtB(v != null ? v : x.left)), el('span', 'u', qtyUnit(x.unit, x.box)));
       b.addEventListener('click', () => openPad(p, x));
       list.append(b);
     }
-    const add = el('button', 'cn-add', '+ Not in the list');
-    add.type = 'button';
-    add.addEventListener('click', () => openNotListed(p));
-    list.append(add);
+    for (const x of p.raw || []) {
+      const k = 'raw\n' + x.id, v = cnt.val[k], changed = v != null && v !== x.before;
+      const b = el('button', 'cn-row raw' + (v != null ? ' set' : '') + (changed ? ' diff' : '') + (v == null && x.before == null ? ' need' : '')), nm = el('span', 'nm', x.name);
+      b.type = 'button';
+      nm.append(el('small', 'cn-raw', p.rawOnly && x.address ? 'raw · ' + x.address : 'raw'));
+      b.append(nm);
+      if (changed && x.before != null) b.append(el('span', 'was', fmtB(x.before)));
+      b.append(el('span', 'v', v != null ? fmtB(v) : x.before == null ? '?' : fmtB(x.before)), el('span', 'u', x.unit));
+      b.addEventListener('click', () => openPad(p, { raw: true, key: k, recipe: x.name, left: x.before, unit: x.unit }));
+      list.append(b);
+    }
+    if (!p.rawOnly) {
+      const add = el('button', 'cn-add', '+ Not in the list');
+      add.type = 'button';
+      add.addEventListener('click', () => openNotListed(p));
+      list.append(add);
+    }
     const nav = el('div', 'cn-nav');
     if (cnt.step) { const back = el('button', 'secondary', '←'); back.type = 'button'; back.addEventListener('click', () => { cnt.step--; renderCount(); window.scrollTo(0, 0); }); nav.append(back); }
     const go = el('button', 'go', next ? 'Next: ' + ((placeOf(next.place) || {}).short || next.short) + ' →' : 'Check & save →');
@@ -4454,17 +4837,36 @@
       window.scrollTo(0, 0);
     });
     nav.append(go);
-    box.replaceChildren(top, bar, list, el('p', 'cn-hint', 'Tap a number only if it is different.'), nav);
+    box.replaceChildren(countKindSeg(), top, bar, list, el('p', 'cn-hint', 'Tap a number only if it is different. “?” = never counted: tap and enter it.'), nav);
+  }
+
+  /** Evening / Sunday 고르기 (센 것이 있으면 버릴지 물어봄). */
+  function countKindSeg() {
+    const g = el('div', 'seg cn-kind');
+    for (const [k, label] of [['daily', 'Evening count'], ['sunday', 'Sunday count']]) {
+      const b = el('button', k === cntKind ? 'on' : null, label);
+      b.type = 'button';
+      b.addEventListener('click', () => {
+        if (k === cntKind) return;
+        if (cnt && !cnt.done && (Object.keys(cnt.val).length || cnt.added.length || cnt.moves.length) && !confirm('Discard what you counted?')) return;
+        cntKind = k; cnt = null;
+        openCount(k);
+        window.scrollTo(0, 0);
+      });
+      g.append(b);
+    }
+    return g;
   }
 
   /** 숫자 패드: 센 양 입력 (소수 1자리). 사용기한이 지난 것만 '버렸음'. */
   function openPad(p, x) {
-    const k = cKey(p.place, x.recipeId);
+    const k = x.key || cKey(p.place, x.recipeId);
     let buf = '';
     const sheet = el('div', 'oc-sheet cn-pad'), t = el('div', 'cn-pad-t'), disp = el('div', 'cn-disp');
     sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'true');
-    t.append(el('b', null, x.recipe), el('span', 'meta', 'app says ' + fmtB(x.left) + ' ' + unitOf(x.box)));
-    const show = () => { disp.replaceChildren(buf || el('small', null, 'boxes')); };
+    const u = x.raw ? x.unit : x.unit || 'box', dec = x.raw ? u !== 'pcs' : u === 'box';
+    t.append(el('b', null, x.recipe), el('span', 'meta', x.left == null ? 'not counted before' : 'app says ' + fmtB(x.left) + ' ' + (x.raw ? u : qtyUnit(u, x.box))));
+    const show = () => { disp.replaceChildren(buf || el('small', null, x.raw ? u : unitWord(u))); };
     show();
     const keys = el('div', 'cn-keys');
     for (const key of ['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', '⌫']) {
@@ -4472,8 +4874,8 @@
       b.type = 'button';
       b.addEventListener('click', () => {
         if (key === '⌫') buf = buf.slice(0, -1);
-        else if (key === '.') { if (!buf.includes('.')) buf = (buf || '0') + '.'; }
-        else if (!/\.\d$/.test(buf) && buf.length < 5) buf = buf === '0' ? key : buf + key;
+        else if (key === '.') { if (dec && !buf.includes('.')) buf = (buf || '0') + '.'; }
+        else if (!/\.\d$/.test(buf) && buf.length < (dec && !x.raw ? 5 : 7)) buf = buf === '0' ? key : buf + key;
         show();
       });
       keys.append(b);
@@ -4536,7 +4938,7 @@
     cancel.addEventListener('click', closeRcSheet);
     save.addEventListener('click', () => {
       if (!recipeId) { msg.textContent = 'Choose the prep.'; return; }
-      if (!boxesOk(inp.value)) { msg.textContent = 'Boxes: a number, one decimal at most.'; return; }
+      if (!qtyOk(inp.value, recipeUnit(recipeId))) { msg.textContent = qtyMsg(recipeUnit(recipeId)); return; }
       if (!from) { msg.textContent = 'Where does it come from?'; return; }
       boxes = Math.round(rcpNum(inp.value) * 10) / 10;
       const r = cnt.recipes.find((x) => x.id === recipeId);
@@ -4547,12 +4949,12 @@
         const src = cnt.places.find((q) => q.place === from), sx = src && src.items.find((x) => x.recipeId === recipeId);
         if (sx) sx.left = Math.max(0, Math.round((sx.left - boxes) * 10) / 10);
       }
-      p.items.push({ place: p.place, recipeId, recipe: r.name, left: boxes, expired: false, box: r.box, found: from === 'new' ? 'new' : 'moved' });
+      p.items.push({ place: p.place, recipeId, recipe: r.name, left: boxes, expired: false, box: r.box, unit: r.unit || 'box', found: from === 'new' ? 'new' : 'moved' });
       closeRcSheet();
       renderCount();
     });
     row.append(cancel, save);
-    const l1 = el('label', null, 'Prep'), l2 = el('label', null, 'Boxes here');
+    const l1 = el('label', null, 'Prep'), l2 = el('label', null, 'How much here (boxes, or pieces/grams for those preps)');
     l1.htmlFor = sel.id; l2.htmlFor = inp.id;
     sheet.append(head, l1, sel, l2, inp, how, msg, row);
     openRcSheet(sheet);
@@ -4608,6 +5010,13 @@
       if (cnt.waste[k]) line('thrown away ' + fmtB(x.left), 'waste');
       else if (v != null && v !== x.left) line(v < x.left ? 'used ' + fmtB(x.left - v) : '+' + fmtB(v - x.left) + ' more', v < x.left ? 'used' : 'up');
     }
+    for (const p of cnt.places) for (const x of p.raw || []) {
+      const v = cnt.val['raw\n' + x.id];
+      if (v == null || v === x.before) continue;
+      const d = el('div');
+      d.append(el('span', null, x.name + ' · ' + p.short), el('b', v < (x.before ?? v) ? 'used' : 'up', (x.before == null ? '' : fmtB(x.before) + ' → ') + fmtB(v) + ' ' + x.unit));
+      lines.push(d);
+    }
     const rev = el('div', 'cn-rev');
     if (lines.length) rev.append(...lines); else rev.append(el('div', null, 'Nothing changed.'));
     const nav = el('div', 'cn-nav'), back = el('button', 'secondary', '←'), save = el('button', 'go', 'Save count');
@@ -4628,9 +5037,14 @@
       counts.push({ place: p.place, recipeId: x.recipeId, boxes: cnt.waste[k] ? 0 : (cnt.val[k] != null ? cnt.val[k] : x.left), waste: !!cnt.waste[k] });
     }
     const moves = cnt.moves.concat(cnt.pairs.filter((m) => m.on).map(({ recipeId, from, to, boxes }) => ({ recipeId, from, to, boxes })));
+    const raw = [];
+    for (const p of cnt.places) for (const x of p.raw || []) {
+      const v = cnt.val['raw\n' + x.id] ?? x.before;
+      if (v != null) raw.push({ id: x.id, qty: v });
+    }
     btn.disabled = true;
     try {
-      const r = await api({ action: 'countSave', token: token(), kind: cnt.kind, counts, moves, added: cnt.added });
+      const r = await api({ action: 'countSave', token: token(), kind: cnt.kind, counts, moves, added: cnt.added, raw });
       if (r.code === 'AUTH') return logout(r.error);
       if (!r.ok) { btn.disabled = false; $('cn-msg').textContent = serverMsg(r); return; }
       cnt.done = r;
@@ -4655,9 +5069,9 @@
       rev.append(d);
     }
     if (!used.length) rev.append(el('div', null, 'No use recorded (everything as the app said).'));
-    const go = el('button', null, 'See stock');
+    const go = el('button', null, 'See portions');
     go.type = 'button';
-    go.addEventListener('click', () => { cnt = null; setStockTab('stock'); window.scrollTo(0, 0); });
+    go.addEventListener('click', () => { cnt = null; setStockTab('portion'); window.scrollTo(0, 0); });
     return [el('h2', 'feed-title', '✓ ' + (r.kind === 'sunday' ? 'Sunday count' : 'Count') + ' saved'), el('p', 'meta', 'Tonight’s use is in the Use tab of the Production Log.'), rev, go];
   }
 
@@ -4697,15 +5111,17 @@
     const head = el('div');
     head.append(el('div', 'oc-pos', 'Log production'), el('h2', null, r.name), el('div', 'meta', batch + ' · ' + fmtW(c.finished) + (r.yieldPct ? ' (after ' + r.yieldPct + '% yield)' : '')));
 
+    const unit = r.countUnit || 'box', by = unit === 'g' ? 100 : 1;
     const stp = el('div', 'rc-stepper'), minus = el('button', null, '−'), plus = el('button', null, '+'), inp = el('input');
     minus.type = 'button'; plus.type = 'button';
-    minus.setAttribute('aria-label', 'One box less'); plus.setAttribute('aria-label', 'One box more');
-    inp.id = 'rc-boxes'; inp.type = 'text'; inp.inputMode = 'decimal'; inp.value = String(c.boxes || 1);
-    inp.setAttribute('aria-label', 'Number of boxes');
-    const step = (d) => { const n = rcpNum(inp.value) || 0; inp.value = String(Math.max(0, Math.round((n + d) * 10) / 10)); };
+    minus.setAttribute('aria-label', 'Less'); plus.setAttribute('aria-label', 'More');
+    inp.id = 'rc-boxes'; inp.type = 'text'; inp.inputMode = unit === 'box' ? 'decimal' : 'numeric';
+    inp.value = unit === 'g' ? String(Math.round(c.finished || 0) || '') : unit === 'pcs' ? '' : String(c.boxes || 1);
+    inp.setAttribute('aria-label', 'Number of ' + unitWord(unit));
+    const step = (d) => { const n = rcpNum(inp.value) || 0; inp.value = String(Math.max(0, Math.round((n + d * by) * 10) / 10)); };
     minus.addEventListener('click', () => step(-1));
     plus.addEventListener('click', () => step(1));
-    stp.append(minus, inp, plus, el('span', 'meta', 'e.g. 2.5'));
+    stp.append(minus, inp, plus, el('span', 'meta', unit === 'box' ? 'e.g. 2.5' : unitWord(unit)));
 
     let chosen = r.box || (rcpData.boxes[0] && rcpData.boxes[0].name) || '';
     const boxes = el('div');
@@ -4731,8 +5147,9 @@
 
     let place = r.place || store.get('wt_rcp_place') || '';
     if (!((rcpData.places || []).some((p) => p.label === place))) place = '';
-    const parts = [head, el('div', 'rc-lab', 'Boxes'), stp, el('div', 'rc-lab', 'Box'), boxes,
-                   el('div', 'rc-lab', 'Stored at'), placePicker(place, (v) => { place = v; })];
+    const parts = [head, el('div', 'rc-lab', unit === 'box' ? 'Boxes' : unit === 'pcs' ? 'Pieces' : 'Grams'), stp];
+    if (unit === 'box') parts.push(el('div', 'rc-lab', 'Box'), boxes);
+    parts.push(el('div', 'rc-lab', 'Stored at'), placePicker(place, (v) => { place = v; }));
     let maker = null;
     if (rcpData.canPickMaker && rcpData.staff) {
       maker = el('select');
@@ -4762,10 +5179,10 @@
     cancel.addEventListener('click', closeRcSheet);
     save.addEventListener('click', async () => {
       const raw = inp.value.trim(), n = rcpNum(raw);
-      if (!/^\d+([.,]\d)?$/.test(raw) || !(n > 0)) { msg.textContent = 'Enter the number of boxes, one decimal at most (e.g. 2.5).'; return inp.focus(); }
-      if (!chosen) { msg.textContent = 'Choose the box.'; return; }
+      if (!qtyOk(raw, unit)) { msg.textContent = unit === 'box' ? 'Enter the number of boxes, one decimal at most (e.g. 2.5).' : qtyMsg(unit); return inp.focus(); }
+      if (!chosen && unit === 'box') { msg.textContent = 'Choose the box.'; return; }
       if (!place) { msg.textContent = 'Choose where it is stored.'; return; }
-      const body = { action: 'prodLog', token: token(), id: r.id, boxes: n, box: chosen, place };
+      const body = { action: 'prodLog', token: token(), id: r.id, boxes: n, box: unit === 'box' ? chosen : '', place };
       if (maker) body.madeBy = maker.value;
       if (madeOn && madeOn.value) body.madeOn = madeOn.value;
       if (r.mode === 'percent') {
@@ -4781,7 +5198,7 @@
         if (!r.place) store.set('wt_rcp_place', place); // 기본 위치가 없는 레시피: 다음에 이 폰에서 같은 곳을 먼저
         const e = res.entry, eb = rcpBox(e.box);
         rcpStock = null;
-        toast('✓ Logged · ' + e.boxes + ' × ' + ((eb && eb.capacity) || e.box) + ' · ' + e.place + (e.madeBy !== rcpData.me ? ' · by ' + e.madeBy : ''));
+        toast('✓ Logged · ' + (unit === 'box' ? e.boxes + ' × ' + ((eb && eb.capacity) || e.box) : e.boxes + ' ' + qtyUnit(unit)) + ' · ' + e.place + (e.madeBy !== rcpData.me ? ' · by ' + e.madeBy : ''));
         if (rcpProd.id !== r.id) rcpProd = { id: r.id, entries: [] };
         rcpProd.entries.unshift(e);
         renderProd();
@@ -4865,7 +5282,9 @@
 
   async function openEditor() {
     rcpSaved();
+    stTab = 'recipes';
     show('redit');
+    syncStockTabs();
     reShowList();
     await loadRecipes();
   }
@@ -4882,9 +5301,15 @@
   function renderReList() {
     if (!rcpData) return $('re-list').replaceChildren(el('p', 'hint', 'Loading…'));
     if (!rcpData.canEdit) return $('re-list').replaceChildren(el('p', 'err', 'Only the supervisor can edit recipes.'));
-    const list = rcpData.recipes;
-    $('re-list').replaceChildren(...(list.length ? list.map((r) => rcpItem(r, () => editRecipe(r), true))
-      : [el('p', 'hint', 'No recipes yet. Tap “New recipe”.')]));
+    const list = rcpData.recipes, todo = list.filter((r) => r.todo), rest = list.filter((r) => !r.todo);
+    const out = [];
+    if (todo.length) {
+      const h = el('div', 'rc-lab re-todo-h', 'To write ');
+      h.append(el('span', 'badge', String(todo.length)));
+      out.push(h, ...todo.map((r) => rcpItem(r, () => editRecipe(r), true)), el('p', 'meta', 'Made from the Menu editor (“needs a recipe”). Reminder every morning at 09:00 until it has ingredients.'), el('div', 'rc-lab', 'Recipes'));
+    }
+    out.push(...(rest.length ? rest.map((r) => rcpItem(r, () => editRecipe(r), true)) : [el('p', 'hint', 'No recipes yet. Tap “New recipe”.')]));
+    $('re-list').replaceChildren(...out);
   }
 
   function reLeave() {
@@ -4969,7 +5394,8 @@
 
   function editRecipe(r) {
     const d = r ? JSON.parse(JSON.stringify(r)) : { name: '', mode: 'fixed', cat: '', items: [{ t: 'ing', name: '', q: '' }],
-                                                    box: '', fill: null, keepNote: '', keepDays: null };
+                                                    box: '', fill: null, keepNote: '', keepDays: null, countUnit: 'box' };
+    if (r && r.todo && !d.items.length) d.items.push({ t: 'ing', name: '', q: '' }); // 빈 레시피(To write): 첫 재료 줄
     d.items.forEach((x) => { x.k = ++reKey; });
     reDraft = { kind: 'recipe', id: r ? r.id : null, ver: r ? r.ver : null, d, dirty: false, uploads: 0, warnings: (r && r.warnings) || [] };
     $('re-list-box').classList.add('hidden');
@@ -5110,8 +5536,24 @@
       b.addEventListener('click', () => { d.count = c; reDirty(); draw(); });
       g.append(b);
     }
+    const u = el('div', 'seg'), uh = el('p', 'meta'), ubox = el('div');
+    const drawU = () => {
+      u.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.u === (d.countUnit || 'box')));
+      uh.textContent = d.countUnit === 'pcs' ? 'Logged and counted in pieces (e.g. mandu). Portions = pieces.'
+        : d.countUnit === 'g' ? 'Logged and counted in grams (weighed).' : 'Logged and counted in boxes (grams per box above, for portions).';
+      ubox.classList.toggle('hidden', d.count === 'none');
+    };
+    for (const [c, label] of [['box', 'Boxes'], ['pcs', 'Pieces'], ['g', 'Grams']]) {
+      const b = el('button', null, label);
+      b.type = 'button'; b.dataset.u = c;
+      b.addEventListener('click', () => { d.countUnit = c; reDirty(); drawU(); });
+      u.append(b);
+    }
+    g.addEventListener('click', drawU);
+    ubox.append(el('div', 'rc-lab', 'Count in'), u, uh);
     draw();
-    box.append(g, hint);
+    drawU();
+    box.append(g, hint, ubox);
     return box;
   }
 
@@ -5159,17 +5601,17 @@
     return card;
   }
 
-  // ---------------------------------------------------------------- 재료 이름 자동완성 (Ingredients 탭 = 하나의 재료 목록)
-  // 앞글자만 쳐도 목록의 이름이 뜸 → 눌러서 선택. 목록에 없으면 'New ingredient', 비슷한 이름이 있으면 'Did you mean …?'.
-  // 대소문자·띄어쓰기·악센트만 다르면 칸을 떠날 때 목록의 표기로 바꿈 (서버도 저장할 때 같은 규칙으로 맞춤).
-  const ingKey = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
-  function ingNames() {
-    const seen = new Set(), out = [];
-    const add = (n) => { const k = ingKey(n); if (k && !seen.has(k)) { seen.add(k); out.push(String(n).replace(/\s+/g, ' ').trim()); } };
-    ((rcpData && rcpData.ingredients) || []).forEach(add);
-    ((rcpData && rcpData.recipes) || []).forEach((r) => add(r.name)); // 홈메이드 재료 = 레시피 이름
+  // ---------------------------------------------------------------- 재료 고르기 (Ingredients 목록 + 다른 레시피 = 홈메이드)
+  // 앞글자만 쳐도 목록이 뜸 → 눌러서 선택 = 코드(ING-… / RCP-…)로 연결. 목록에 없는 이름은 저장할 수 없음
+  // (새 재료는 Manager › Ingredients 에서만 → 같은 재료가 여러 이름으로 갈라지지 않게). 비슷한 이름은 'Did you mean …?'.
+  const ingKey = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+  function ingOptions() {
+    const self = reDraft && reDraft.id, out = [];
+    ((rcpData && rcpData.ingredients) || []).forEach((i) => out.push({ name: i.name, code: i.code }));
+    ((rcpData && rcpData.recipes) || []).forEach((r) => { if (r.id !== self && r.code) out.push({ name: r.name, code: r.code, home: true }); });
     return out;
   }
+  const ingExact = (v) => { const k = ingKey(v); return k ? ingOptions().filter((o) => ingKey(o.name) === k).sort((a, b) => (a.home ? -1 : 0) - (b.home ? -1 : 0))[0] : null; };
   function ingDistance(a, b) {
     if (Math.abs(a.length - b.length) > 2) return 3;
     const d = Array.from({ length: b.length + 1 }, (_, i) => i);
@@ -5183,49 +5625,51 @@
     }
     return d[b.length];
   }
-  /** 이름 칸 + 아래로 뜨는 목록. hint = 칸 아래 한 줄 (New ingredient / Did you mean). */
+  /** 이름 칸 + 아래로 뜨는 목록. hint = 칸 아래 한 줄 (Homemade / Not in the list + Did you mean). */
   function ingAutocomplete(input, it, hint) {
     const box = el('div', 'ac'), list = el('div', 'ac-list hidden');
     input.setAttribute('autocomplete', 'off');
-    const pick = (name) => { input.value = name; it.name = name; reDirty(); list.classList.add('hidden'); note(); };
+    const pick = (o) => { input.value = o.name; it.name = o.name; it.code = o.code; reDirty(); list.classList.add('hidden'); note(); };
     const note = () => {
       hint.replaceChildren();
       const k = ingKey(input.value);
       if (!k) return;
-      const names = ingNames();
-      if (rcpByName(input.value)) { hint.append(el('span', 'ac-home', '↳ Homemade · links to its recipe')); return; }
-      if (names.some((n) => ingKey(n) === k)) return;
-      const near = names.filter((n) => { const x = ingKey(n); return ingDistance(x, k) <= 2 || (k.length >= 4 && (x.startsWith(k) || k.startsWith(x))); }).slice(0, 2);
-      hint.append(el('span', 'ac-new', 'New ingredient'));
+      const o = it.code && ingOptions().find((x) => x.code === it.code);
+      if (o && ingKey(o.name) === k) { if (o.home) hint.append(el('span', 'ac-home', '↳ Homemade · links to its recipe')); return; }
+      const opts = ingOptions();
+      const near = opts.filter((x) => { const n = ingKey(x.name); return ingDistance(n, k) <= 2 || (k.length >= 3 && (n.startsWith(k) || k.startsWith(n))); }).slice(0, 2);
+      hint.append(el('span', 'ac-new', 'Not in the ingredient list'));
       for (const n of near) {
-        const b = el('button', 'link', 'Did you mean ' + n + '?');
+        const b = el('button', 'link', 'Did you mean ' + n.name + '?');
         b.type = 'button';
         b.addEventListener('click', () => pick(n));
         hint.append(b);
       }
+      hint.append(el('span', 'meta ac-how', 'New ingredients are added in Manager › Ingredients.'));
     };
     const show = () => {
       const k = ingKey(input.value);
       if (!k) { list.classList.add('hidden'); return; }
       const rank = (n) => { const x = ingKey(n); return x === k ? -1 : x.startsWith(k) ? 0 : x.split(/[\s,()-]+/).some((w) => w.startsWith(k)) ? 1 : x.includes(k) ? 2 : 9; };
-      const hits = ingNames().map((n) => [rank(n), n]).filter(([r]) => r >= 0 && r < 9).sort((a, b) => a[0] - b[0] || a[1].localeCompare(b[1])).slice(0, 6);
-      list.replaceChildren(...hits.map(([, n]) => {
-        const b = el('button', null, n);
-        if (rcpByName(n)) b.append(el('small', 'ac-home', 'recipe'));
+      const hits = ingOptions().map((o) => [rank(o.name), o]).filter(([r]) => r < 9).sort((a, b) => a[0] - b[0] || a[1].name.localeCompare(b[1].name)).slice(0, 6);
+      list.replaceChildren(...hits.map(([, o]) => {
+        const b = el('button', null, o.name);
+        if (o.home) b.append(el('small', 'ac-home', 'recipe'));
         b.type = 'button';
         b.addEventListener('pointerdown', (e) => e.preventDefault()); // 칸의 포커스를 잃지 않게 (iPhone 키보드 유지)
-        b.addEventListener('click', () => pick(n));
+        b.addEventListener('click', () => pick(o));
         return b;
       }));
       list.classList.toggle('hidden', !hits.length);
     };
-    input.addEventListener('input', () => { show(); note(); });
+    input.addEventListener('input', () => { const o = ingExact(input.value); it.code = o ? o.code : ''; show(); note(); });
     input.addEventListener('focus', show);
     input.addEventListener('blur', () => {
       setTimeout(() => list.classList.add('hidden'), 150);
-      const k = ingKey(input.value), same = k && ingNames().find((n) => ingKey(n) === k);
-      if (same && same !== input.value) { input.value = same; it.name = same; } // 표기만 다르면 목록의 이름으로
+      const o = !it.code && ingExact(input.value);
+      if (o) { input.value = o.name; it.name = o.name; it.code = o.code; note(); } // 표기만 다르면 목록의 이름으로
     });
+    if (!it.code && it.name) { const o = ingExact(it.name); if (o) it.code = o.code; }
     note();
     box.append(input, list);
     return box;
@@ -5237,7 +5681,9 @@
     const d = dr.d;
     const recipe = { name: d.name, mode: d.mode, cat: d.cat, box: d.box, fill: d.fill ?? '', keepNote: d.keepNote, keepDays: d.keepDays ?? '', place: d.place || '',
                      count: d.count === 'sunday' || d.count === 'none' ? d.count : 'daily', yieldPct: d.yieldPct ?? '', yieldNote: d.yieldNote || '',
-                     items: d.items.map(({ k, ...x }) => x) };
+                     countUnit: d.countUnit || 'box', boxId: d.boxId || '', items: d.items.map(({ k, recipe, ...x }) => x) };
+    const bad = d.items.findIndex((x) => (x.t === 'ing' || x.t === 'base') && x.name && !x.code);
+    if (bad >= 0) return reMsg('Line ' + (bad + 1) + ': “' + d.items[bad].name + '” is not in the ingredient list. Pick it from the list, or add it first in Manager › Ingredients.', 'err');
     btn.disabled = true;
     reMsg('Saving…', 'meta');
     try {
@@ -5252,8 +5698,7 @@
       const list = rcpData.recipes, i = list.findIndex((x) => x.id === r.recipe.id);
       if (i >= 0) list[i] = r.recipe; else list.push(r.recipe);
       store.set(RCP_STORE, JSON.stringify(rcpData));
-      if (r.newIngredients && r.newIngredients.length) rcpData.ingredients = (rcpData.ingredients || []).concat(r.newIngredients);
-      toast('✓ Saved: ' + r.recipe.name + (r.newIngredients && r.newIngredients.length ? ' · new ingredient: ' + r.newIngredients.join(', ') : '') +
+      toast('✓ Saved: ' + r.recipe.name +
             (r.recipe.warnings && r.recipe.warnings.length ? ' (please check the warnings)' : ''));
       reShowList();
       window.scrollTo(0, 0);
@@ -5355,7 +5800,6 @@
     }
   }
 
-  $('b-redit').addEventListener('click', () => openEditor());
   $('b-re-new').addEventListener('click', () => { if (rcpData) editRecipe(null); });
   $('b-re-boxes').addEventListener('click', () => { if (rcpData) editBoxes(); });
   $('b-re-back').addEventListener('click', () => (reDraft ? reLeave() : goHome()));
@@ -5395,10 +5839,11 @@
   function igAddrs() {
     const out = [];
     for (const s of ig.shelves) for (let l = 1; l <= s.levels; l++) out.push({ code: s.code + '-' + l, kind: 'Shelf', zone: s.floor + ' · Shelf ' + s.code });
-    for (const f of ig.fridges) out.push({ code: f.code, kind: 'Fridge', zone: f.label || f.floor + ' · ' + f.code });
+    for (const f of ig.fridges) out.push({ code: f.code, kind: 'Fridge', zone: f.label || f.floor + ' · ' + (f.short || f.code), short: f.short || f.code });
     return out;
   }
   const igAddrIdx = (code) => { const i = igAddrs().findIndex((a) => a.code === code); return i < 0 ? 9999 : i; };
+  const igShort = (code) => ((ig && ig.fridges.find((f) => f.code === code)) || {}).short || code;
   const igProblems = (i) => [!i.packs.length && 'No pack / price', i.storage !== 'Freezer' && !i.address && 'No address'].filter(Boolean);
 
   async function openIngr() {
@@ -5438,7 +5883,7 @@
   function igAddrCell(i) {
     if (i.storage === 'Freezer') return '<div class="ig-addr fz">Freezer</div>';
     if (!i.address) return '<div class="ig-addr none">—</div>';
-    return '<div class="ig-addr">' + igEsc(i.address) + '</div>';
+    return '<div class="ig-addr">' + igEsc(igShort(i.address)) + '</div>';
   }
   function igTags(i) {
     let t = '<span class="ig-tag ' + (i.count === 'Daily' ? 'ig-t-daily">Daily' : 'ig-t-sun">Sunday') + '</span>';
@@ -5508,7 +5953,7 @@
     h += '<div class="ig-card"><h3>Storage</h3>' + igOpt('storage', d.storage, [['Shelf', 'Shelf'], ['Fridge', 'Fridge'], ['Freezer', 'Freezer']]);
     if (d.storage === 'Freezer') h += '<p class="ig-help">Freezer items have no address.</p>';
     else h += '<label>Address<select data-f="address"><option value="">Choose…</option>' + opts.map((a) =>
-        '<option value="' + igEsc(a.code) + '"' + (a.code === d.address ? ' selected' : '') + '>' + igEsc(a.code) + ' · ' + igEsc(a.zone) + '</option>').join('') +
+        '<option value="' + igEsc(a.code) + '"' + (a.code === d.address ? ' selected' : '') + '>' + igEsc(a.short || a.code) + ' · ' + igEsc(a.zone) + '</option>').join('') +
       '</select></label><p class="ig-help">Shelf levels are numbered from the top (1 = top). You can also drag it on the Addresses map.</p>';
     h += '<label>Stock count</label>' + igOpt('count', d.count, [['Daily', 'Every evening'], ['Sunday', 'Sunday only']]) + '</div>';
 
@@ -5702,7 +6147,7 @@
       const floors = [...new Set(ig.fridges.map((f) => f.floor))];
       for (const fl of floors) {
         h += '<div class="ig-gh">' + igEsc(fl) + '</div><div class="ig-fridges">';
-        for (const f of ig.fridges.filter((x) => x.floor === fl)) h += '<div class="ig-fridge"><div class="ig-fridge-h">' + igEsc(f.code) + '</div>' + igSlot(f.code, igAt(f.code)) + '</div>';
+        for (const f of ig.fridges.filter((x) => x.floor === fl)) h += '<div class="ig-fridge"><div class="ig-fridge-h">' + igEsc(f.short || f.code) + '</div>' + igSlot(f.code, igAt(f.code)) + '</div>';
         h += '</div>';
       }
     } else {
@@ -5737,7 +6182,7 @@
       if (!r.ok) throw new Error(serverMsg(r));
       i.storage = r.storage; i.address = r.address;
       store.set(IG_STORE, JSON.stringify(ig));
-      toast(i.name + ' → ' + (code === 'FREEZER' ? 'Freezer' : code || 'No address'));
+      toast(i.name + ' → ' + (code === 'FREEZER' ? 'Freezer' : code ? igShort(code) : 'No address'));
     } catch (e) {
       Object.assign(i, before);
       toast('Not moved: ' + e.message);
@@ -5910,7 +6355,7 @@
       if (currentView === 'team') return openTeam();
       if (currentView === 'org') return openOrg();
       if (currentView === 'recipes') return loadRecipes();
-      if (currentView === 'stock') { if (stTab === 'stock') loadStock(); return loadRecipes(); }
+      if (currentView === 'stock') { if (stTab === 'portion') loadStock(); if (stTab === 'menus' && !meOpenDirty()) loadMenus(); return loadRecipes(); }
       if (currentView === 'chat') return chatRefresh();
       if (currentView === 'ingr') return loadIngr();
       if (currentView === 'receipt' && !rcNew.length) return openReceipt(rcReturn);
