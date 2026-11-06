@@ -128,7 +128,8 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - 홈 아이콘 **Recipes** = Employees F열 Team 이 `Kitchen`(스크립트 속성 `RECIPE_TEAMS` 로 바꿀 수 있음)인 직원 + Supervisor 만 보임(`me.recipes`). 서버도 같은 기준으로 막음.
 - 레시피 = **Recipes** 스프레드시트의 탭 하나. A열 종류: `RECIPE MODE CATEGORY ING BASE STEP PHOTO BOX FILL KEEP` (자세한 형식은 `Recipes.gs` 맨 위, 시트의 `How to` 탭). 위→아래 순서 그대로 화면에 그림(재료 묶음·과정·사진이 섞임).
   숫자는 '1 000', '1,5', '4%' 도 읽음. 모르는 종류·빠진 양은 **경고**(Supervisor 의 편집기 목록에 ⚠ 숫자, 편집 화면 위에 내용). 편집기에서 `checkRecipes` 실행 = 탭마다 OK/CHECK 로그.
-- 두 형식: **Fixed** = 1 batch g, 화면에서 ×½ ×1 ×2 ×3 또는 직접 입력(1.5 등). **Percent** = BASE(기준 재료)를 잰 g 입력 → 나머지 = 기준 총중량 × %. BASE 여러 줄이면 합계가 100%. 계산은 화면에서(10 g 미만 소수 1자리, 나머지 정수).
+- 두 형식: **Fixed** = 1 batch g, 화면에서 ×½ ×1 ×2 ×3 또는 직접 입력(1.5 등). **Percent** = BASE(기준 재료)를 잰 g 입력 → 나머지 = 기준 총중량 × %. BASE 여러 줄이면 합계가 100%.
+  편집기: Percent 로 바꾸면 재료 맨 위에 빈 Base 줄이 생김, Percent 일 때 재료 줄마다 *Base* / *Not base* 버튼. Base 없이 저장하면 화면에서 바로 막고 방법을 알려줌(2026-11-06, 사장님이 'needs a base ingredient' 에서 막힘). 계산은 화면에서(10 g 미만 소수 1자리, 나머지 정수).
 - 재료 줄을 누르면 체크(계량 끝, 폰 메모리에만). 레시피를 보는 동안 화면 꺼짐 방지(Wake Lock, 안 되는 기기는 무시).
 - 마지막 **Store in**: 기본 박스(용량이 크게 + 작은 사진, 누르면 크게), 박스당 g(FILL) → "about N boxes", 보관 조건·일수 → Use by.
 - **Log production**: 박스 수(소수 1자리까지, 예상값이 미리 채워짐), 박스(레시피 기본값, *Use another box* 로 다른 박스), Made by(기본 = 폰 사용자, **Admin(E열)·Supervisor 는 다른 사람 선택**). 서버가 배치(×2 / base 8000 g)와 총 g 을 레시피로 다시 계산해 기록.

@@ -508,6 +508,7 @@
                border-radius: 6px; background: var(--brand-soft); color: var(--brand); white-space: nowrap; }
     .rc-mode.pct { background: var(--warn-bg); color: var(--warn-ink); }
     .rc-warn { flex: none; font-size: 12px; font-weight: 700; color: var(--warn-ink); background: var(--warn-bg); border-radius: 8px; padding: 1px 7px; }
+    .rc-line-h .rc-basebtn { width: auto; padding: 0 9px; font-size: 12px; font-weight: 700; }
     .rc-todo { flex: none; font-size: 11px; font-weight: 700; color: var(--warn-ink); background: var(--warn-bg); border-radius: 6px; padding: 1px 7px; }
     .re-todo-h { display: flex; align-items: center; gap: 6px; }
     .re-todo-h .badge { margin: 0; }
@@ -5432,7 +5433,11 @@
     msg.id = 're-msg';
     return [msg, dock].concat(extra || []);
   }
-  function reMsg(text, cls) { const m = $('re-msg'); if (m) { m.textContent = text; m.className = cls || ''; } }
+  function reMsg(text, cls) {
+    const m = $('re-msg');
+    if (m) { m.textContent = text; m.className = cls || ''; }
+    if (cls === 'err') toast(text); // 문구가 화면 아래라 안 보일 수 있어서 위 알림으로도
+  }
 
   /** 사진을 줄이고 바로 올림 → done(파일 이름). */
   async function reUpload(file, hint, th, pick, done) {
@@ -5510,7 +5515,7 @@
     const drawMode = () => {
       seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.m === d.mode));
       modeHint.textContent = d.mode === 'percent'
-        ? 'Percent: add the base ingredient(s) you weigh at prep time. Other amounts are % of the base total.'
+        ? 'Percent: one Base line = the ingredient you weigh at prep time (no amount). The other lines are % of the base weight. Turn any ingredient into the base with its “Base” button.'
         : 'Fixed: amounts in grams for one batch. Staff can make ½, ×2, ×3…';
     };
     for (const [m, label] of [['fixed', 'Fixed (grams)'], ['percent', 'Percent of base']]) {
@@ -5520,6 +5525,11 @@
         if (d.mode === m) return;
         d.mode = m;
         if (m === 'fixed') d.items.forEach((x) => { if (x.t === 'base') { x.t = 'ing'; x.q = ''; } });
+        if (m === 'percent' && !d.items.some((x) => x.t === 'base')) {
+          // 비율 레시피 = 기준 재료(무게를 재는 것)가 꼭 필요 → 재료 맨 위에 빈 Base 줄을 넣어 둠
+          const at = Math.max(0, d.items.findIndex((x) => x.t === 'ing'));
+          d.items.splice(at, 0, { k: ++reKey, t: 'base', name: '' });
+        }
         reDirty(); drawMode(); renderReLines();
       });
       seg.append(b);
@@ -5664,8 +5674,15 @@
 
   function reLine(it, i) {
     const d = reDraft.d, card = el('div', 'rc-line k-' + it.t), h = el('div', 'rc-line-h');
-    h.append(el('b', null, RE_KINDS[it.t]),
-             reHeadBtn('↑', 'Move up', () => reMove(i, -1)), reHeadBtn('↓', 'Move down', () => reMove(i, 1)),
+    h.append(el('b', null, RE_KINDS[it.t]));
+    if (d.mode === 'percent' && (it.t === 'ing' || it.t === 'base')) {
+      h.append(reHeadBtn(it.t === 'base' ? 'Not base' : 'Base', it.t === 'base' ? 'Make it a normal ingredient (%)' : 'Make it the base ingredient (weighed)', () => {
+        it.t = it.t === 'base' ? 'ing' : 'base';
+        if (it.t === 'base') delete it.q; else it.q = '';
+        reDirty(); renderReLines();
+      }, 'rc-basebtn'));
+    }
+    h.append(reHeadBtn('↑', 'Move up', () => reMove(i, -1)), reHeadBtn('↓', 'Move down', () => reMove(i, 1)),
              reHeadBtn('✕', 'Delete line', () => { d.items.splice(i, 1); reDirty(); renderReLines(); }, 'x'));
     card.append(h);
     if (it.t === 'ing' || it.t === 'base') {
@@ -5776,6 +5793,9 @@
     const bad = d.items.findIndex((x) => (x.t === 'ing' || x.t === 'base') && x.name && !x.code);
     if (bad >= 0) return reMsg('Line ' + (bad + 1) + ': “' + d.items[bad].name + '” is not in the ingredient list. Pick it from the list, or add it first in Manager › Ingredients.', 'err');
     if (!d.items.some((x) => (x.t === 'ing' || x.t === 'base') && x.code)) return reMsg('Please add at least one ingredient.', 'err');
+    if (d.mode === 'percent' && !d.items.some((x) => x.t === 'base' && x.code)) {
+      return reMsg('A Percent recipe needs a base ingredient: the one you weigh. Tap “Base” on that ingredient (or “+ Base”), or switch the type to Fixed (grams).', 'err');
+    }
     const id = dr.id || 'new-' + (++reKey) + '-' + Date.now();
     const local = Object.assign(JSON.parse(JSON.stringify(recipe)), { id, ver: dr.ver, code: dr.d.code || '', saving: true, todo: false, warnings: [] });
     const list = rcpData.recipes, i = list.findIndex((x) => x.id === id);
