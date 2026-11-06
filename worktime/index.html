@@ -1319,7 +1319,7 @@
       <h2 id="tip-title"></h2>
       <div id="tip-content" class="content"></div>
     </div>
-    <button id="b-modify" class="link hidden">Request time change</button>
+    <button id="b-modify" class="link hidden">Wrong time? Fix it in My hours</button>
     <div class="dock"><button id="b-main" disabled>Saving…</button></div>
   </section>
 
@@ -1334,16 +1334,6 @@
   </section>
 
   <!-- 시간 변경 요청 -->
-  <section id="v-modify" class="card hidden">
-    <p class="notice">The time you enter will be reviewed and may be corrected after verification.</p>
-    <form id="f-modify">
-      <label for="m-time">Actual time</label>
-      <input id="m-time" type="time" required>
-      <button type="submit">Send request</button>
-      <button type="button" id="b-cancel" class="secondary">Cancel</button>
-    </form>
-    <p id="m-msg" class="err"></p>
-  </section>
 </main>
 
 <script>
@@ -1397,7 +1387,7 @@
       if (v != null) { try { localStorage.setItem(k, v); } catch (e) {} }
     }
   }
-  const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed', 'request', 'inbox', 'schedule', 'team',
+  const VIEWS = ['login', 'home', 'result', 'ann', 'admin', 'closed', 'request', 'inbox', 'schedule', 'team',
                  'receipt', 'receipts', 'chat', 'org', 'recipes', 'redit', 'stock', 'ingr', 'mytime'];
   let lastTap = null;
   let annReturn = 'home';
@@ -2127,7 +2117,7 @@
     const st = clockState(c);
     if (!c) return toast('No clock-in or clock-out recorded yet.');
     toast('Last record: ' + (c.info === 'START' ? 'clock-in (START)' : 'clock-out (END)') + ' · ' +
-          st.time.replace(/^(In|Out) /, '') + (c.change ? ' · change requested: ' + c.change : '') +
+          st.time.replace(/^(In|Out) /, '') +
           (st.kind === 'late' ? ' · Forgot to tap END? Please tell your manager.' : ''));
   });
   setInterval(() => { if (document.visibilityState === 'visible') renderMe(); }, 60000); // 자정·16시간 경계
@@ -2170,7 +2160,6 @@
         state.append(el('div', 'me-label lbl-' + x.st.kind, x.st.label));
         if (x.st.time) state.append(el('div', 'me-time', x.st.time));
         if (x.st.elapsed != null) state.append(el('div', 'me-time', 'for ' + since(x.st.elapsed)));
-        if (x.clock && x.clock.change) state.append(el('span', 'change', 'Change requested: ' + x.clock.change));
         card.append(stIcon(x.st.kind), who, state);
         box.append(card);
       }
@@ -2309,7 +2298,9 @@
     };
     t.textContent = part(s.in) + ' → ' + (s.live != null ? 'now' : part(s.out));
     let dur;
-    if (s.min != null) dur = el('span', 'd', hm(s.min));
+    const waits = (s.in && !s.in.time) || (s.out && !s.out.time); // 승인 전 추가 → 아직 기록 아님
+    if (s.min != null && waits) dur = el('span', 'd', hm(s.min) + ' if accepted');
+    else if (s.min != null) dur = el('span', 'd', hm(s.min));
     else if (s.live != null) dur = el('span', 'd live', 'Working · ' + hm(s.live));
     else dur = el('span', 'd warn', s.in ? 'No clock-out' : 'No clock-in');
     line.append(t, dur);
@@ -4031,29 +4022,7 @@
     }
   });
 
-  $('b-modify').addEventListener('click', () => {
-    $('m-time').value = lastTap ? lastTap.time : '';
-    $('m-msg').textContent = '';
-    show('modify');
-  });
-  $('b-cancel').addEventListener('click', () => show('result'));
-
-  $('f-modify').addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    const btn = ev.submitter; btn.disabled = true;
-    try {
-      const r = await api({ action: 'modify', token: token(), editToken: lastTap.editToken, time: $('m-time').value });
-      if (!r.ok) { $('m-msg').textContent = r.error; return; }
-      $('b-modify').classList.add('hidden');
-      if (lastTap.clock) saveClock(Object.assign({}, lastTap.clock, { change: r.time }));
-      result('📝', lastTap.info, lastTap.date + '  ' + lastTap.time,
-             'Time change requested: ' + r.time + '. Your manager will review it.', 'ok');
-    } catch (e) {
-      $('m-msg').textContent = 'Network problem. Please try again.' + detail(e);
-    } finally {
-      btn.disabled = false;
-    }
-  });
+  $('b-modify').addEventListener('click', () => openMyTime()); // 시간 수정은 My hours 한 곳에서만
 
   $('b-folder').addEventListener('click', openFolder);
   $('folder').addEventListener('click', (e) => { if (e.target === e.currentTarget || e.target.classList.contains('folder-box')) closeFolder(); });

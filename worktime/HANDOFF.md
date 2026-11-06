@@ -1,6 +1,6 @@
 # 인수인계 메모 (새 세션은 이 파일부터 읽기)
 
-> 마지막 정리: 2026-11-06 · **My hours**(내 기록 확인 + 탭으로 시간 변경 요청 → Supervisor Accept/Deny) · **초과근무 원장**(Contracts 탭, 복식부기 표기) · 2026-10-23 · 메뉴·컴포넌트·포션 추산(Stock 앱 = Portion estim · Count · Menu editor · Recipe editor), 모든 것을 코드로 연결, 원재료 재고 조사. 다음 = 주간 Demand·주문 → 입고·변동
+> 마지막 정리: 2026-11-06 · **NFC Tag Log**(태그 원본 증거, 별도 파일) · **My hours**(시간 변경 요청 → Supervisor Accept/Deny 가 Work time log 를 바로 고침, Time Changes 로그) · **초과근무 원장**(Contracts 탭, 복식부기 표기) · 2026-10-23 · 메뉴·컴포넌트·포션 추산(Stock 앱 = Portion estim · Count · Menu editor · Recipe editor), 모든 것을 코드로 연결, 원재료 재고 조사. 다음 = 주간 Demand·주문 → 입고·변동
 > 설치·사용법은 `README.md`, 이 파일은 **구조 · 결정한 이유 · 작업 방식 · 남은 일**.
 
 ## 1. 한눈에 보기
@@ -14,7 +14,8 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 | 서버 | Google Apps Script 프로젝트 "Work Time Log with NFC" (`worktime/gas/*.gs`), `/exec` URL 은 `index.html` 의 `API_URL` | JSON API, 시트 기록, 메일, 웹 푸시, 트리거 |
 
 데이터는 모두 Drive 폴더 **Work Time Log with NFC** 안:
-- `yyyy-MM` 월별 시트 → 직원 이름 탭 → `DATE | TIME | Info(START/END) | Modify | Status | Request` (E·F 는 시간 변경 요청, 아래 My hours)
+- `yyyy-MM` 월별 시트(= **Work time log**, 월급 기준) → 직원 이름 탭 → `DATE | TIME | Info(START/END) | Change` (승인된 수정만 반영, Change = `TC-0003 · was 09:00`)
+- **NFC Tag Log** (별도 스프레드시트, 사람마다 탭, 월로 안 나눔): `Date | Time(초) | Tag | Tag UID | Tag counter` — 태그 원본 증거, 시스템만 추가, 보호
 - **WorkTime Config** → `Org Chart` 탭: `Position | Reports to | Person | Team` (조직도, 시트에서만 수정)
 - **WorkTime Config** → `Contracts` 탭: `Name | From | To | Weekly hours | Settlement(Weekly/Quarterly) | Note`, `Time Adjustments` 탭: `Name | Date | Hours | Reason`
 - **WorkTime Config** → `Employees` 탭: `Name | PIN | Active | Email | Admin | Team | Supervisor | Transport receipt` (A~H, H 빈칸=대상, FALSE=제외)
@@ -29,7 +30,7 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 
 | 파일 | 내용 | `setup` 잘림 검사 표식(파일 마지막 함수) |
 |---|---|---|
-| `Code.gs` | 상수(맨 위 `DEFAULT_FOLDER_ID`, `TZ`, `props_`), `setup`, `doPost` 라우터, 로그인, 출퇴근(`tap_`), 시간변경(`modify_`), 직원 명단, 조직도(`orgView_`) | `json_` + 맨 위 변수 |
+| `Code.gs` | 상수(맨 위 `DEFAULT_FOLDER_ID`, `TZ`, `props_`), `setup`, `doPost` 라우터, 로그인, 출퇴근(`tap_`), 직원 명단, 조직도(`orgView_`) | `json_` + 맨 위 변수 |
 | `Crypto.gs` | 순수 JS AES-128 / CMAC, `verifySun_` (NTAG 424 SUN 검증) | `verifySun_` |
 | `WebPush.gs` | 순수 JS P-256(BigInt), ECDSA(VAPID ES256), ECDH, AES-GCM, RFC 8291 암호화, `sendWebPush_` | `sendWebPush_` |
 | `Announce.gs` | 기록 시트·해시 체인, 공지, 수신 대상(팀/개인), 알림(`notify_`), 조용한 시간, `morningRun` | `morningRun` |
@@ -42,11 +43,11 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 | `Stock.gs` | 저장 위치(Places 탭), Production log(배치)·옮기기·나누기·정정·빠진 배치, 재고 종합본, 재고 조사(Count/Sunday)·소비량(Use 탭), 편집기용 `checkStock` | `checkStock` |
 | `Ingredients.gs` | 재료 마스터(별도 시트): 재료·규격·가격·보증금·거래처·선반 주소, 앱 편집(Admin), 원재료 재고 조사(Counts), 편집기용 `checkIngredients` | `checkIngredients` |
 | `Menus.gs` | 메뉴·컴포넌트·1인분(Supervisor), 빈 레시피(To write) + 09:00 알림, Portion estim 데이터, 편집기용 `checkMenus` | `checkMenus` |
-| `Hours.gs` | My hours(한 달 기록), 시간 변경 요청·승인/거절, 계약(Contracts)·조정(Time Adjustments), 초과근무 원장, 편집기용 `checkHours` | `checkHours` |
+| `Hours.gs` | NFC Tag Log, My hours(한 달 기록), 시간 변경 요청·승인/거절, 계약(Contracts)·조정(Time Adjustments), 초과근무 원장, 편집기용 `checkHours` | `checkHours` |
 
-API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend chat chatSend chatDelete chatPhoto chatMute org myTime timeRequest timeChanges timeDecide overtime recipes recipePhoto recipePhotoUpload recipeSave recipeDelete boxSave prodLog prodList prodDelete prodMove prodCorrect stock countView countSave ingView ingSave ingMove ingRemove supSave shelfSave menuView menuEdit portions`
+API 액션(`doPost` 의 `action`): `login me tap pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend chat chatSend chatDelete chatPhoto chatMute org myTime timeRequest timeChanges timeDecide overtime recipes recipePhoto recipePhotoUpload recipeSave recipeDelete boxSave prodLog prodList prodDelete prodMove prodCorrect stock countView countSave ingView ingSave ingMove ingRemove supSave shelfSave menuView menuEdit portions`
 
-스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음), `RECIPE_TEAMS`(선택, 레시피를 보는 팀, 기본 `Kitchen`, 쉼표로 여러 팀) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID RECEIPT_FOLDER_ID ACCOUNTANT_EMAIL RECEIPT_NOTIFIED RECIPE_SHEET_ID RECIPE_PHOTO_FOLDER_ID PROD_SHEET_ID INGREDIENT_SHEET_ID ING_MIGRATED MENU_SHEET_ID RCP_CODE_SEQ BOX_SEQ PLACE_SEQ TODO_NOTIFIED TC_SEQ PERSON_QUEUE RCP_VER PROD_SEQ COUNT_LAST_daily COUNT_LAST_sunday LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE CHAT_SEQ CHAT_VER_<방> CHAT_PUSH_AT chatr_<이름> chatn_<이름> chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
+스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음), `RECIPE_TEAMS`(선택, 레시피를 보는 팀, 기본 `Kitchen`, 쉼표로 여러 팀) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID RECEIPT_FOLDER_ID ACCOUNTANT_EMAIL RECEIPT_NOTIFIED RECIPE_SHEET_ID RECIPE_PHOTO_FOLDER_ID PROD_SHEET_ID INGREDIENT_SHEET_ID ING_MIGRATED MENU_SHEET_ID RCP_CODE_SEQ BOX_SEQ PLACE_SEQ TODO_NOTIFIED TC_SEQ PERSON_QUEUE TAGLOG_SHEET_ID RCP_VER PROD_SEQ COUNT_LAST_daily COUNT_LAST_sunday LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE CHAT_SEQ CHAT_VER_<방> CHAT_PUSH_AT chatr_<이름> chatn_<이름> chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
 
 트리거: `scheduleMorning`(매일 07시대) → 그날 09:00 정각 1회용 `morningRun` 예약. `checkScheduleChanges`(30분마다, 조용한 시간엔 건너뜀).
 `chatPushRun`: 채팅 메시지가 오면 약 1분 뒤 1회용으로 자동 예약(동시에 하나만, 자기 자신을 지움). setup 에서 만들 필요 없음.
@@ -56,7 +57,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 **NFC / 출퇴근**
 - 태그 URL `…/worktime/?p=<암호화 UID+카운터>&a=START|END&c=<CMAC>`. `a=` 도 MAC 범위에 포함 → START↔END 위조 불가. 서버가 태그별 카운터를 기억해 **복사 링크 재사용 차단**.
 - 태그 키(`keys.json`)는 레포 밖(사장님 Mac `worktime/tools/keys.json`, gitignore). **레포는 public** — 비밀값 커밋 금지.
-- 출퇴근 결과 화면: 저장 중에도 랜덤 규칙 팁, 하단 고정 버튼 하나(미확인 있으면 *I have read and understood*, 없으면 *Close*). 같은 자리·같은 모양 = 습관화 목적(사장님 요청).
+- 출퇴근 결과 화면: 시간 수정은 *Wrong time? Fix it in My hours* 로만. 저장 중에도 랜덤 규칙 팁, 하단 고정 버튼 하나(미확인 있으면 *I have read and understood*, 없으면 *Close*). 같은 자리·같은 모양 = 습관화 목적(사장님 요청).
 - Close: Android 는 탭이 닫힘, iPhone 은 막혀서 "Done" 화면.
 
 **로그인**
@@ -102,23 +103,25 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - **Manager 폴더**(iPhone 폴더처럼, 눌러서 열고 바깥을 누르면 닫힘): Admin(E열) → *Post & status*(예전 Manager 화면), Supervisor(G열) → *Requests inbox* · *Team status* · *To accountant*. 안에 보이는 앱이 하나도 없으면 폴더 자체가 안 보임(`syncManager`). 폴더 아이콘은 안에 든 앱을 작게 2×2.
 - 버튼 id(`b-anns` 등)와 동작은 그대로 — 화면만 바뀜.
 
-**My hours (내 기록 확인 · 시간 변경 요청 · 초과근무 원장)** (2026-11-06, 사장님: "본인이 본인 것만")
-- 홈 아이콘 **My hours**(모든 직원). 탭 **Records** · **Overtime**. 서버는 **이름을 토큰에서만** 정함 → 요청에 이름을 넣어도 무시, Supervisor 도 여기서는 자기 것만.
-- 월 총근무시간·근무일 수는 **표시 안 함**(사장님: 월급과 무관). 목적 = ① 기록이 맞는지 직접 확인 + 쉬운 수정 요청 ② 초과근무를 투명하게.
-- **Records**: 한 달(‹ ›, 24달 전까지), 날짜 카드마다 `09:00 → 15:30  6h 30`, 자정 넘기면 `00:30 (7)`, 지난달에 시작한 근무는 지난달에만. *No clock-out* / *No clock-in*(노랑), 지금 근무 중(초록).
-  근무 줄을 누르면 아래에서 작은 팝업: Clock-in / Clock-out 시간 칸(바꾼 칸만 요청, 빠진 쪽은 추가 요청) + 이유(선택) → *Send to supervisor*. 끝이 시작보다 이르면 다음 날. 맨 아래 *+ Add a missing shift*(태그를 둘 다 안 찍은 날).
-  태그 직후 1시간 안의 'Change time'(결과 화면)도 같은 요청으로 들어감(`modify_` → `submitTimeChange_`).
-- **기록 방식**: 월별 탭 TIME(태그 시간)은 그대로 두고 D Modify = 요청 시간(노랑), E Status = `Pending` → `Accepted · 누가 · 언제`(초록) / `Denied · …`(빨강), F = `TC-0001`. 빠진 태그 = TIME 빈 새 줄(승인돼야 셈).
-  유효 시간 = Accepted 면 Modify, 아니면 TIME. 요청·결정은 Announcement Records `Time Changes`(HMAC 체인)에 한 줄씩. 대기 중인 줄은 다시 요청 못 함. 승인된 시간을 다시 바꾸려던 요청을 거절하면 예전 승인 그대로.
-  옛 줄(Modify 만 있고 Status 빈칸) = 예전 방식 요청 → 대기로 보임, 앱에서 승인 불가 → 시트 E 칸에 `Accepted` / `Denied` 를 직접 적으면 반영.
-- **승인**: Supervisor 의 Requests inbox 맨 위 *Time changes* 카드 → **Accept / Deny 한 번**(시트·기록 반영, 직원에게 푸시 — 조용한 시간이면 09:00 `PERSON_QUEUE`). 요청 즉시 Supervisor 푸시(Request 와 같음). 홈 Requests inbox·Manager 폴더에 대기 수 배지(`me.timePending`, 서버 캐시 5분, 요청·결정 때 지움).
-  상태 아이콘(오른쪽 위)·Team status 는 이제 '마지막 줄'이 아니라 **가장 늦은 시간**의 기록(추가 요청 줄이 끝에 붙기 때문).
-- **Overtime**(분기 단위 ‹ ›, 8분기 전까지): 직원의 'Overtime account' = 회사가 갚을 시간(부채 계정) 원장. 열 = Week | Debit − | Credit + | Balance, 맨 위 Opening balance, 맨 아래 Totals.
-  주(월~일)마다 근무 − 계약: 많으면 Credit, 적으면 Debit. Time Adjustments(유급휴가·공휴일 등)는 별도 줄. 결산: **Quarterly** = 분기의 마지막 주가 끝나면 잔액을 반대쪽에 적어 0(초과 → 'Overtime → paid', 부족 → 'Short → closed'), **Weekly** = 매주 바로 0. 마감되면 Debit 합 = Credit 합.
-  분기 소속 = 그 주의 목요일(ISO 주). 근무는 시작한 날의 주. 계약 시작·끝이 주 중간이면 7일 중 계약 일수만큼 비례. 진행 중인 주는 아래 'This week' 가계산(원장에 안 넣음). 빠진 태그·대기 중 요청이 있는 주는 노란 표시. 주를 누르면 날짜별 시간.
-  계산은 서버(`overtimeLedger_`), 대기 중 요청은 태그 시간으로 셈. 계약은 **WorkTime Config `Contracts` 탭**(setup 이 만듦): 사람당 한 줄, 계약이 바뀌면 새 줄(옛 줄 To 채움). Settlement 빈칸 = Weekly. 편집기 `checkHours` = 직원마다 계약·이번 분기 잔액 로그(잘못 적은 줄 표시).
-- 폰 저장 `wt_myt_v1`(로그인 이름과 같을 때만, 달·분기 각 최근 4개) → 열면 바로 보이고 뒤에서 갱신.
-- **사장님 확인 필요**: 부족 시간(−)을 분기 말에 0 으로 닫는지/이월하는지, 식사·휴식 시간 공제 여부(지금은 태그 사이 전체를 근무로 셈).
+**My hours · 태그 원본 · 시간 변경** (2026-11-06, 사장님: "본인이 본인 것만", "변경 요청은 한 가지 방식으로만", "원본 증거는 따로, 변경은 로그로")
+- 기록 세 겹:
+  1) **NFC Tag Log** (별도 파일, `TAGLOG_SHEET_ID`, setup/첫 태그가 만듦): 태그마다 한 줄 `Date | Time(초) | Tag | Tag UID | Tag counter`, 사람마다 탭(월로 안 나눔), 맨 앞 `About` 탭. 시스템만 추가, 탭은 보호(편집자 전부 제거).
+     `tap_` 이 Work time log 보다 **먼저** 적음 — 실패하면 출퇴근도 저장 안 함(증거 없는 기록 방지). 재사용·위조 링크는 안 적힘.
+  2) **Work time log** (월별 파일): 늘 최종 시간만, 깔끔하게. 승인되면 TIME 을 바로 고치고 Change 칸에 `TC-0003 · was 09:00`(초록 칸), 빠진 태그 승인 = 시간 순서 자리에 줄 삽입(`TC-0004 · added`). 대기·거절은 여기에 아무것도 안 남김.
+  3) **Time Changes** (Announcement Records, 보호 + HMAC 체인): `ID | Logged at | Action | By | Employee | Day | Tag | Original time | Requested time | Work time log | Reason | Ref` — 요청(REQUEST)과 결정(ACCEPTED/DENIED)을 op 마다 한 줄. Work time log 칸 = `Not changed yet (waiting)` / `Changed 09:00 → 08:55` / `Added 22:15` / `Not changed (stays 09:00)`. 대기·거절·원래 시간은 모두 이 로그에서 읽음(`timeChangeBook_`).
+- **옛 방식 삭제**: 출퇴근 직후 1시간 'Request time change'(`modify` 액션, Modify 칸 노랑)는 없앰. 결과 화면 버튼은 *Wrong time? Fix it in My hours* → My hours. 옛 시트의 Modify 칸 값은 이제 아무 의미 없는 메모(계산·화면에서 무시).
+- **한계(사장님께 설명함)**: Google 시트는 **파일 소유자(사장님 계정)는 언제나 편집 가능** — 보호로 막을 수 있는 건 다른 사람뿐. 소유자까지 못 고치게 하려면 Google Cloud Storage 버킷 + 잠근 보존 정책(WORM)에 같이 쓰는 방법(미구현, 결정 대기).
+- 홈 아이콘 **My hours**(모든 직원). 탭 **Records** · **Overtime**. 서버는 **이름을 토큰에서만** 정함 → Supervisor 도 여기서는 자기 것만. 월 총근무시간·근무일 수는 표시 안 함(월급과 무관).
+- **Records**: 한 달(‹ ›, 24달 전까지), 날짜 카드 `09:00 → 15:30  6h 30`, 자정 넘기면 `00:30 (7)`. *No clock-out*/*No clock-in*(노랑), 근무 중(초록), 대기(노랑 `… · waiting`, 승인 전 추가는 `if accepted`), 승인(초록 `corrected · tag 09:00`), 거절(빨강 `not accepted`).
+  근무 줄을 누르면 작은 팝업(Clock-in/Clock-out + 이유) → *Send to supervisor*. 바꾼 칸만, 빠진 쪽은 추가 요청. 끝이 시작보다 이르면 다음 날. *+ Add a missing shift*. 같은 기록에 대기 요청이 있으면 다시 못 보냄.
+- **승인**: Requests inbox 맨 위 *Time changes* → **Accept / Deny 한 번**. 직원에게 푸시(조용한 시간이면 09:00 `PERSON_QUEUE`), 요청은 Supervisor 에게 즉시 푸시. 홈 Requests inbox·Manager 폴더 배지(`me.timePending`, 캐시 5분).
+  상태 아이콘·Team status = 가장 늦은 시간의 기록(삽입된 줄 때문에 '마지막 줄'이 아님).
+- **Overtime**(분기 ‹ ›, 8분기 전까지): 직원의 'Overtime account'(부채 계정) 원장 Week | Debit − | Credit + | Balance, Opening balance → Totals.
+  주(월~일)마다 근무 − 계약: 많으면 Credit, 적으면 Debit. Time Adjustments 는 별도 줄. 결산: **Quarterly** = 분기 마지막 주가 끝나면 잔액을 반대쪽에 적어 0, **Weekly** = 매주 0. 마감되면 Debit 합 = Credit 합.
+  분기 소속 = 그 주의 목요일(ISO 주). 근무는 시작한 날의 주. 계약이 주 중간에 시작·끝나면 일수 비례. 진행 중인 주 = 'This week' 가계산. 빠진 태그·대기 요청이 있는 주는 노란 표시. 주를 누르면 날짜별 시간.
+  계산은 서버(`overtimeLedger_`). 계약 = **WorkTime Config `Contracts` 탭**(사람당 한 줄, 바뀌면 새 줄 + 옛 줄 To). Settlement 빈칸 = Weekly. 편집기 `checkHours` = 직원마다 계약·잔액 로그.
+- 폰 저장 `wt_myt_v1`(로그인 이름과 같을 때만, 달·분기 각 최근 4개).
+- **사장님 확인 필요**: 부족 시간(−) 분기 말 0 마감 vs 이월, 식사·휴식 공제 여부, Supervisor 가 남의 원장을 볼지, 소유자도 못 고치는 저장(GCS WORM) 도입 여부.
 
 **Our Team (조직도)** (2026-10-10)
 - 홈 아이콘 **Our Team**(모든 직원). WorkTime Config `Org Chart` 탭(`setup` 이 만듦) `Position | Reports to | Person | Team` 을 서버(`org` 액션)가 그대로 주고, **트리는 화면이 만듦**(`buildOrg`). 시트에서만 수정, 서버 캐시 60초(`org_rows`).

@@ -7,11 +7,11 @@
 //   CONFIG_SHEET_ID : setup() 실행 시 자동 저장됨
 //   ACCOUNTANT_EMAIL : 영수증을 처음 보낼 때 화면에서 입력한 회계사 주소가 저장됨
 //
-// 시트 구조: <폴더>/<yyyy-MM> 스프레드시트 / <직원 이름> 시트 / DATE | TIME | Info | Modify
+// 시트 구조: <폴더>/<yyyy-MM> 스프레드시트 / <직원 이름> 시트 / DATE | TIME | Info | Change (Hours.gs 참고)
+// 태그 원본: NFC Tag Log 스프레드시트 / <직원 이름> 시트 (Hours.gs)
 
 var DEFAULT_FOLDER_ID = '1YmCPvxaWF6sv61p94Iyt0B3VLzlZDGUJ'; // "Work Time Log with NFC"
 var TZ = 'Europe/Paris';
-var EDIT_WINDOW_SEC = 60 * 60; // 태그 후 1시간 동안 시간 변경 요청 가능
 
 var props_ = PropertiesService.getScriptProperties();
 
@@ -94,7 +94,7 @@ function doPost(e) {
     schedResetMemo_();
     employeesMemo_ = null;
     var handlers = {
-      login: login_, tap: tap_, modify: modify_, me: me_,
+      login: login_, tap: tap_, me: me_,
       pushKey: pushKey_, subscribe: subscribe_, anns: annList_, photo: annPhoto_,
       confirm: confirm_, post: post_, status: annStatus_, staff: staff_,
       rules: rulesList_, ruleConfirm: ruleConfirm_, rulePhoto: rulePhoto_, ruleEdit: ruleEdit_,
@@ -197,6 +197,7 @@ function tap_(req) {
     props_.setProperty(key, String(sun.counter));
 
     var now = new Date();
+    appendTagLog_(name, a, sun, now); // 원본 증거 (NFC Tag Log) — 먼저 남김
     var month = Utilities.formatDate(now, TZ, 'yyyy-MM');
     var date = Utilities.formatDate(now, TZ, 'MM-dd');
     var time = Utilities.formatDate(now, TZ, 'HH:mm');
@@ -208,7 +209,7 @@ function tap_(req) {
   } finally {
     lock.releaseLock();
   }
-  var clock = { info: a, date: month.slice(0, 4) + '-' + date, time: time, change: '' };
+  var clock = { info: a, date: month.slice(0, 4) + '-' + date, time: time };
   putClock_(name, clock);
 
   try {
@@ -217,36 +218,8 @@ function tap_(req) {
     console.error(err); // 알림 실패가 출퇴근 기록을 막지 않도록
   }
 
-  var editToken = Utilities.getUuid();
-  CacheService.getScriptCache().put('edit_' + editToken,
-    JSON.stringify({ ssId: ss.getId(), month: month, sheet: name, row: row, name: name }), EDIT_WINDOW_SEC);
-  return { ok: true, name: name, date: date, time: time, info: a, editToken: editToken, clock: clock,
+  return { ok: true, name: name, date: date, time: time, info: a, clock: clock,
            today: todayStamp_(), unread: unreadCount_(name), unreadRules: unreadRulesFor_(name).length, tips: tips_(name) };
-}
-
-/** 출퇴근 직후 1시간 안의 시간 변경 = Supervisor 에게 가는 시간 변경 요청 (My hours 의 요청과 같음). */
-function modify_(req) {
-  var name = whoAmI_(req.token);
-  var time = String(req.time || '');
-  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) fail_('Please enter a valid time (HH:MM).');
-  var raw = CacheService.getScriptCache().get('edit_' + String(req.editToken || ''));
-  if (!raw) fail_('The time change window has expired. Please use My hours.');
-  var edit = JSON.parse(raw);
-  if (edit.name !== name) fail_('You can only change your own record.');
-  var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
-  try {
-    var month = edit.month || SpreadsheetApp.openById(edit.ssId).getName();
-    var sheet = SpreadsheetApp.openById(edit.ssId).getSheetByName(edit.sheet);
-    var c = clockRow_(sheet.getRange(edit.row, 1, 1, 6).getDisplayValues()[0], month, edit.row);
-    if (!c) fail_('Your record changed. Please use My hours.');
-    var op = resolveOp_(name, { op: 'change', month: month, row: edit.row, info: c.info, date: c.date, time: c.time, to: time },
-                        todayStamp_());
-    submitTimeChange_(name, [op], 'Right after the tag');
-  } finally {
-    lock.releaseLock();
-  }
-  return { ok: true, time: time };
 }
 
 // ------------------------------------------------------------------ helpers
@@ -340,7 +313,7 @@ function clockBooks_() {
   };
 }
 
-/** { info: START|END, date: 'yyyy-MM-dd', time: 'HH:mm', change: 요청한 시간 또는 '' } 또는 null. */
+/** { info: START|END, date: 'yyyy-MM-dd', time: 'HH:mm' } 또는 null (Work time log 의 최종 시간). */
 function readClock_(name, books) {
   for (var i = 0; i < books.months.length; i++) {
     var month = books.months[i], ss = books.open(month);
@@ -350,11 +323,11 @@ function readClock_(name, books) {
     var n = Math.min(last - 1, 20); // 손으로 적은 메모 줄이 끝에 있어도 찾도록 마지막 20줄
     var rows = sheet.getRange(last - n + 1, 1, n, 6).getDisplayValues(), best = null;
     for (var j = 0; j < rows.length; j++) {
-      var c = clockRow_(rows[j], month, 0); // 빠진 태그 추가 요청 줄은 승인되어야 시간이 있음
-      if (c && c.time && (!best || stampOf_(c) >= stampOf_(best))) best = c;
+      var c = clockRow_(rows[j], month, 0); // 승인으로 추가된 줄이 중간에 들어가도 가장 늦은 기록
+      if (c && (!best || stampOf_(c) >= stampOf_(best))) best = c;
     }
     if (best) {
-      return { info: best.info, date: best.date, time: best.time, change: best.status === 'pending' ? best.req : '' };
+      return { info: best.info, date: best.date, time: best.time };
     }
   }
   return null;
@@ -388,8 +361,8 @@ function employeeSheet_(ss, name) {
   } else {
     sheet = ss.insertSheet(name);
   }
-  sheet.getRange(1, 1, 1, 6).setValues([CLOCK_HEAD]).setFontWeight('bold');
-  sheet.getRange('A:F').setNumberFormat('@');
+  sheet.getRange(1, 1, 1, 4).setValues([CLOCK_HEAD]).setFontWeight('bold');
+  sheet.getRange('A:D').setNumberFormat('@');
   sheet.setFrozenRows(1);
   return sheet;
 }

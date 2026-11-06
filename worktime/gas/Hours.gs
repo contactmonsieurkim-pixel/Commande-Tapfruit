@@ -1,12 +1,14 @@
-// My hours · 시간 변경 요청(Time changes) · 계약(Contracts) · 초과근무 원장(Overtime ledger)
+// My hours · NFC 태그 원본 기록(Tag Log) · 시간 변경 요청(Time changes) · 계약(Contracts) · 초과근무 원장(Overtime ledger)
 //
-// 월별 기록 파일(yyyy-MM)의 직원 탭: DATE | TIME | Info | Modify | Status | Request
-//   TIME    = 태그가 기록한 시간 (바꾸지 않음)
-//   Modify  = 요청한 시간 (승인되면 이 시간으로 셈)
-//   Status  = Pending / Accepted · 누가 · 언제 / Denied · 누가 · 언제
-//   Request = 요청 번호 TC-0001
-//   유효 시간 = Accepted 면 Modify, 아니면 TIME. TIME 이 빈 줄 = 빠진 태그를 넣어 달라는 요청(승인되어야 셈).
-//   Status 가 빈데 Modify 가 있는 옛 줄 = 예전 방식 요청(대기 중으로 보임 → 시트의 Status 칸에 Accepted / Denied 를 적어 처리).
+// 기록은 세 겹 (사장님 지시 2026-11-06: "변경 요청은 하나의 방식으로만, 원본 증거는 따로, 변경은 로그로"):
+//  1) NFC Tag Log (별도 스프레드시트, 사람마다 탭 하나, 월로 나누지 않음): 태그를 찍을 때마다 한 줄. 시스템만 추가, 아무도 고치지 않음.
+//     Date | Time(초까지) | Tag | Tag UID | Tag counter
+//  2) Work time log (yyyy-MM 월별 파일 → 직원 탭): DATE | TIME | Info | Change   ← 월급·My hours 의 기준, 늘 '최종 시간'만.
+//     승인되면 TIME 을 바로 고치고 Change 칸에 'TC-0003 · was 09:00'(추가된 줄은 'TC-0004 · added'). 대기 중·거절은 이 시트에 아무것도 안 남김.
+//  3) Time Changes (Announcement Records, 보호 + HMAC 체인): 요청·승인·거절 한 줄씩 (요청 하나에 시작·끝 두 개면 두 줄)
+//     ID | Logged at | Action(REQUEST/ACCEPTED/DENIED) | By | Employee | Day | Tag | Original time | Requested time | Work time log | Reason | Ref
+//     Work time log 칸 = 'Not changed yet (waiting)' / 'Changed 09:00 → 08:55' / 'Added 22:15' / 'Not changed (stays 09:00)'.
+//     대기 중·거절·누가 고쳤는지는 모두 이 로그에서 읽음.
 //
 // WorkTime Config (setup 이 탭을 만듦, 시트에서만 입력):
 //   Contracts        : Name | From | To | Weekly hours | Settlement | Note
@@ -15,19 +17,18 @@
 //   Time Adjustments : Name | Date | Hours | Reason
 //                      + = 일한 것으로 셈(유급휴가, 공휴일, 교육…), − = 차감. 그 날짜가 든 주에 원장 한 줄로 들어감.
 //
-// Announcement Records 'Time Changes' (HMAC 체인): ID | At | By | Action(REQUEST/ACCEPTED/DENIED) | Employee | Ops | Reason
-//
 // 초과근무 원장(복식부기 표기): 직원의 'Overtime account' = 회사가 직원에게 갚을 시간(부채 계정).
 //   주마다 실제 근무 − 계약 시간: 많으면 Credit(+), 적으면 Debit(−). 조정(Time Adjustments)은 별도 줄.
 //   결산: Weekly = 그 주 끝에 바로 정산(잔액 0), Quarterly = 분기의 마지막 주가 끝나면 잔액을 반대쪽에 적어 0 으로 마감.
 //   주 = 월~일, 분기 소속 = 그 주의 목요일이 속한 분기(ISO 주 번호와 같은 규칙). 근무는 시작한 날의 주에 들어감.
 //   부분 주(계약 시작·끝이 주 중간)는 계약 시간을 7일 중 계약 일수만큼 비례.
 
-var CLOCK_HEAD = ['DATE', 'TIME', 'Info', 'Modify', 'Status', 'Request'];
+var CLOCK_HEAD = ['DATE', 'TIME', 'Info', 'Change'];
+var TAG_LOG_HEAD = ['Date', 'Time', 'Tag', 'Tag UID', 'Tag counter'];
 var MAX_SHIFT_MIN = 16 * 60; // START 뒤 이 안의 END 만 같은 근무로 봄 (화면의 LATE_HOURS 와 같음)
 var CONTRACT_HEAD = ['Name', 'From', 'To', 'Weekly hours', 'Settlement', 'Note'];
 var ADJUST_HEAD = ['Name', 'Date', 'Hours', 'Reason'];
-var TC_PENDING_BG = '#fff3cd', TC_OK_BG = '#d4edda', TC_NO_BG = '#f8d7da';
+var TC_CHANGED_BG = '#d4edda';
 
 function ensureHoursConfig_(config) {
   [['Contracts', CONTRACT_HEAD], ['Time Adjustments', ADJUST_HEAD]].forEach(function (t) {
@@ -37,25 +38,63 @@ function ensureHoursConfig_(config) {
     sh.getRange(1, 1, sh.getMaxRows(), t[1].length).setNumberFormat('@'); // 날짜를 글자 그대로(2026-09-01)
     sh.setFrozenRows(1);
   });
+  tagLogBook_();
 }
 
-// ------------------------------------------------------------------ 기록 한 줄 읽기
+// ------------------------------------------------------------------ NFC Tag Log (원본 증거)
+
+/** NFC Tag Log 스프레드시트 (없으면 만듦). 첫 탭 = 읽는 법. */
+function tagLogBook_() {
+  var id = props_.getProperty('TAGLOG_SHEET_ID');
+  if (id) return SpreadsheetApp.openById(id);
+  var ss = SpreadsheetApp.create('NFC Tag Log');
+  DriveApp.getFileById(ss.getId()).moveTo(folder_());
+  var about = ss.getSheets()[0].setName('About');
+  about.getRange(1, 1, 4, 1).setValues([
+    ['NFC Tag Log — every tag tap, exactly as the tag sent it. Written only by the Work Time system, never edited.'],
+    ['One tab per person (all months together). Time is Paris time, to the second.'],
+    ['Tag UID + Tag counter come from the tag itself (the counter goes up by one at every tap of that tag).'],
+    ['Corrections are made in the monthly Work time log; each one is listed in Announcement Records → Time Changes.'],
+  ]);
+  lockSheet_(about, 'NFC Tag Log');
+  props_.setProperty('TAGLOG_SHEET_ID', ss.getId());
+  return ss;
+}
+
+/** 시트 보호: 시스템(스크립트를 배포한 계정) 말고는 아무도 편집 못 함. */
+function lockSheet_(sh, what) {
+  var p = sh.protect().setDescription(what + ': written only by the Work Time system');
+  p.removeEditors(p.getEditors());
+  if (p.canDomainEdit()) p.setDomainEdit(false);
+  return sh;
+}
+
+/** 태그 한 번 = 한 줄 (호출 측에서 script lock). 실패하면 출퇴근도 저장하지 않음(증거 없는 기록 방지). */
+function appendTagLog_(name, a, sun, when) {
+  var ss = tagLogBook_(), sh = ss.getSheetByName(name);
+  if (!sh) {
+    sh = ss.insertSheet(name);
+    sh.getRange(1, 1, 1, TAG_LOG_HEAD.length).setValues([TAG_LOG_HEAD]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+    lockSheet_(sh, 'NFC Tag Log');
+  }
+  sh.getRange(sh.getLastRow() + 1, 1, 1, 5).setNumberFormat('@').setValues([[
+    Utilities.formatDate(when, TZ, 'yyyy-MM-dd'), Utilities.formatDate(when, TZ, 'HH:mm:ss'), a,
+    String(sun.uid), String(sun.counter)]]);
+}
+
+// ------------------------------------------------------------------ Work time log 한 줄 읽기
 
 function normTime_(v) {
   var m = String(v || '').trim().match(/^(\d{1,2})[:h](\d{2})$/);
   return m && +m[1] < 24 && +m[2] < 60 ? (m[1].length < 2 ? '0' : '') + m[1] + ':' + m[2] : '';
 }
 
-/** 월별 탭의 한 줄 → { r, date, info, rec, req, status, id, time } 또는 null(메모 줄). */
+/** 월별 탭의 한 줄 → { r, date, info, time, rec } 또는 null(메모 줄). rec = 화면용(승인된 수정이면 원래 시간으로 바뀜). */
 function clockRow_(r, month, rowNo) {
-  var info = String(r[2]).trim().toUpperCase(), md = String(r[0]).trim();
-  if ((info !== 'START' && info !== 'END') || !/^\d{2}-\d{2}$/.test(md)) return null;
-  var rec = normTime_(r[1]), req = normTime_(r[3]), st = String(r[4] || '').trim();
-  if (!rec && !req) return null;
-  var status = /^accepted/i.test(st) ? 'accepted' : /^denied/i.test(st) ? 'denied'
-    : (/^pending/i.test(st) || req) ? 'pending' : '';
-  return { r: rowNo, date: month.slice(0, 4) + '-' + md, info: info, rec: rec, req: req, status: status,
-           id: String(r[5] || '').trim(), time: status === 'accepted' && req ? req : rec };
+  var info = String(r[2]).trim().toUpperCase(), md = String(r[0]).trim(), time = normTime_(r[1]);
+  if ((info !== 'START' && info !== 'END') || !/^\d{2}-\d{2}$/.test(md) || !time) return null;
+  return { r: rowNo, date: month.slice(0, 4) + '-' + md, info: info, time: time, rec: time, req: '', status: '', id: '' };
 }
 
 /** 한 달 기록 파일의 내 탭 → clockRow_ 목록 (시트 순서). */
@@ -65,7 +104,7 @@ function monthClockRows_(name, month) {
   var last = sheet ? sheet.getLastRow() : 0;
   if (last < 2) return [];
   var out = [];
-  sheet.getRange(2, 1, last - 1, 6).getDisplayValues().forEach(function (r, i) {
+  sheet.getRange(2, 1, last - 1, 4).getDisplayValues().forEach(function (r, i) {
     var c = clockRow_(r, month, i + 2);
     if (c) out.push(c);
   });
@@ -87,7 +126,7 @@ function shiftMonth_(month, delta) {
   return y + '-' + (m < 10 ? '0' : '') + m;
 }
 
-/** 유효 시간이 있는 줄만 시간순. */
+/** 시간이 있는 줄만 시간순. */
 function timedEvents_(rows) {
   return rows.filter(function (c) { return c.time; })
     .sort(function (a, b) { return stampOf_(a) < stampOf_(b) ? -1 : stampOf_(a) > stampOf_(b) ? 1 : 0; });
@@ -121,13 +160,15 @@ function pairShifts_(events, now) {
 // ------------------------------------------------------------------ My hours (한 달, 본인 것만)
 // 이름은 로그인 토큰에서만 정함(요청에 이름을 받지 않음) → Supervisor 도 여기서는 자기 기록만.
 // 자정을 넘긴 근무가 달을 건너면: 처음이 END 면 지난달 마지막 기록, 마지막이 START 면 다음 달 첫 기록도 줌.
+// 줄마다 Time Changes 로그의 상태를 붙임: 대기(pending, req = 요청 시간) · 승인(accepted, rec = 원래 시간) · 거절(denied).
+// 대기·거절된 '빠진 태그 추가' 요청은 시트에 줄이 없으므로 r = 0 인 줄로 덧붙임.
 function myTime_(req) {
   var name = whoAmI_(req.token);
   var cur = Utilities.formatDate(new Date(), TZ, 'yyyy-MM');
   var month = String(req.month || cur);
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || month > cur) fail_('Invalid month.');
-  var rows = monthClockRows_(name, month), ev = timedEvents_(rows);
-  var before = null, after = null;
+  var rows = annotateRows_(monthClockRows_(name, month), myChangeOps_(name), month);
+  var ev = timedEvents_(rows), before = null, after = null;
   if (ev.length && ev[0].info === 'END') {
     var prev = timedEvents_(monthClockRows_(name, shiftMonth_(month, -1)));
     before = prev.length ? prev[prev.length - 1] : null;
@@ -138,10 +179,48 @@ function myTime_(req) {
   return { ok: true, month: month, current: cur, today: todayStamp_(), rows: rows, before: before, after: after };
 }
 
+/** 이 사람의 요청 op 들(오래된 것부터) + 상태(pending/accepted/denied). */
+function myChangeOps_(name) {
+  var out = [];
+  timeChangeBook_().forEach(function (x) {
+    if (x.name !== name) return;
+    x.ops.forEach(function (op) { out.push({ op: op, status: x.decision || 'pending', id: x.id }); });
+  });
+  return out;
+}
+
+function annotateRows_(rows, ops, month) {
+  var find = function (date, info, time) {
+    for (var i = 0; i < rows.length; i++) {
+      if (rows[i].r && rows[i].date === date && rows[i].info === info && rows[i].time === time) return rows[i];
+    }
+    return null;
+  };
+  ops.forEach(function (o) {
+    var op = o.op;
+    if (op.date.slice(0, 7) !== month) return;
+    if (op.op === 'change') {
+      var row = find(op.date, op.info, o.status === 'accepted' ? op.to : op.from);
+      if (!row) return;
+      row.status = o.status;
+      row.id = o.id;
+      row.req = o.status === 'accepted' ? '' : op.to;
+      if (o.status === 'accepted') row.rec = op.from;
+    } else if (o.status === 'accepted') {
+      var added = find(op.date, op.info, op.to);
+      if (added) { added.status = 'accepted'; added.id = o.id; added.rec = ''; }
+    } else {
+      rows.push({ r: 0, date: op.date, info: op.info, time: '', rec: '', req: op.to, status: o.status, id: o.id });
+    }
+  });
+  return rows;
+}
+
 // ------------------------------------------------------------------ 시간 변경 요청 (직원 → Supervisor)
 // ops (1~2개, 한 근무의 시작·끝):
-//   { op: 'change', month, row, info, date, time(지금 유효 시간 = 확인용), to }
+//   { op: 'change', month, row, info, date, time(지금 시간 = 확인용), to }
 //   { op: 'add', info, date, to }   ← 빠진 태그
+// 요청은 로그에만 적음(Work time log 는 승인될 때 바뀜).
 function timeRequest_(req) {
   var name = whoAmI_(req.token);
   var reason = String(req.reason || '').replace(/\s+/g, ' ').trim().slice(0, 300);
@@ -151,8 +230,8 @@ function timeRequest_(req) {
   lock.waitLock(20000);
   var id, ops;
   try {
-    var now = todayStamp_();
-    ops = items.map(function (it) { return resolveOp_(name, it, now); });
+    var now = todayStamp_(), mine = myChangeOps_(name);
+    ops = items.map(function (it) { return resolveOp_(name, it, now, mine); });
     id = submitTimeChange_(name, ops, reason);
   } finally {
     lock.releaseLock();
@@ -160,51 +239,45 @@ function timeRequest_(req) {
   return { ok: true, id: id };
 }
 
-function resolveOp_(name, it, now) {
+function resolveOp_(name, it, now, mine) {
   var to = normTime_(it && it.to), info = String((it && it.info) || '');
   if (!to) fail_('Please enter a valid time (HH:MM).');
   if (!/^(START|END)$/.test(info)) fail_('Bad request.');
+  var waiting = function (date, from) {
+    return mine.some(function (o) {
+      return o.status === 'pending' && o.op.date === date && o.op.info === info && (o.op.from || '') === from;
+    });
+  };
   if (it.op === 'add') {
     var date = String(it.date || '');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) fail_('Bad request.');
     if (date + ' ' + to > now) fail_('That time is in the future.');
-    return { op: 'add', month: date.slice(0, 7), info: info, date: date, to: to };
+    if (waiting(date, '')) fail_('A missing ' + (info === 'START' ? 'clock-in' : 'clock-out') + ' for this day is already waiting for the supervisor.');
+    return { op: 'add', month: date.slice(0, 7), info: info, date: date, from: '', to: to };
   }
   if (it.op !== 'change') fail_('Bad request.');
   var month = String(it.month || ''), row = Number(it.row);
   if (!/^\d{4}-\d{2}$/.test(month) || !(row >= 2)) fail_('Bad request.');
   var ss = findMonthSpreadsheet_(month), sheet = ss && ss.getSheetByName(name);
   if (!sheet) fail_('Your records changed. Please reload.', 'CHANGED');
-  var raw = sheet.getRange(row, 1, 1, 6).getDisplayValues()[0];
-  var c = clockRow_(raw, month, row);
+  var c = clockRow_(sheet.getRange(row, 1, 1, 4).getDisplayValues()[0], month, row);
   if (!c || c.info !== info || c.date !== it.date || c.time !== it.time) fail_('Your records changed. Please reload.', 'CHANGED');
-  if (c.status === 'pending') fail_('A change for this time is already waiting for the supervisor.');
+  if (waiting(c.date, c.time)) fail_('A change for this time is already waiting for the supervisor.');
   if (c.time === to) fail_('That is already the time on record.');
   if (c.date + ' ' + to > now) fail_('That time is in the future.');
-  return { op: 'change', month: month, row: row, info: info, date: c.date, from: c.time, to: to,
-           prevD: String(raw[3]).trim(), prevE: String(raw[4]).trim() };
+  return { op: 'change', month: month, row: row, info: info, date: c.date, from: c.time, to: to };
 }
 
-/** 시트에 대기 표시 + 기록 시트에 요청 한 줄 + Supervisor 알림. 호출 측에서 script lock. */
+/** 요청을 로그에 (op 마다 한 줄) + Supervisor 알림. 호출 측에서 script lock. */
 function submitTimeChange_(name, ops, reason) {
   var seq = Number(props_.getProperty('TC_SEQ') || 0) + 1;
   props_.setProperty('TC_SEQ', String(seq));
-  var id = 'TC-' + ('000' + seq).slice(-4);
+  var id = 'TC-' + ('000' + seq).slice(-4), at = nowStamp_();
   ops.forEach(function (op) {
-    var sheet = employeeSheet_(monthSpreadsheet_(op.month), name);
-    if (!sheet.getRange(1, 5).getValue()) sheet.getRange(1, 5, 1, 2).setValues([['Status', 'Request']]).setFontWeight('bold');
-    if (op.op === 'add') {
-      op.row = sheet.getLastRow() + 1;
-      sheet.getRange(op.row, 1, 1, 6).setNumberFormat('@').setValues([[op.date.slice(5), '', op.info, op.to, 'Pending', id]]);
-    } else {
-      sheet.getRange(op.row, 4, 1, 3).setNumberFormat('@').setValues([[op.to, 'Pending', id]]);
-    }
-    sheet.getRange(op.row, 4).setBackground(TC_PENDING_BG);
+    appendRecord_('Time Changes', [id, at, 'REQUEST', name, name, op.date, op.info, op.from || '— (missing)', op.to,
+                                   'Not changed yet (waiting)', reason, JSON.stringify(op)]);
   });
-  SpreadsheetApp.flush();
-  appendRecord_('Time Changes', [id, nowStamp_(), name, 'REQUEST', name, JSON.stringify(ops), reason]);
   CacheService.getScriptCache().remove('tc_pending');
-  try { putClock_(name, readClock_(name, clockBooks_())); } catch (e0) { console.error(e0); }
   try {
     pushSupervisors_({ title: '🕒 Time change · ' + name,
                        body: opsText_(ops) + (reason ? ' — ' + reason : ''),
@@ -225,16 +298,18 @@ function opsText_(ops) {
 
 // ------------------------------------------------------------------ Supervisor: 요청 목록 · 승인/거절
 
+/** Time Changes 로그 → 요청 목록 [{ id, at, name, ops, reason, decision, by, decidedAt }] (오래된 것부터). */
 function timeChangeBook_() {
   var reqs = {}, order = [];
+  if (!props_.getProperty('ANN_SHEET_ID')) return [];
   readRecords_('Time Changes').forEach(function (r) {
-    var id = r[0], action = r[3];
+    var id = r[0], action = r[2];
     if (action === 'REQUEST') {
-      reqs[id] = { id: id, at: r[1], name: r[4], ops: JSON.parse(r[5] || '[]'), reason: r[6] };
-      order.push(id);
-    } else if (reqs[id] && !reqs[id].decision) {
+      if (!reqs[id]) { reqs[id] = { id: id, at: r[1], name: r[4], ops: [], reason: r[10] }; order.push(id); }
+      reqs[id].ops.push(JSON.parse(r[11] || '{}'));
+    } else if (reqs[id] && (!reqs[id].decision || reqs[id].decidedAt === r[1])) {
       reqs[id].decision = action === 'ACCEPTED' ? 'accepted' : 'denied';
-      reqs[id].by = r[2];
+      reqs[id].by = r[3];
       reqs[id].decidedAt = r[1];
     }
   });
@@ -260,7 +335,7 @@ function timeChanges_(req) {
 function pendingTimeCount_() {
   var cache = CacheService.getScriptCache(), hit = cache.get('tc_pending');
   if (hit != null) return Number(hit);
-  var n = props_.getProperty('ANN_SHEET_ID') ? timeChangeBook_().filter(function (x) { return !x.decision; }).length : 0;
+  var n = timeChangeBook_().filter(function (x) { return !x.decision; }).length;
   cache.put('tc_pending', String(n), 300);
   return n;
 }
@@ -275,6 +350,10 @@ function safePendingTime_(emp) {
   }
 }
 
+/**
+ * Accept = Work time log 의 시간을 바로 고침(빠진 태그는 시간 순서 자리에 줄 추가) + 로그에 'Changed …'.
+ * Deny = 시트는 그대로 + 로그에 'Not changed …'.
+ */
 function timeDecide_(req) {
   var me = hoursSupervisor_(req.token);
   var id = String(req.id || ''), accept = req.decision === 'accept';
@@ -286,25 +365,26 @@ function timeDecide_(req) {
     item = timeChangeBook_().filter(function (x) { return x.id === id; })[0];
     if (!item) fail_('Request not found.');
     if (item.decision) fail_('Already ' + item.decision + ' by ' + item.by + '.', 'DONE');
-    var stamp = (accept ? 'Accepted' : 'Denied') + ' · ' + me.name + ' · ' + nowStamp_().slice(0, 16);
-    item.ops.forEach(function (op) {
-      var ss = findMonthSpreadsheet_(op.month), sheet = ss && ss.getSheetByName(item.name);
-      var row = sheet ? findTcRow_(sheet, op.row, id) : 0;
-      if (!row) fail_('This record was changed in the sheet (' + op.month + ', ' + item.name + '). Please fix it there.');
-      if (accept) {
-        sheet.getRange(row, 5).setValue(stamp);
-        sheet.getRange(row, 4).setBackground(TC_OK_BG);
-      } else if (op.op === 'change' && /^accepted/i.test(op.prevE)) {
-        // 예전에 승인된 시간을 다시 바꾸려던 요청 → 거절하면 예전 승인 그대로
-        sheet.getRange(row, 4, 1, 3).setValues([[op.prevD, op.prevE, '']]);
-        sheet.getRange(row, 4).setBackground(TC_OK_BG);
-      } else {
-        sheet.getRange(row, 5).setValue(stamp);
-        sheet.getRange(row, 4).setBackground(TC_NO_BG);
+    var results = item.ops.map(function (op) {
+      if (!accept) return 'Not changed (' + (op.op === 'add' ? 'still missing' : 'stays ' + op.from) + ')';
+      var sheet = employeeSheet_(monthSpreadsheet_(op.month), item.name);
+      if (op.op === 'add') {
+        insertClockRow_(sheet, [op.date.slice(5), op.to, op.info, id + ' · added']);
+        return 'Added ' + op.to;
       }
+      var row = findClockRow_(sheet, op);
+      if (!row) fail_('This record was changed in the sheet (' + op.month + ', ' + item.name + ', ' + op.date + ' ' + op.from + '). Please check it there.');
+      sheet.getRange(row, 2).setNumberFormat('@').setValue(op.to);
+      sheet.getRange(row, 4).setNumberFormat('@').setValue(id + ' · was ' + op.from);
+      sheet.getRange(row, 2).setBackground(TC_CHANGED_BG);
+      return 'Changed ' + op.from + ' → ' + op.to;
     });
     SpreadsheetApp.flush();
-    appendRecord_('Time Changes', [id, nowStamp_(), me.name, accept ? 'ACCEPTED' : 'DENIED', item.name, '', '']);
+    var at = nowStamp_();
+    item.ops.forEach(function (op, i) {
+      appendRecord_('Time Changes', [id, at, accept ? 'ACCEPTED' : 'DENIED', me.name, item.name, op.date, op.info,
+                                     op.from || '— (missing)', op.to, results[i], '', JSON.stringify(op)]);
+    });
   } finally {
     lock.releaseLock();
   }
@@ -319,14 +399,33 @@ function timeDecide_(req) {
   return { ok: true, id: id, decision: accept ? 'accepted' : 'denied' };
 }
 
-/** 요청 번호가 적힌 줄 (적어 둔 줄 번호가 맞으면 그 줄, 아니면 Request 열에서 찾음). */
-function findTcRow_(sheet, row, id) {
-  if (row >= 2 && String(sheet.getRange(row, 6).getValue()).trim() === id) return row;
+/** 고칠 줄: 적어 둔 줄 번호가 같은 기록(날짜·종류·시간)이면 그 줄, 아니면 탭에서 찾음. */
+function findClockRow_(sheet, op) {
+  var match = function (r) {
+    return String(r[0]).trim() === op.date.slice(5) && normTime_(r[1]) === op.from && String(r[2]).trim().toUpperCase() === op.info;
+  };
+  if (op.row >= 2 && match(sheet.getRange(op.row, 1, 1, 3).getDisplayValues()[0])) return op.row;
   var last = sheet.getLastRow();
   if (last < 2) return 0;
-  var col = sheet.getRange(2, 6, last - 1, 1).getDisplayValues();
-  for (var i = 0; i < col.length; i++) if (String(col[i][0]).trim() === id) return i + 2;
+  var rows = sheet.getRange(2, 1, last - 1, 3).getDisplayValues();
+  for (var i = 0; i < rows.length; i++) if (match(rows[i])) return i + 2;
   return 0;
+}
+
+/** 시간 순서 자리에 한 줄 넣기 (그보다 늦은 첫 기록 앞, 없으면 맨 끝). */
+function insertClockRow_(sheet, values) {
+  var last = sheet.getLastRow(), at = last + 1, key = values[0] + ' ' + values[1];
+  if (last >= 2) {
+    var rows = sheet.getRange(2, 1, last - 1, 3).getDisplayValues();
+    for (var i = 0; i < rows.length; i++) {
+      var t = normTime_(rows[i][1]), md = String(rows[i][0]).trim();
+      if (t && /^\d{2}-\d{2}$/.test(md) && md + ' ' + t > key) { at = i + 2; break; }
+    }
+  }
+  if (at <= last) sheet.insertRowBefore(at);
+  sheet.getRange(at, 1, 1, 4).setNumberFormat('@').setValues([values]);
+  sheet.getRange(at, 2).setBackground(TC_CHANGED_BG);
+  return at;
 }
 
 /** 직원 한 명에게 푸시. 조용한 시간(23~9시)에는 모아 두었다가 09:00 에. */
@@ -469,6 +568,7 @@ function overtimeLedger_(name, q, contracts, adjs, now) {
   var rows = [];
   months.forEach(function (mm) { rows = rows.concat(monthClockRows_(name, mm)); });
   var pairs = pairShifts_(timedEvents_(rows), now);
+  var pendingOps = myChangeOps_(name).filter(function (o) { return o.status === 'pending'; });
 
   var bal = 0, debit = 0, credit = 0, lastSettle = 'weekly';
   var post = function (e) {
@@ -497,7 +597,7 @@ function overtimeLedger_(name, q, contracts, adjs, now) {
     });
     var flags = {
       missing: pairs.missing.filter(function (x) { return inWeek(x.date); }).length,
-      pending: rows.filter(function (c) { return c.status === 'pending' && inWeek(c.date); }).length,
+      pending: pendingOps.filter(function (o) { return inWeek(o.op.date); }).length,
       live: !!(pairs.live && inWeek(pairs.live.date)),
     };
     var week = { type: 'week', week: isoWeek_(mon), from: from, to: to, worked: worked, contract: contractMin,

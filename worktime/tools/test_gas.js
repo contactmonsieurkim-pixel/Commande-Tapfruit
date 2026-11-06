@@ -31,6 +31,16 @@ function makeEnv(propsInit) {
       isSheetHidden: () => sheet.hidden,
       hideSheet: () => { sheet.hidden = true; return sheet; },
       clearContents: () => { for (const k of Object.keys(cells)) delete cells[k]; return sheet; },
+      insertRowBefore: (r) => {
+        const moved = {};
+        for (const [k, v] of Object.entries(cells)) {
+          const [rr, cc] = k.split(',').map(Number);
+          moved[(rr >= r ? rr + 1 : rr) + ',' + cc] = v;
+        }
+        for (const k of Object.keys(cells)) delete cells[k];
+        Object.assign(cells, moved);
+        return sheet;
+      },
       deleteRow: (r) => {
         const moved = {};
         for (const [k, v] of Object.entries(cells)) {
@@ -308,18 +318,25 @@ test('tap without login -> AUTH', () => {
   assert.strictEqual(r.code, 'AUTH');
 });
 
-let edit;
 test('tap START writes row', () => {
   const r = env.call(Object.assign({ action: 'tap', token }, s1));
   assert.ok(r.ok, JSON.stringify(r));
   assert.strictEqual(r.info, 'START');
   assert.match(r.date, /^\d\d-\d\d$/); assert.match(r.time, /^\d\d:\d\d$/);
-  edit = r.editToken;
+  assert.strictEqual(r.editToken, undefined, 'no more 1-hour edit link: corrections go through My hours');
   const ss = Object.values(env.files).find((s) => /^\d{4}-\d\d$/.test(s.title));
   const sh = ss.getSheetByName('Nam KIM');
   assert.strictEqual(ss.sheets.length, 1, 'default sheet reused');
-  assert.deepStrictEqual([1, 2, 3, 4].map((c) => sh.cells['1,' + c]), ['DATE', 'TIME', 'Info', 'Modify']);
+  assert.deepStrictEqual([1, 2, 3, 4].map((c) => sh.cells['1,' + c]), ['DATE', 'TIME', 'Info', 'Change']);
   assert.deepStrictEqual([1, 2, 3].map((c) => sh.cells['2,' + c]), [r.date, r.time, 'START']);
+  // 원본 증거: NFC Tag Log (별도 파일, 사람마다 탭, 초까지, 태그 UID·카운터), 보호된 탭
+  const log = env.files[env.props.TAGLOG_SHEET_ID];
+  assert.strictEqual(log.title, 'NFC Tag Log');
+  const tl = log.getSheetByName('Nam KIM');
+  assert.deepStrictEqual([1, 2, 3, 4, 5].map((c) => tl.cells['1,' + c]), ['Date', 'Time', 'Tag', 'Tag UID', 'Tag counter']);
+  assert.match(tl.cells['2,1'], /^2026-10-\d\d$/); assert.match(tl.cells['2,2'], new RegExp('^' + r.time + ':\\d\\d$'));
+  assert.strictEqual(tl.cells['2,3'], 'START'); assert.match(tl.cells['2,4'], /^[0-9A-F]{14}$/); assert.match(tl.cells['2,5'], /^\d+$/);
+  assert.ok(tl.protected && log.getSheetByName('About').protected);
 });
 
 test('same link again -> REPLAY', () => {
@@ -340,17 +357,14 @@ test('END tag (different UID counter space) ok', () => {
   assert.ok(r.ok); assert.strictEqual(r.info, 'END');
 });
 
-test('modify writes Modify column', () => {
-  assert.strictEqual(env.call({ action: 'modify', token, editToken: edit, time: '25:00' }).ok, false);
-  const r = env.call({ action: 'modify', token, editToken: edit, time: '08:55' });
-  assert.ok(r.ok);
-  const ss = Object.values(env.files).find((s) => /^\d{4}-\d\d$/.test(s.title));
-  const sh = ss.getSheetByName('Nam KIM');
-  assert.deepStrictEqual([4, 5, 6].map((c) => sh.cells['2,' + c]), ['08:55', 'Pending', 'TC-0001'], 'goes to the supervisor as a time change');
+test('old 1-hour modify action is gone (one way to correct: My hours)', () => {
+  assert.strictEqual(env.call({ action: 'modify', token, editToken: 'x', time: '08:55' }).error, 'Unknown action.');
 });
 
-test('modify with unknown edit token rejected', () => {
-  assert.strictEqual(env.call({ action: 'modify', token, editToken: 'x', time: '08:55' }).ok, false);
+test('every tap goes to the tag log, failed taps do not', () => {
+  const tl = env.files[env.props.TAGLOG_SHEET_ID].getSheetByName('Nam KIM');
+  assert.deepStrictEqual([2, 3, 4].map((r) => tl.cells[r + ',3']), ['START', 'START', 'END']);
+  assert.strictEqual(tl.getLastRow(), 4, 'replayed / tampered links are not logged');
 });
 
 // ------------------------------------------------------------------ announcements
@@ -699,9 +713,9 @@ test('status: team view for the supervisor only, read fresh from the sheet', () 
   assert.ok(r.ok, JSON.stringify(r));
   const by = Object.fromEntries(r.staff.map((x) => [x.name, x]));
   assert.ok(!by['Old Staff'], 'inactive staff hidden');
-  assert.deepStrictEqual(by.Yuna.clock, { info: 'END', date: '2026-10-09', time: '23:10', change: '22:50' });
+  assert.deepStrictEqual(by.Yuna.clock, { info: 'END', date: '2026-10-09', time: '23:10' });
   assert.strictEqual(by.Yuna.team, 'Kitchen');
-  assert.deepStrictEqual(by['No Mail'].clock, { info: 'START', date: '2026-09-30', time: '18:05', change: '' });
+  assert.deepStrictEqual(by['No Mail'].clock, { info: 'START', date: '2026-09-30', time: '18:05' });
   assert.strictEqual(env.call({ action: 'me', token: yuna }).clock.info, 'END', 'team view refreshes the cache');
 });
 
@@ -719,7 +733,7 @@ test('my hours: own records only, one month, notes skipped, overnight shift acro
   assert.ok(r.ok, JSON.stringify(r));
   assert.strictEqual(r.month, '2026-10'); assert.strictEqual(r.current, '2026-10');
   assert.deepStrictEqual(r.rows.map((x) => [x.r, x.date, x.time, x.info, x.req, x.status]), [
-    [2, '2026-10-01', '01:10', 'END', '', ''], [3, '2026-10-02', '09:00', 'START', '08:55', 'pending'],
+    [2, '2026-10-01', '01:10', 'END', '', ''], [3, '2026-10-02', '09:00', 'START', '', ''],
     [5, '2026-10-02', '15:30', 'END', '', ''], [6, '2026-10-03', '18:00', 'START', '', '']]);
   assert.strictEqual(r.before.date + ' ' + r.before.time + ' ' + r.before.info, '2026-09-30 18:05 START');
   assert.strictEqual(r.after, null, 'current month: no next month lookup');
@@ -733,53 +747,66 @@ test('my hours: own records only, one month, notes skipped, overnight shift acro
   assert.strictEqual(env.call({ action: 'myTime', token: noMail, month: '../x' }).ok, false, 'bad month');
 });
 
-test('time change: request from My hours → supervisor accepts / denies → sheet + record + notifications', () => {
+test('time change: request → log only; accept changes the work time log directly; deny leaves it; log tells the story', () => {
   const noMail = env.call({ action: 'login', name: 'No Mail', pin: '3333' }).token;
   const sh = Object.values(env.files).find((s) => s.title === '2026-10').getSheetByName('No Mail');
+  const tc = env.files[env.props.ANN_SHEET_ID].getSheetByName('Time Changes');
+  const logRows = () => Array.from({ length: tc.getLastRow() - 1 }, (_, i) => tc.getRange(i + 2, 1, 1, 12).getValues()[0]);
+  assert.deepStrictEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((c) => tc.cells['1,' + c]),
+    ['ID', 'Logged at', 'Action', 'By', 'Employee', 'Day', 'Tag', 'Original time', 'Requested time', 'Work time log', 'Reason', 'Ref']);
+  assert.ok(tc.protected);
   const change = { op: 'change', month: '2026-10', row: 5, info: 'END', date: '2026-10-02', time: '15:30', to: '16:00' };
   assert.strictEqual(env.call({ action: 'timeRequest', token: noMail, ops: [Object.assign({}, change, { time: '15:00' })] }).code,
                      'CHANGED', 'stale screen');
   assert.strictEqual(env.call({ action: 'timeRequest', token: noMail, ops: [Object.assign({}, change, { to: '25:00' })] }).ok, false);
-  const before = env.sent.push.length;
   const r = env.call({ action: 'timeRequest', token: noMail, ops: [change], reason: 'Closed late' });
   assert.ok(r.ok, JSON.stringify(r));
-  assert.deepStrictEqual([4, 5, 6].map((c) => sh.cells['5,' + c]), ['16:00', 'Pending', r.id]);
-  assert.match(sh.cells['1,5'], /Status/);
-  assert.ok(env.sent.push.length >= before, 'supervisor push attempted');
-  assert.match(env.call({ action: 'timeRequest', token: noMail, ops: [Object.assign({}, change, { time: '15:30', to: '16:10' })] }).error,
-               /already waiting|changed/i);
+  assert.strictEqual(r.id, 'TC-0001');
+  assert.deepStrictEqual([2, 4].map((c) => sh.cells['5,' + c] || ''), ['15:30', ''], 'work time log untouched while waiting');
+  assert.deepStrictEqual(logRows()[0].slice(0, 11),
+    ['TC-0001', logRows()[0][1], 'REQUEST', 'No Mail', 'No Mail', '2026-10-02', 'END', '15:30', '16:00', 'Not changed yet (waiting)', 'Closed late']);
+  assert.match(env.call({ action: 'timeRequest', token: noMail, ops: [change] }).error, /already waiting/);
   // 빠진 퇴근 태그 추가 + 미래 시간은 거절
   assert.match(env.call({ action: 'timeRequest', token: noMail, ops: [{ op: 'add', info: 'END', date: '2026-10-09', to: '23:00' }] }).error, /future/);
   const add = env.call({ action: 'timeRequest', token: noMail, ops: [{ op: 'add', info: 'END', date: '2026-10-03', to: '23:30' }] });
   assert.ok(add.ok, JSON.stringify(add));
-  assert.deepStrictEqual([1, 2, 3, 4, 5, 6].map((c) => sh.cells['7,' + c]), ['10-03', '', 'END', '23:30', 'Pending', add.id]);
+  assert.match(env.call({ action: 'timeRequest', token: noMail, ops: [{ op: 'add', info: 'END', date: '2026-10-03', to: '23:40' }] }).error, /already waiting/);
+  assert.strictEqual(sh.getLastRow(), 6, 'no row added while waiting');
+  let mine = env.call({ action: 'myTime', token: noMail }).rows;
+  assert.deepStrictEqual(mine.filter((x) => x.status).map((x) => [x.r, x.time, x.req, x.status]),
+                         [[5, '15:30', '16:00', 'pending'], [0, '', '23:30', 'pending']]);
   // 목록 · 배지: Supervisor 만
   assert.strictEqual(env.call({ action: 'timeChanges', token: yuna }).ok, false);
   const list = env.call({ action: 'timeChanges', token });
-  assert.ok(list.ok, JSON.stringify(list));
-  assert.deepStrictEqual(list.pending.map((x) => [x.id, x.name]), [['TC-0001', 'Nam KIM'], [r.id, 'No Mail'], [add.id, 'No Mail']]);
-  assert.strictEqual(list.pending[1].reason, 'Closed late');
-  assert.strictEqual(env.call({ action: 'me', token }).timePending, 3);
+  assert.deepStrictEqual(list.pending.map((x) => [x.id, x.name, x.reason]), [[r.id, 'No Mail', 'Closed late'], [add.id, 'No Mail', '']]);
+  assert.strictEqual(env.call({ action: 'me', token }).timePending, 2);
   assert.strictEqual(env.call({ action: 'me', token: noMail }).timePending, 0);
-  // 승인 → 유효 시간 16:00 / 거절 → 추가 줄은 셈하지 않음
+  // Accept → TIME 이 바로 바뀜 + Change 칸에 출처 / Deny → 시트 그대로
   assert.strictEqual(env.call({ action: 'timeDecide', token: yuna, id: r.id, decision: 'accept' }).ok, false);
   assert.ok(env.call({ action: 'timeDecide', token, id: r.id, decision: 'accept' }).ok);
   assert.strictEqual(env.call({ action: 'timeDecide', token, id: r.id, decision: 'deny' }).code, 'DONE');
   assert.ok(env.call({ action: 'timeDecide', token, id: add.id, decision: 'deny' }).ok);
-  assert.match(sh.cells['5,5'], /^Accepted · Nam KIM · 2026-10-09/);
-  assert.match(sh.cells['7,5'], /^Denied · Nam KIM/);
-  const rows = env.call({ action: 'myTime', token: noMail }).rows;
-  assert.deepStrictEqual(rows.filter((x) => x.r === 5 || x.r === 7).map((x) => [x.r, x.rec, x.time, x.status]),
-                         [[5, '15:30', '16:00', 'accepted'], [7, '', '', 'denied']]);
-  const recs = recRows('Time Changes').map((x) => x.slice(0, 5));
-  assert.deepStrictEqual(recs.slice(-2).map((x) => x[3]), ['ACCEPTED', 'DENIED']);
-  assert.strictEqual(env.call({ action: 'me', token }).timePending, 1);
-  // 승인된 시간을 다시 바꾸는 요청을 거절하면 예전 승인 그대로
-  const again = env.call({ action: 'timeRequest', token: noMail,
-                           ops: [Object.assign({}, change, { time: '16:00', to: '17:00' })] });
+  assert.deepStrictEqual([1, 2, 3, 4].map((c) => sh.cells['5,' + c]), ['10-02', '16:00', 'END', 'TC-0001 · was 15:30']);
+  assert.strictEqual(sh.getLastRow(), 6, 'denied add: no row');
+  const log = logRows();
+  assert.deepStrictEqual(log.slice(-2).map((x) => [x[0], x[2], x[3], x[7], x[8], x[9]]), [
+    ['TC-0001', 'ACCEPTED', 'Nam KIM', '15:30', '16:00', 'Changed 15:30 → 16:00'],
+    [add.id, 'DENIED', 'Nam KIM', '— (missing)', '23:30', 'Not changed (still missing)']]);
+  mine = env.call({ action: 'myTime', token: noMail }).rows;
+  assert.deepStrictEqual(mine.filter((x) => x.status).map((x) => [x.r, x.rec, x.time, x.req, x.status]),
+                         [[5, '15:30', '16:00', '', 'accepted'], [0, '', '', '23:30', 'denied']]);
+  assert.strictEqual(env.call({ action: 'me', token }).timePending, 0);
+  // 다시 바꾸려던 요청을 거절 → 시트는 16:00 그대로
+  const again = env.call({ action: 'timeRequest', token: noMail, ops: [Object.assign({}, change, { time: '16:00', to: '17:00' })] });
   assert.ok(again.ok, JSON.stringify(again));
   assert.ok(env.call({ action: 'timeDecide', token, id: again.id, decision: 'deny' }).ok);
-  assert.strictEqual(sh.cells['5,4'], '16:00'); assert.match(sh.cells['5,5'], /^Accepted/);
+  assert.strictEqual(sh.cells['5,2'], '16:00');
+  assert.strictEqual(logRows().slice(-1)[0][9], 'Not changed (stays 16:00)');
+  // 승인된 추가는 시간 순서 자리에 들어감
+  const t = env.ctx.SpreadsheetApp.create('tmp').sheets[0];
+  t.getRange(1, 1, 4, 4).setValues([['DATE', 'TIME', 'Info', 'Change'], ['10-01', '09:00', 'START', ''], ['10-02', '09:00', 'START', ''], ['10-02', '17:00', 'END', '']]);
+  assert.strictEqual(env.ctx.insertClockRow_(t, ['10-01', '18:00', 'END', 'TC-9 · added']), 3);
+  assert.deepStrictEqual([2, 3, 4, 5].map((r2) => t.cells[r2 + ',1'] + ' ' + t.cells[r2 + ',2']), ['10-01 09:00', '10-01 18:00', '10-02 09:00', '10-02 17:00']);
 });
 
 test('overtime ledger: contract weekly hours, debit/credit per week, adjustments, quarterly vs weekly settlement', () => {
