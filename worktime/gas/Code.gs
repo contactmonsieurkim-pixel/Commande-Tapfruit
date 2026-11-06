@@ -103,7 +103,7 @@ function doPost(e) {
       receipt: receiptMine_, receiptUpload: receiptUpload_, receiptDelete: receiptDelete_, receiptFile: receiptFile_,
       receiptStatus: receiptStatus_, receiptSend: receiptSend_,
       chat: chatView_, chatSend: chatSend_, chatDelete: chatDelete_, chatPhoto: chatPhoto_, chatMute: chatMute_,
-      org: orgView_,
+      org: orgView_, myTime: myTime_,
       recipes: recipesView_, recipePhoto: recipePhoto_, recipePhotoUpload: recipePhotoUpload_,
       recipeSave: recipeSave_, recipeDelete: recipeDelete_, boxSave: boxSave_,
       prodLog: prodLog_, prodList: prodList_, prodDelete: prodDelete_, prodMove: prodMove_, prodCorrect: prodCorrect_, stock: stockView_, countView: countView_, countSave: countSave_,
@@ -361,6 +361,49 @@ function myClock_(name) {
     console.error(err); // 상태 표시 실패가 앱을 막지 않도록
     return undefined;
   }
+}
+
+// ------------------------------------------------------------------ My hours (내 출퇴근 기록, 한 달씩)
+// 본인 것만: 이름은 로그인 토큰에서만 정함(요청에 이름을 받지 않음) → Supervisor 도 여기서는 자기 기록만.
+// 시트가 기준(매번 새로 읽음, 손으로 고친 것도 바로 보임). START/END 가 아닌 줄(메모)은 뺌.
+// 자정을 넘긴 근무가 달을 건너면: 마지막이 START 면 다음 달 첫 기록을, 처음이 END 면 지난달 마지막 기록을 같이 줌.
+function myTime_(req) {
+  var name = whoAmI_(req.token);
+  var cur = Utilities.formatDate(new Date(), TZ, 'yyyy-MM');
+  var month = String(req.month || cur);
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month) || month > cur) fail_('Invalid month.');
+  var rows = monthClockRows_(name, month);
+  var before = null, after = null;
+  if (rows.length && rows[0].info === 'END') {
+    var prev = monthClockRows_(name, shiftMonth_(month, -1));
+    before = prev.length ? prev[prev.length - 1] : null;
+  }
+  if (rows.length && rows[rows.length - 1].info === 'START' && month < cur) {
+    after = monthClockRows_(name, shiftMonth_(month, 1))[0] || null;
+  }
+  return { ok: true, month: month, current: cur, today: todayStamp_(), rows: rows, before: before, after: after };
+}
+
+/** 한 달 기록 파일의 내 탭에서 START/END 줄만 [{ date: 'yyyy-MM-dd', time, info, change }] (시트 순서). */
+function monthClockRows_(name, month) {
+  var ss = findMonthSpreadsheet_(month);
+  var sheet = ss && ss.getSheetByName(name);
+  var last = sheet ? sheet.getLastRow() : 0;
+  if (last < 2) return [];
+  var out = [];
+  sheet.getRange(2, 1, last - 1, 4).getDisplayValues().forEach(function (r) {
+    var info = String(r[2]).trim().toUpperCase(), md = String(r[0]).trim(), time = String(r[1]).trim();
+    if ((info !== 'START' && info !== 'END') || !/^\d{2}-\d{2}$/.test(md) || !/^\d{1,2}:\d{2}$/.test(time)) return;
+    out.push({ date: month.slice(0, 4) + '-' + md, time: time, info: info, change: String(r[3]).trim() });
+  });
+  return out;
+}
+
+function shiftMonth_(month, delta) {
+  var y = +month.slice(0, 4), m = +month.slice(5, 7) - 1 + delta;
+  y += Math.floor(m / 12);
+  m = ((m % 12) + 12) % 12 + 1;
+  return y + '-' + (m < 10 ? '0' : '') + m;
 }
 
 function employeeSheet_(ss, name) {

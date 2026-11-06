@@ -1,6 +1,6 @@
 # 인수인계 메모 (새 세션은 이 파일부터 읽기)
 
-> 마지막 정리: 2026-10-23 · 메뉴·컴포넌트·포션 추산(Stock 앱 = Portion estim · Count · Menu editor · Recipe editor), 모든 것을 코드로 연결, 원재료 재고 조사. 다음 = 주간 Demand·주문 → 입고·변동
+> 마지막 정리: 2026-11-06 · **My hours**(내 출퇴근 기록, 본인만) 추가 · 2026-10-23 · 메뉴·컴포넌트·포션 추산(Stock 앱 = Portion estim · Count · Menu editor · Recipe editor), 모든 것을 코드로 연결, 원재료 재고 조사. 다음 = 주간 Demand·주문 → 입고·변동
 > 설치·사용법은 `README.md`, 이 파일은 **구조 · 결정한 이유 · 작업 방식 · 남은 일**.
 
 ## 1. 한눈에 보기
@@ -28,7 +28,7 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 
 | 파일 | 내용 | `setup` 잘림 검사 표식(파일 마지막 함수) |
 |---|---|---|
-| `Code.gs` | 상수(맨 위 `DEFAULT_FOLDER_ID`, `TZ`, `props_`), `setup`, `doPost` 라우터, 로그인, 출퇴근(`tap_`), 시간변경(`modify_`), 직원 명단, 조직도(`orgView_`) | `json_` + 맨 위 변수 |
+| `Code.gs` | 상수(맨 위 `DEFAULT_FOLDER_ID`, `TZ`, `props_`), `setup`, `doPost` 라우터, 로그인, 출퇴근(`tap_`), 시간변경(`modify_`), 직원 명단, My hours(`myTime_`), 조직도(`orgView_`) | `json_` + 맨 위 변수 |
 | `Crypto.gs` | 순수 JS AES-128 / CMAC, `verifySun_` (NTAG 424 SUN 검증) | `verifySun_` |
 | `WebPush.gs` | 순수 JS P-256(BigInt), ECDSA(VAPID ES256), ECDH, AES-GCM, RFC 8291 암호화, `sendWebPush_` | `sendWebPush_` |
 | `Announce.gs` | 기록 시트·해시 체인, 공지, 수신 대상(팀/개인), 알림(`notify_`), 조용한 시간, `morningRun` | `morningRun` |
@@ -42,7 +42,7 @@ monsieur Kim(파리 레스토랑) 직원용 시스템. 세 덩어리:
 | `Ingredients.gs` | 재료 마스터(별도 시트): 재료·규격·가격·보증금·거래처·선반 주소, 앱 편집(Admin), 원재료 재고 조사(Counts), 편집기용 `checkIngredients` | `checkIngredients` |
 | `Menus.gs` | 메뉴·컴포넌트·1인분(Supervisor), 빈 레시피(To write) + 09:00 알림, Portion estim 데이터, 편집기용 `checkMenus` | `checkMenus` |
 
-API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend chat chatSend chatDelete chatPhoto chatMute org recipes recipePhoto recipePhotoUpload recipeSave recipeDelete boxSave prodLog prodList prodDelete prodMove prodCorrect stock countView countSave ingView ingSave ingMove ingRemove supSave shelfSave menuView menuEdit portions`
+API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns photo confirm post status staff rules ruleConfirm rulePhoto ruleEdit request requests schedule scheduleConfirm team annDelete receipt receiptUpload receiptDelete receiptFile receiptStatus receiptSend chat chatSend chatDelete chatPhoto chatMute org myTime recipes recipePhoto recipePhotoUpload recipeSave recipeDelete boxSave prodLog prodList prodDelete prodMove prodCorrect stock countView countSave ingView ingSave ingMove ingRemove supSave shelfSave menuView menuEdit portions`
 
 스크립트 속성: `SDM_META_KEY`, `SDM_FILE_KEY`(태그 키, 사람이 넣음), `RECIPE_TEAMS`(선택, 레시피를 보는 팀, 기본 `Kitchen`, 쉼표로 여러 팀) · 나머지는 자동: `CONFIG_SHEET_ID ANN_SHEET_ID PHOTO_FOLDER_ID RECEIPT_FOLDER_ID ACCOUNTANT_EMAIL RECEIPT_NOTIFIED RECIPE_SHEET_ID RECIPE_PHOTO_FOLDER_ID PROD_SHEET_ID INGREDIENT_SHEET_ID ING_MIGRATED MENU_SHEET_ID RCP_CODE_SEQ BOX_SEQ PLACE_SEQ TODO_NOTIFIED RCP_VER PROD_SEQ COUNT_LAST_daily COUNT_LAST_sunday LOG_KEY VAPID_* ANN_SEQ RULE_SEQ RULES_MIGRATED NOTIFY_QUEUE SUP_QUEUE CHAT_SEQ CHAT_VER_<방> CHAT_PUSH_AT chatr_<이름> chatn_<이름> chain_<시트> tok_<토큰> push_<해시> ctr_<UID>`
 
@@ -95,10 +95,18 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - 시트를 손으로 고친 것은 Team status 에는 바로, 직원 본인 화면에는 최대 10분 뒤 반영.
 
 **메인 화면 = 앱 아이콘** (2026-10-10)
-- 버튼 목록 대신 3열 아이콘 그리드: Announcements · Our Rules · Schedule · Pass receipt · Request (+ 관리자면 **Manager 폴더**).
+- 버튼 목록 대신 3열 아이콘 그리드: Announcements · Our Rules · Schedule · My hours · Chat · Pass receipt · Request (+ 관리자면 **Manager 폴더**).
 - 확인할 것이 있으면 아이콘 오른쪽 위 빨간 숫자 배지(예전 "채워진 버튼" 대신). 영수증 1~5일 미제출 = 파란 점 + 아이콘 아래 `by 5 October`.
 - **Manager 폴더**(iPhone 폴더처럼, 눌러서 열고 바깥을 누르면 닫힘): Admin(E열) → *Post & status*(예전 Manager 화면), Supervisor(G열) → *Requests inbox* · *Team status* · *To accountant*. 안에 보이는 앱이 하나도 없으면 폴더 자체가 안 보임(`syncManager`). 폴더 아이콘은 안에 든 앱을 작게 2×2.
 - 버튼 id(`b-anns` 등)와 동작은 그대로 — 화면만 바뀜.
+
+**My hours (내 출퇴근 기록)** (2026-11-06, 사장님: "본인이 본인 것만")
+- 홈 아이콘 **My hours**(모든 직원, Schedule 다음). 한 달 단위 ‹ › (이번 달까지, 24달 전까지). 서버 `myTime` 액션은 **이름을 토큰에서만** 정함 → 요청에 이름을 넣어도 무시, Supervisor 도 여기서는 자기 것만(남의 것은 Team status).
+- 서버는 그 달 파일의 내 탭에서 START/END 줄만 돌려줌(메모 줄 제외, 매번 시트에서 읽음 → 손으로 고친 것도 바로). 자정 넘긴 근무가 달을 건너면 `before`(지난달 마지막 줄) / `after`(다음 달 첫 줄)도 같이.
+- 화면이 START→END(16시간 안)를 짝지어 근무 시간 계산: 날짜 카드마다 `09:00 → 15:30  6h 30m`, 하루 2번이면 Day 합계, 다음 날 끝나면 `00:30 (7)`. 지난달에 시작한 근무는 지난달에만 셈.
+  짝 없음 = 노란 *No clock-out* / *No clock-in* + 위에 경고, 지금 근무 중 = 초록 *Working · 3h 30m*(합계에는 안 넣음).
+- 합계는 **태그에 기록된 시간** 기준. 시간 변경 요청(Modify)은 노란 표시로만(합계 반영 안 함 — 사장님이 원하면 요청 시간 기준으로 바꿀 수 있음). 아래 *Send a request* → Request 화면.
+- 폰 저장 `wt_myt_v1`(로그인 이름과 같을 때만, 최근 4달) → 열면 바로 보이고 뒤에서 갱신.
 
 **Our Team (조직도)** (2026-10-10)
 - 홈 아이콘 **Our Team**(모든 직원). WorkTime Config `Org Chart` 탭(`setup` 이 만듦) `Position | Reports to | Person | Team` 을 서버(`org` 액션)가 그대로 주고, **트리는 화면이 만듦**(`buildOrg`). 시트에서만 수정, 서버 캐시 60초(`org_rows`).
@@ -232,7 +240,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 ```bash
 cd worktime/tools
 python3 test_ntag424.py                 # NXP 공식 벡터 + 가상 태그
-node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 153개, python 의 pycryptodome 필요)
+node test_gas.js                        # 가짜 Google 서비스로 서버 전체 (현재 154개, python 의 pycryptodome 필요)
 node test_webpush.js                    # 푸시 암호를 Node crypto 와 교차검증
 # 푸시 복호화까지: npm install http_ece 후 HTTP_ECE_PATH=<경로>/node_modules/http_ece 로 실행
 ```

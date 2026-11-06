@@ -347,6 +347,35 @@
     .ic-admin { background: linear-gradient(160deg, #54606a, #333c43); }
     .ic-inbox { background: linear-gradient(160deg, #e0668f, #b83d66); }
     .ic-team { background: linear-gradient(160deg, #36b3a8, #1d8178); }
+    /* My hours (내 출퇴근 기록) */
+    #v-mytime { padding-bottom: 72px; }
+    .ic-mytime { background: linear-gradient(160deg, #3fa0c9, #1f6f95); }
+    .mt-month { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; }
+    .mt-month b { font-size: 18px; }
+    .mt-month button { width: 44px; height: 40px; margin: 0; padding: 0; font-size: 24px; line-height: 1; color: var(--text);
+                       background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+    .mt-month button:disabled { opacity: .3; }
+    .mt-sum { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .mt-stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; }
+    .mt-stat b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
+    .mt-stat span { font-size: 13px; color: var(--muted); }
+    .mt-stat.alert { grid-column: 1 / -1; background: var(--warn-bg); color: var(--warn-ink); border-color: transparent; font-size: 14px; font-weight: 600; }
+    .mt-private { font-size: 12px; color: var(--muted); margin: 8px 2px 4px; }
+    .mt-day { display: flex; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; margin-bottom: 8px; }
+    .mt-day.today { border-left: 5px solid var(--brand); }
+    .mt-date { flex: none; width: 44px; text-align: center; line-height: 1.15; }
+    .mt-date small { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; }
+    .mt-date b { font-size: 20px; }
+    .mt-shifts { flex: 1; min-width: 0; }
+    .mt-shift { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 2px 0; }
+    .mt-shift .t { font-variant-numeric: tabular-nums; font-size: 16px; }
+    .mt-shift .d { font-variant-numeric: tabular-nums; font-size: 14px; color: var(--muted); }
+    .mt-shift .d.warn { color: var(--warn-ink); background: var(--warn-bg); border-radius: 6px; padding: 0 6px; font-weight: 600; }
+    .mt-shift .d.live { color: var(--ok); font-weight: 600; }
+    .mt-shift .change { margin: 0; }
+    .mt-total { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; text-align: right; font-size: 13px; color: var(--muted); }
+    .mt-foot { margin-top: 14px; }
+    .mt-foot button.link { width: auto; margin: 0; padding: 0; display: inline; font-size: inherit; color: var(--brand); font-weight: 600; text-decoration: underline; }
     .ic-acct { background: linear-gradient(160deg, #8a9a5b, #64733a); }
     /* 폴더 아이콘: 안에 든 앱을 작게 2×2 */
     .folder-ic { background: rgba(120, 130, 125, .22); box-shadow: none; display: grid; grid-template-columns: repeat(2, 22px);
@@ -923,6 +952,7 @@
       <button id="b-anns" class="app" type="button"><span class="app-ic ic-ann"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg><span id="badge" class="badge hidden"></span></span><span class="app-name">Announcements</span></button>
       <button id="b-rules" class="app" type="button"><span class="app-ic ic-rules"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7M9 11h5"/></svg><span id="badge-rules" class="badge hidden"></span></span><span class="app-name">Our Rules</span></button>
       <button id="b-sched" class="app" type="button"><span class="app-ic ic-sched"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h2M14 14h2M8 18h2"/></svg><span id="badge-sched" class="badge hidden"></span></span><span class="app-name">Schedule</span></button>
+      <button id="b-mytime" class="app" type="button"><span class="app-ic ic-mytime"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span class="app-name">My hours</span></button>
       <button id="b-chat" class="app" type="button"><span class="app-ic ic-chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg><span id="badge-chat" class="badge hidden"></span></span><span class="app-name">Chat</span></button>
       <button id="b-receipt" class="app" type="button"><span class="app-ic ic-receipt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v3a2 2 0 0 0 0 4v3a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 0 0-4z"/><path d="M14 5v2M14 11v2M14 17v2"/></svg><span class="badge dot hidden"></span></span><span class="app-name">Pass receipt</span><small id="receipt-due" class="app-sub hidden"></small></button>
       <button id="b-request" class="app" type="button"><span class="app-ic ic-request"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg></span><span class="app-name">Request</span></button>
@@ -1145,6 +1175,21 @@
     <button id="b-inbox-back" class="back-fab" type="button">← Back</button>
   </section>
 
+  <!-- My hours: 내 출퇴근 기록 (본인 것만) -->
+  <section id="v-mytime" class="hidden">
+    <h2 class="feed-title">My hours</h2>
+    <div class="mt-month">
+      <button id="b-mt-prev" type="button" aria-label="Previous month">‹</button>
+      <b id="mt-label"></b>
+      <button id="b-mt-next" type="button" aria-label="Next month">›</button>
+    </div>
+    <div id="mt-sum" class="mt-sum"></div>
+    <p class="mt-private">🔒 Only you can see this page.</p>
+    <div id="mt-list"><p class="hint">Loading…</p></div>
+    <p class="hint mt-foot">Hours are counted from your tag times. Something wrong? <button id="b-mt-req" class="link" type="button">Send a request</button></p>
+    <button id="b-mytime-back" class="back-fab" type="button">← Back</button>
+  </section>
+
   <!-- 관리자: 공지 작성 + 확인 현황 -->
   <section id="v-team" class="hidden">
     <h2 class="feed-title">Team status</h2>
@@ -1289,7 +1334,7 @@
     }
   }
   const VIEWS = ['login', 'home', 'result', 'modify', 'ann', 'admin', 'closed', 'request', 'inbox', 'schedule', 'team',
-                 'receipt', 'receipts', 'chat', 'org', 'recipes', 'redit', 'stock', 'ingr'];
+                 'receipt', 'receipts', 'chat', 'org', 'recipes', 'redit', 'stock', 'ingr', 'mytime'];
   let lastTap = null;
   let annReturn = 'home';
 
@@ -2009,6 +2054,145 @@
   $('b-team').addEventListener('click', openTeam);
   $('b-team-refresh').addEventListener('click', openTeam);
   $('b-team-back').addEventListener('click', () => goHome());
+
+  // ---------------------------------------------------------------- My hours (내 출퇴근 기록, 한 달씩, 본인 것만)
+  // 서버는 토큰의 이름으로만 읽음(남의 기록은 볼 수 없음). 화면이 START→END 를 짝지어 근무 시간을 계산.
+  // 시간은 태그에 기록된 시간 기준, 시간 변경 요청(Modify)은 노란 표시로만.
+  // 폰 저장(wt_myt_v1, 로그인한 이름과 같을 때만 사용) → 열면 바로 보이고 뒤에서 새로 받음.
+  const MT_STORE = 'wt_myt_v1', MT_BACK_MONTHS = 24;
+  let mtMonth = null, mtSeq = 0;
+  const mtShift = (month, d) => {
+    const [y, m] = month.split('-').map(Number), t = y * 12 + (m - 1) + d;
+    return Math.floor(t / 12) + '-' + String((t % 12) + 1).padStart(2, '0');
+  };
+  const hm = (min) => Math.floor(min / 60) + 'h ' + String(min % 60).padStart(2, '0') + 'm';
+  function mtLoad() {
+    try {
+      const x = JSON.parse(store.get(MT_STORE) || 'null');
+      return x && x.name === store.get('wt_name') ? x.months || {} : {};
+    } catch (e) { return {}; }
+  }
+  function mtSave(month, data) {
+    const months = mtLoad();
+    months[month] = data;
+    const keep = Object.keys(months).sort().slice(-4); // 최근 4달만
+    const out = {};
+    for (const k of keep) out[k] = months[k];
+    store.set(MT_STORE, JSON.stringify({ name: store.get('wt_name'), months: out }));
+  }
+
+  // START 다음의 END(16시간 안) = 한 근무. 짝이 없으면 No clock-out / No clock-in.
+  // 지난달에서 시작한 근무는 지난달 것(여기선 뺌), 다음 달에 끝난 근무는 이 달 것.
+  function mtShifts(d) {
+    const all = [];
+    if (d.before && d.before.info === 'START') all.push(Object.assign({ outside: true }, d.before));
+    all.push(...d.rows);
+    if (d.after && d.after.info === 'END') all.push(Object.assign({ outside: true }, d.after));
+    const out = [];
+    let open = null;
+    for (const r of all) {
+      if (r.info === 'START') { if (open) out.push({ in: open }); open = r; continue; }
+      const gap = open ? stampMin(r.date, r.time) - stampMin(open.date, open.time) : -1;
+      if (open && gap >= 0 && gap <= LATE_HOURS * 60) out.push({ in: open, out: r, min: gap });
+      else { if (open) out.push({ in: open }); out.push({ out: r }); }
+      open = null;
+    }
+    if (open) out.push({ in: open });
+    const now = parisNow();
+    return out.filter((s) => (s.in ? !s.in.outside : !s.out.outside)).map((s) => {
+      if (s.in && !s.out) {
+        const min = stampMin(now.slice(0, 10), now.slice(11)) - stampMin(s.in.date, s.in.time);
+        if (min >= 0 && min < LATE_HOURS * 60 && s === out[out.length - 1]) s.live = min;
+      }
+      return s;
+    });
+  }
+
+  function renderMyTime(d) {
+    const cur = d.current, month = d.month;
+    const [y, m] = month.split('-').map(Number);
+    $('mt-label').textContent = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'long', year: 'numeric' });
+    $('b-mt-next').disabled = month >= cur;
+    $('b-mt-prev').disabled = month <= mtShift(cur, -MT_BACK_MONTHS);
+    const shifts = mtShifts(d), today = parisNow().slice(0, 10);
+    const days = new Map();
+    for (const s of shifts) {
+      const key = (s.in || s.out).date;
+      if (!days.has(key)) days.set(key, []);
+      days.get(key).push(s);
+    }
+    const total = shifts.reduce((a, s) => a + (s.min || 0), 0);
+    const missing = shifts.filter((s) => (s.in && !s.out && s.live == null) || (!s.in && s.out)).length;
+    const changes = d.rows.filter((r) => r.change).length;
+    const sum = $('mt-sum');
+    sum.replaceChildren();
+    const stat = (big, small) => { const b = el('div', 'mt-stat'); b.append(el('b', null, big), el('span', null, small)); return b; };
+    sum.append(stat(hm(total), 'Total hours'), stat(String(days.size), days.size === 1 ? 'Day worked' : 'Days worked'));
+    if (missing) sum.append(el('div', 'mt-stat alert', '⚠ ' + missing + (missing === 1 ? ' tag is' : ' tags are') + ' missing (clock-in or clock-out). Please tell your manager.'));
+    if (changes) sum.append(el('div', 'mt-stat alert', changes + (changes === 1 ? ' time change requested' : ' time changes requested') + ' — shown in yellow, not counted in the total.'));
+    const list = $('mt-list');
+    list.replaceChildren();
+    if (!days.size) return list.append(el('p', 'hint', 'No clock-in or clock-out this month.'));
+    const timeTxt = (r, next) => (r ? r.time + (r.date !== next ? ' (' + Number(r.date.slice(8)) + ')' : '') : '?');
+    for (const [date, list2] of days) {
+      const card = el('div', 'mt-day' + (date === today ? ' today' : ''));
+      const dd = new Date(stampMin(date, '00:00') * 60000);
+      const left = el('div', 'mt-date');
+      left.append(el('small', null, dd.toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short' })), el('b', null, String(dd.getUTCDate())));
+      const right = el('div', 'mt-shifts');
+      let dayMin = 0;
+      for (const s of list2) {
+        const row = el('div', 'mt-shift');
+        const t = el('span', 't', timeTxt(s.in, date) + ' → ' + (s.live != null ? 'now' : timeTxt(s.out, date)));
+        let dur;
+        if (s.min != null) { dur = el('span', 'd', hm(s.min)); dayMin += s.min; }
+        else if (s.live != null) dur = el('span', 'd live', 'Working · ' + hm(s.live));
+        else dur = el('span', 'd warn', s.in ? 'No clock-out' : 'No clock-in');
+        row.append(t, dur);
+        right.append(row);
+        for (const r of [s.in, s.out]) {
+          if (r && r.change) right.append(el('span', 'change', (r.info === 'START' ? 'In ' : 'Out ') + r.time + ' → change requested: ' + r.change));
+        }
+      }
+      if (list2.filter((s) => s.min != null).length > 1) right.append(el('div', 'mt-total', 'Day ' + hm(dayMin)));
+      card.append(left, right);
+      list.append(card);
+    }
+  }
+
+  async function openMyTime(month) {
+    const seq = ++mtSeq;
+    const cur = parisNow().slice(0, 7);
+    month = month && month <= cur ? month : cur;
+    mtMonth = month;
+    const saved = mtLoad()[month];
+    if (currentView !== 'mytime') show('mytime');
+    if (saved) renderMyTime(saved);
+    else {
+      const [y, m] = month.split('-').map(Number);
+      $('mt-label').textContent = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'long', year: 'numeric' });
+      $('b-mt-next').disabled = month >= cur;
+      $('b-mt-prev').disabled = month <= mtShift(cur, -MT_BACK_MONTHS);
+      $('mt-sum').replaceChildren();
+      $('mt-list').replaceChildren(el('p', 'hint', 'Loading…'));
+    }
+    try {
+      const r = await api({ action: 'myTime', token: token(), month });
+      if (seq !== mtSeq) return; // 그새 다른 달을 누름
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) { if (!saved) $('mt-list').replaceChildren(el('p', 'err', serverMsg(r))); return; }
+      const data = { month: r.month, current: r.current, today: r.today, rows: r.rows, before: r.before, after: r.after };
+      mtSave(r.month, data);
+      if (currentView === 'mytime') renderMyTime(data);
+    } catch (e) {
+      if (seq === mtSeq && !saved) $('mt-list').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
+    }
+  }
+  $('b-mytime').addEventListener('click', () => openMyTime());
+  $('b-mt-prev').addEventListener('click', () => openMyTime(mtShift(mtMonth, -1)));
+  $('b-mt-next').addEventListener('click', () => openMyTime(mtShift(mtMonth, 1)));
+  $('b-mt-req').addEventListener('click', () => openRequest());
+  $('b-mytime-back').addEventListener('click', () => goHome());
 
   // ---------------------------------------------------------------- Schedule (읽기 전용 + 주마다 읽고 동의)
   let schedSel = {}, schedData = null;
@@ -6354,6 +6538,7 @@
       if (currentView === 'inbox') return openInbox();
       if (currentView === 'team') return openTeam();
       if (currentView === 'org') return openOrg();
+      if (currentView === 'mytime') return openMyTime(mtMonth);
       if (currentView === 'recipes') return loadRecipes();
       if (currentView === 'stock') { if (stTab === 'portion') loadStock(); if (stTab === 'menus' && !meOpenDirty()) loadMenus(); return loadRecipes(); }
       if (currentView === 'chat') return chatRefresh();

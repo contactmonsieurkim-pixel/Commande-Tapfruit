@@ -703,6 +703,34 @@ test('status: team view for the supervisor only, read fresh from the sheet', () 
   assert.strictEqual(env.call({ action: 'me', token: yuna }).clock.info, 'END', 'team view refreshes the cache');
 });
 
+test('my hours: own records only, one month, notes skipped, overnight shift across months', () => {
+  assert.strictEqual(env.call({ action: 'myTime' }).code, 'AUTH');
+  const noMail = env.call({ action: 'login', name: 'No Mail', pin: '3333' }).token;
+  const cur = env.call({ action: 'me', token: noMail }).today.slice(0, 7);
+  assert.strictEqual(cur, '2026-10');
+  // 2026-09 (team status 테스트): 'No Mail' 09-30 18:05 START → 2026-10 첫 줄 END 10-01 01:10
+  const oct = Object.values(env.files).find((s) => s.title === '2026-10');
+  const sh = oct.insertSheet('No Mail');
+  sh.getRange(1, 1, 6, 4).setValues([['DATE', 'TIME', 'Info', 'Modify'], ['10-01', '01:10', 'END', ''],
+    ['10-02', '09:00', 'START', '08:55'], ['', '', 'note: forgot tag', ''], ['10-02', '15:30', 'END', ''], ['10-03', '18:00', 'START', '']]);
+  const r = env.call({ action: 'myTime', token: noMail, name: 'Yuna' }); // 남의 이름을 넣어도 내 기록만
+  assert.ok(r.ok, JSON.stringify(r));
+  assert.strictEqual(r.month, '2026-10'); assert.strictEqual(r.current, '2026-10');
+  assert.deepStrictEqual(r.rows.map((x) => [x.date, x.time, x.info, x.change]), [
+    ['2026-10-01', '01:10', 'END', ''], ['2026-10-02', '09:00', 'START', '08:55'],
+    ['2026-10-02', '15:30', 'END', ''], ['2026-10-03', '18:00', 'START', '']]);
+  assert.deepStrictEqual(r.before, { date: '2026-09-30', time: '18:05', info: 'START', change: '' });
+  assert.strictEqual(r.after, null, 'current month: no next month lookup');
+  const sep = env.call({ action: 'myTime', token: noMail, month: '2026-09' });
+  assert.deepStrictEqual(sep.rows.map((x) => x.time), ['18:05']);
+  assert.deepStrictEqual(sep.after, { date: '2026-10-01', time: '01:10', info: 'END', change: '' });
+  assert.deepStrictEqual(env.call({ action: 'myTime', token: noMail, month: '2026-08' }).rows, [], 'no file -> empty');
+  const y = env.call({ action: 'myTime', token: yuna, month: '2026-10' });
+  assert.ok(y.rows.length && y.rows.every((x) => x.time !== '01:10'), 'Yuna sees only her own tab');
+  assert.strictEqual(env.call({ action: 'myTime', token: noMail, month: '2026-11' }).ok, false, 'future month');
+  assert.strictEqual(env.call({ action: 'myTime', token: noMail, month: '../x' }).ok, false, 'bad month');
+});
+
 test('org chart: setup adds the tab; any logged-in staff reads its rows (sheet order, blanks skipped)', () => {
   assert.strictEqual(env.call({ action: 'org' }).code, 'AUTH');
   const tab = env.files[env.props.CONFIG_SHEET_ID].getSheetByName('Org Chart');
