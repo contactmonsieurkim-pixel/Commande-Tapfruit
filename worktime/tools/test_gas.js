@@ -137,6 +137,7 @@ function makeEnv(propsInit) {
     }) },
     CacheService: { getScriptCache: () => ({
       put: (k, v) => { cache[k] = v; },
+      remove: (k) => { delete cache[k]; },
       get: (k) => (k in cache ? cache[k] : null),
     }) },
     LockService: { getScriptLock: () => ({ waitLock: () => {}, tryLock: () => true, releaseLock: () => {} }) },
@@ -202,7 +203,7 @@ function makeEnv(propsInit) {
     },
   };
   vm.createContext(ctx);
-  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs', 'Rules.gs', 'Schedule.gs', 'Receipts.gs', 'Chat.gs', 'Recipes.gs', 'Stock.gs', 'Ingredients.gs', 'Menus.gs']) {
+  for (const f of ['Crypto.gs', 'WebPush.gs', 'Code.gs', 'Announce.gs', 'Supervisor.gs', 'Rules.gs', 'Schedule.gs', 'Receipts.gs', 'Chat.gs', 'Recipes.gs', 'Stock.gs', 'Ingredients.gs', 'Menus.gs', 'Hours.gs']) {
     vm.runInContext(fs.readFileSync(path.join(GAS, f), 'utf8'), ctx, { filename: f });
   }
   ctx.setup();
@@ -344,7 +345,8 @@ test('modify writes Modify column', () => {
   const r = env.call({ action: 'modify', token, editToken: edit, time: '08:55' });
   assert.ok(r.ok);
   const ss = Object.values(env.files).find((s) => /^\d{4}-\d\d$/.test(s.title));
-  assert.strictEqual(ss.getSheetByName('Nam KIM').cells['2,4'], '08:55');
+  const sh = ss.getSheetByName('Nam KIM');
+  assert.deepStrictEqual([4, 5, 6].map((c) => sh.cells['2,' + c]), ['08:55', 'Pending', 'TC-0001'], 'goes to the supervisor as a time change');
 });
 
 test('modify with unknown edit token rejected', () => {
@@ -364,7 +366,7 @@ const recRows = (name) => {
 test('setup: protected record sheets, daily trigger, VAPID keys', () => {
   const ss = env.files[env.props.ANN_SHEET_ID];
   assert.deepStrictEqual(ss.sheets.map((x) => x.name),
-    ['Announcements', 'Confirmations', 'Notifications', 'Logins', 'Our Rules', 'Requests', 'Deleted', 'Receipts', 'Receipt Mails', 'Chat']);
+    ['Announcements', 'Confirmations', 'Notifications', 'Logins', 'Our Rules', 'Requests', 'Deleted', 'Receipts', 'Receipt Mails', 'Chat', 'Time Changes']);
   assert.ok(ss.sheets.every((x) => x.protected));
   assert.deepStrictEqual(env.triggers.map((t) => [t.getHandlerFunction(), t.hour || t.minutes]),
     [['scheduleMorning', 7], ['checkScheduleChanges', 30]]);
@@ -716,19 +718,106 @@ test('my hours: own records only, one month, notes skipped, overnight shift acro
   const r = env.call({ action: 'myTime', token: noMail, name: 'Yuna' }); // 남의 이름을 넣어도 내 기록만
   assert.ok(r.ok, JSON.stringify(r));
   assert.strictEqual(r.month, '2026-10'); assert.strictEqual(r.current, '2026-10');
-  assert.deepStrictEqual(r.rows.map((x) => [x.date, x.time, x.info, x.change]), [
-    ['2026-10-01', '01:10', 'END', ''], ['2026-10-02', '09:00', 'START', '08:55'],
-    ['2026-10-02', '15:30', 'END', ''], ['2026-10-03', '18:00', 'START', '']]);
-  assert.deepStrictEqual(r.before, { date: '2026-09-30', time: '18:05', info: 'START', change: '' });
+  assert.deepStrictEqual(r.rows.map((x) => [x.r, x.date, x.time, x.info, x.req, x.status]), [
+    [2, '2026-10-01', '01:10', 'END', '', ''], [3, '2026-10-02', '09:00', 'START', '08:55', 'pending'],
+    [5, '2026-10-02', '15:30', 'END', '', ''], [6, '2026-10-03', '18:00', 'START', '', '']]);
+  assert.strictEqual(r.before.date + ' ' + r.before.time + ' ' + r.before.info, '2026-09-30 18:05 START');
   assert.strictEqual(r.after, null, 'current month: no next month lookup');
   const sep = env.call({ action: 'myTime', token: noMail, month: '2026-09' });
   assert.deepStrictEqual(sep.rows.map((x) => x.time), ['18:05']);
-  assert.deepStrictEqual(sep.after, { date: '2026-10-01', time: '01:10', info: 'END', change: '' });
+  assert.strictEqual(sep.after.date + ' ' + sep.after.time, '2026-10-01 01:10');
   assert.deepStrictEqual(env.call({ action: 'myTime', token: noMail, month: '2026-08' }).rows, [], 'no file -> empty');
   const y = env.call({ action: 'myTime', token: yuna, month: '2026-10' });
   assert.ok(y.rows.length && y.rows.every((x) => x.time !== '01:10'), 'Yuna sees only her own tab');
   assert.strictEqual(env.call({ action: 'myTime', token: noMail, month: '2026-11' }).ok, false, 'future month');
   assert.strictEqual(env.call({ action: 'myTime', token: noMail, month: '../x' }).ok, false, 'bad month');
+});
+
+test('time change: request from My hours → supervisor accepts / denies → sheet + record + notifications', () => {
+  const noMail = env.call({ action: 'login', name: 'No Mail', pin: '3333' }).token;
+  const sh = Object.values(env.files).find((s) => s.title === '2026-10').getSheetByName('No Mail');
+  const change = { op: 'change', month: '2026-10', row: 5, info: 'END', date: '2026-10-02', time: '15:30', to: '16:00' };
+  assert.strictEqual(env.call({ action: 'timeRequest', token: noMail, ops: [Object.assign({}, change, { time: '15:00' })] }).code,
+                     'CHANGED', 'stale screen');
+  assert.strictEqual(env.call({ action: 'timeRequest', token: noMail, ops: [Object.assign({}, change, { to: '25:00' })] }).ok, false);
+  const before = env.sent.push.length;
+  const r = env.call({ action: 'timeRequest', token: noMail, ops: [change], reason: 'Closed late' });
+  assert.ok(r.ok, JSON.stringify(r));
+  assert.deepStrictEqual([4, 5, 6].map((c) => sh.cells['5,' + c]), ['16:00', 'Pending', r.id]);
+  assert.match(sh.cells['1,5'], /Status/);
+  assert.ok(env.sent.push.length >= before, 'supervisor push attempted');
+  assert.match(env.call({ action: 'timeRequest', token: noMail, ops: [Object.assign({}, change, { time: '15:30', to: '16:10' })] }).error,
+               /already waiting|changed/i);
+  // 빠진 퇴근 태그 추가 + 미래 시간은 거절
+  assert.match(env.call({ action: 'timeRequest', token: noMail, ops: [{ op: 'add', info: 'END', date: '2026-10-09', to: '23:00' }] }).error, /future/);
+  const add = env.call({ action: 'timeRequest', token: noMail, ops: [{ op: 'add', info: 'END', date: '2026-10-03', to: '23:30' }] });
+  assert.ok(add.ok, JSON.stringify(add));
+  assert.deepStrictEqual([1, 2, 3, 4, 5, 6].map((c) => sh.cells['7,' + c]), ['10-03', '', 'END', '23:30', 'Pending', add.id]);
+  // 목록 · 배지: Supervisor 만
+  assert.strictEqual(env.call({ action: 'timeChanges', token: yuna }).ok, false);
+  const list = env.call({ action: 'timeChanges', token });
+  assert.ok(list.ok, JSON.stringify(list));
+  assert.deepStrictEqual(list.pending.map((x) => [x.id, x.name]), [['TC-0001', 'Nam KIM'], [r.id, 'No Mail'], [add.id, 'No Mail']]);
+  assert.strictEqual(list.pending[1].reason, 'Closed late');
+  assert.strictEqual(env.call({ action: 'me', token }).timePending, 3);
+  assert.strictEqual(env.call({ action: 'me', token: noMail }).timePending, 0);
+  // 승인 → 유효 시간 16:00 / 거절 → 추가 줄은 셈하지 않음
+  assert.strictEqual(env.call({ action: 'timeDecide', token: yuna, id: r.id, decision: 'accept' }).ok, false);
+  assert.ok(env.call({ action: 'timeDecide', token, id: r.id, decision: 'accept' }).ok);
+  assert.strictEqual(env.call({ action: 'timeDecide', token, id: r.id, decision: 'deny' }).code, 'DONE');
+  assert.ok(env.call({ action: 'timeDecide', token, id: add.id, decision: 'deny' }).ok);
+  assert.match(sh.cells['5,5'], /^Accepted · Nam KIM · 2026-10-09/);
+  assert.match(sh.cells['7,5'], /^Denied · Nam KIM/);
+  const rows = env.call({ action: 'myTime', token: noMail }).rows;
+  assert.deepStrictEqual(rows.filter((x) => x.r === 5 || x.r === 7).map((x) => [x.r, x.rec, x.time, x.status]),
+                         [[5, '15:30', '16:00', 'accepted'], [7, '', '', 'denied']]);
+  const recs = recRows('Time Changes').map((x) => x.slice(0, 5));
+  assert.deepStrictEqual(recs.slice(-2).map((x) => x[3]), ['ACCEPTED', 'DENIED']);
+  assert.strictEqual(env.call({ action: 'me', token }).timePending, 1);
+  // 승인된 시간을 다시 바꾸는 요청을 거절하면 예전 승인 그대로
+  const again = env.call({ action: 'timeRequest', token: noMail,
+                           ops: [Object.assign({}, change, { time: '16:00', to: '17:00' })] });
+  assert.ok(again.ok, JSON.stringify(again));
+  assert.ok(env.call({ action: 'timeDecide', token, id: again.id, decision: 'deny' }).ok);
+  assert.strictEqual(sh.cells['5,4'], '16:00'); assert.match(sh.cells['5,5'], /^Accepted/);
+});
+
+test('overtime ledger: contract weekly hours, debit/credit per week, adjustments, quarterly vs weekly settlement', () => {
+  const noMail = env.call({ action: 'login', name: 'No Mail', pin: '3333' }).token;
+  const config = env.files[env.props.CONFIG_SHEET_ID];
+  const tab = config.getSheetByName('Contracts'), adj = config.getSheetByName('Time Adjustments');
+  assert.deepStrictEqual([1, 2, 3, 4, 5, 6].map((c) => tab.cells['1,' + c]), ['Name', 'From', 'To', 'Weekly hours', 'Settlement', 'Note']);
+  assert.ok(env.call({ action: 'overtime', token: noMail }).entries.length === 0, 'no contract -> empty');
+  tab.getRange(2, 1, 2, 5).setValues([['no mail', '01/09/2026', '', '35', 'Quarterly'], ['Yuna', 'bad date', '', '35', '']]);
+  adj.getRange(2, 1, 1, 4).setValues([['No Mail', '2026-10-01', '7', 'Public holiday']]);
+  // Q4: W40 (9/28~10/4, 목요일 10/1) 마감, W41 진행 중(오늘 10/9)
+  const q4 = env.call({ action: 'overtime', token: noMail });
+  assert.ok(q4.ok, JSON.stringify(q4));
+  assert.strictEqual(q4.quarter, '2026-Q4');
+  // 9/30 18:05→10/1 01:10 = 7h05 + 10/2 09:00→16:00(승인) = 7h, 10/3 18:00 START 는 퇴근 없음
+  const w = q4.entries[0];
+  assert.deepStrictEqual([w.type, w.week, w.from, w.to, w.worked, w.contract, w.debit, w.credit, w.balance],
+                         ['week', 'W40', '2026-09-28', '2026-10-04', 845, 2100, 1255, 0, -1255]);
+  assert.strictEqual(w.flags.missing, 1);
+  assert.deepStrictEqual(w.days, [{ date: '2026-09-30', min: 425 }, { date: '2026-10-02', min: 420 }]);
+  assert.deepStrictEqual([q4.entries[1].type, q4.entries[1].credit, q4.entries[1].balance, q4.entries[1].reason], ['adj', 420, -835, 'Public holiday']);
+  assert.strictEqual(q4.entries.length, 2, 'quarter still open: no settlement');
+  assert.strictEqual(q4.thisWeek.week, 'W41');
+  assert.strictEqual(q4.closed, false);
+  // Q3: 계약 9/1(화) 시작 → 8/31 주는 6/7, 9월 마지막 주(9/21~27)까지. 마감 → 잔액을 반대쪽에 적어 0
+  const q3 = env.call({ action: 'overtime', token: noMail, quarter: '2026-Q3' });
+  assert.deepStrictEqual(q3.entries.filter((e) => e.type === 'week').map((e) => [e.week, e.contract, e.debit]),
+                         [['W36', 1800, 1800], ['W37', 2100, 2100], ['W38', 2100, 2100], ['W39', 2100, 2100]]);
+  const last = q3.entries[q3.entries.length - 1];
+  assert.deepStrictEqual([last.type, last.period, last.credit, last.balance], ['settle', '2026-Q3', 8100, 0]);
+  assert.deepStrictEqual(q3.totals, { debit: 8100, credit: 8100 }, 'debits = credits after closing');
+  // Weekly: 매주 바로 정산
+  tab.getRange(2, 5).setValue('Weekly');
+  const wk = env.call({ action: 'overtime', token: noMail });
+  assert.deepStrictEqual(wk.entries.map((e) => [e.type, e.debit, e.credit, e.balance]),
+                         [['week', 1255, 0, -1255], ['adj', 0, 420, -835], ['settle', 0, 835, 0]]);
+  assert.strictEqual(env.call({ action: 'overtime', token: noMail, quarter: '2027-Q1' }).ok, false, 'future quarter');
+  assert.deepStrictEqual(env.call({ action: 'overtime', token: yuna }).problems, ['Contracts row 3']);
 });
 
 test('org chart: setup adds the tab; any logged-in staff reads its rows (sheet order, blanks skipped)', () => {

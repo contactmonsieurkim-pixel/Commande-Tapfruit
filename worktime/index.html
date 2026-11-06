@@ -347,35 +347,83 @@
     .ic-admin { background: linear-gradient(160deg, #54606a, #333c43); }
     .ic-inbox { background: linear-gradient(160deg, #e0668f, #b83d66); }
     .ic-team { background: linear-gradient(160deg, #36b3a8, #1d8178); }
-    /* My hours (내 출퇴근 기록) */
+    /* My hours (내 출퇴근 기록 · 초과근무 원장) */
     #v-mytime { padding-bottom: 72px; }
     .ic-mytime { background: linear-gradient(160deg, #3fa0c9, #1f6f95); }
-    .mt-month { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; }
+    .mt-tabs { display: flex; gap: 6px; margin: 0 0 12px; }
+    .mt-tabs button { flex: 1; margin: 0; padding: 9px 0; font-size: 15px; color: var(--text); background: var(--card);
+                      border: 1px solid var(--line); border-radius: 12px; }
+    .mt-tabs button[aria-pressed="true"] { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+    .mt-month { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 6px; }
     .mt-month b { font-size: 18px; }
     .mt-month button { width: 44px; height: 40px; margin: 0; padding: 0; font-size: 24px; line-height: 1; color: var(--text);
                        background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
     .mt-month button:disabled { opacity: .3; }
-    .mt-sum { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .mt-stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; }
-    .mt-stat b { display: block; font-size: 22px; font-variant-numeric: tabular-nums; }
-    .mt-stat span { font-size: 13px; color: var(--muted); }
-    .mt-stat.alert { grid-column: 1 / -1; background: var(--warn-bg); color: var(--warn-ink); border-color: transparent; font-size: 14px; font-weight: 600; }
-    .mt-private { font-size: 12px; color: var(--muted); margin: 8px 2px 4px; }
-    .mt-day { display: flex; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; margin-bottom: 8px; }
+    .mt-alert { background: var(--warn-bg); color: var(--warn-ink); border-radius: 12px; padding: 10px 14px; margin: 0 0 8px;
+                font-size: 14px; font-weight: 600; }
+    .mt-private { font-size: 12px; color: var(--muted); margin: 0 2px 10px; }
+    .mt-day { display: flex; gap: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 8px 10px 8px 14px; margin-bottom: 8px; }
     .mt-day.today { border-left: 5px solid var(--brand); }
-    .mt-date { flex: none; width: 44px; text-align: center; line-height: 1.15; }
+    .mt-date { flex: none; width: 40px; text-align: center; line-height: 1.15; padding-top: 4px; }
     .mt-date small { display: block; font-size: 12px; color: var(--muted); text-transform: uppercase; }
     .mt-date b { font-size: 20px; }
     .mt-shifts { flex: 1; min-width: 0; }
-    .mt-shift { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 2px 0; }
-    .mt-shift .t { font-variant-numeric: tabular-nums; font-size: 16px; }
-    .mt-shift .d { font-variant-numeric: tabular-nums; font-size: 14px; color: var(--muted); }
-    .mt-shift .d.warn { color: var(--warn-ink); background: var(--warn-bg); border-radius: 6px; padding: 0 6px; font-weight: 600; }
-    .mt-shift .d.live { color: var(--ok); font-weight: 600; }
-    .mt-shift .change { margin: 0; }
-    .mt-total { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; text-align: right; font-size: 13px; color: var(--muted); }
-    .mt-foot { margin-top: 14px; }
-    .mt-foot button.link { width: auto; margin: 0; padding: 0; display: inline; font-size: inherit; color: var(--brand); font-weight: 600; text-decoration: underline; }
+    .mt-shift { display: block; width: 100%; margin: 0; padding: 6px 4px; background: none; border: 0; border-radius: 8px;
+                color: var(--text); font-weight: 400; text-align: left; }
+    .mt-shift:active { background: var(--brand-soft); }
+    .mt-line { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+    .mt-line .t { font-variant-numeric: tabular-nums; font-size: 16px; }
+    .mt-line .t i { font-style: normal; color: var(--muted); font-size: 13px; }
+    .mt-line .d { font-variant-numeric: tabular-nums; font-size: 14px; color: var(--muted); }
+    .mt-line .d.warn { color: var(--warn-ink); background: var(--warn-bg); border-radius: 6px; padding: 0 6px; font-weight: 600; }
+    .mt-line .d.live { color: var(--ok); font-weight: 600; }
+    .mt-tag { display: inline-block; margin: 3px 6px 0 0; font-size: 12px; font-weight: 600; border-radius: 6px; padding: 1px 6px; }
+    .mt-tag.pending { background: var(--warn-bg); color: var(--warn-ink); }
+    .mt-tag.accepted { background: var(--brand-soft); color: var(--brand); }
+    .mt-tag.denied { background: rgba(192, 57, 43, .12); color: var(--err); }
+    .mt-addbtn { margin-top: 6px; }
+    /* 수정 팝업 */
+    .mt-scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 20; display: flex; align-items: flex-end; justify-content: center; }
+    .mt-pop { background: var(--card); color: var(--text); width: 100%; max-width: 480px; border-radius: 18px 18px 0 0;
+              padding: 18px 16px calc(16px + env(safe-area-inset-bottom)); box-shadow: 0 -4px 20px rgba(0, 0, 0, .2); }
+    .mt-pop h3 { margin: 0 0 4px; font-size: 18px; }
+    .mt-pop .meta { margin: 0 0 12px; }
+    .mt-pop .mt-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .mt-pop .mt-row label { flex: none; width: 76px; margin: 0; font-weight: 600; }
+    .mt-pop .mt-row input { flex: 1; margin: 0; min-width: 0; }
+    .mt-pop .mt-row small { flex: none; width: 92px; color: var(--muted); font-size: 12px; line-height: 1.2; }
+    .mt-pop .mt-btns { display: flex; gap: 8px; margin-top: 6px; }
+    .mt-pop .mt-btns button { flex: 1; margin: 0; }
+    .mt-pop .err { min-height: 0; margin: 6px 0 0; }
+    /* 초과근무 원장 */
+    .ot-contract { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; margin-bottom: 10px; font-size: 14px; }
+    .ot-contract b { font-size: 16px; }
+    .ot-table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+                overflow: hidden; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .ot-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-weight: 700;
+                   text-align: right; padding: 8px 8px 6px; border-bottom: 1px solid var(--line); }
+    .ot-table th:first-child, .ot-table td:first-child { text-align: left; padding-left: 12px; }
+    .ot-table td { text-align: right; padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; white-space: nowrap; }
+    .ot-table td:first-child { white-space: normal; }
+    .ot-table td small { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .ot-table tr.wk { cursor: pointer; }
+    .ot-table tr.adj td:first-child { padding-left: 22px; }
+    .ot-table tr.settle td { font-weight: 700; background: var(--brand-soft); }
+    .ot-table tr.total td { font-weight: 700; border-bottom: 0; border-top: 2px solid var(--text); }
+    .ot-days { margin-top: 6px; padding: 6px 8px; border-radius: 8px; background: var(--bg); font-size: 12px; color: var(--muted); white-space: nowrap; }
+    .ot-table tr.wk td:first-child span:first-child { font-weight: 600; }
+    .ot-table .neg { color: var(--err); } .ot-table .pos { color: var(--ok); }
+    .ot-flag { display: inline-block; margin-top: 3px; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 0 5px;
+               background: var(--warn-bg); color: var(--warn-ink); }
+    .ot-note { font-size: 13px; color: var(--muted); margin: 10px 2px; line-height: 1.45; }
+    .ot-now { background: var(--card); border: 1px dashed var(--line); border-radius: 14px; padding: 10px 14px; margin-top: 10px; font-size: 14px; }
+    /* Requests inbox: 시간 변경 승인 */
+    .tc-card { background: var(--card); border: 1px solid var(--line); border-left: 5px solid #d68a00; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; }
+    .tc-card.done { border-left-color: var(--line); opacity: .8; }
+    .tc-card .tc-op { font-variant-numeric: tabular-nums; margin: 4px 0; }
+    .tc-card .tc-btns { display: flex; gap: 8px; margin-top: 8px; }
+    .tc-card .tc-btns button { flex: 1; margin: 0; padding: 10px; }
+    .tc-card .tc-btns .deny { background: var(--card); color: var(--err); border: 1px solid var(--err); }
     .ic-acct { background: linear-gradient(160deg, #8a9a5b, #64733a); }
     /* 폴더 아이콘: 안에 든 앱을 작게 2×2 */
     .folder-ic { background: rgba(120, 130, 125, .22); box-shadow: none; display: grid; grid-template-columns: repeat(2, 22px);
@@ -969,7 +1017,7 @@
       <h2 id="folder-title">Manager</h2>
       <div class="apps">
         <button id="b-admin" class="app hidden" type="button"><span class="app-ic ic-admin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span><span class="app-name">Post &amp; status</span></button>
-        <button id="b-inbox" class="app hidden" type="button"><span class="app-ic ic-inbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg></span><span class="app-name">Requests inbox</span></button>
+        <button id="b-inbox" class="app hidden" type="button"><span class="app-ic ic-inbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg><span id="badge-inbox" class="badge hidden"></span></span><span class="app-name">Requests inbox</span></button>
         <button id="b-team" class="app hidden" type="button"><span class="app-ic ic-team"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span><span class="app-name">Team status</span></button>
         <button id="b-receipts" class="app hidden" type="button"><span class="app-ic ic-acct"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg></span><span class="app-name">To accountant</span></button>
         <button id="b-ingr" class="app hidden" type="button"><span class="app-ic ic-ingr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8 12 3 3 8l9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></span><span class="app-name">Ingredients</span></button>
@@ -1175,20 +1223,36 @@
     <button id="b-inbox-back" class="back-fab" type="button">← Back</button>
   </section>
 
-  <!-- My hours: 내 출퇴근 기록 (본인 것만) -->
+  <!-- My hours: 내 출퇴근 기록 + 초과근무 원장 (본인 것만) -->
   <section id="v-mytime" class="hidden">
     <h2 class="feed-title">My hours</h2>
-    <div class="mt-month">
-      <button id="b-mt-prev" type="button" aria-label="Previous month">‹</button>
-      <b id="mt-label"></b>
-      <button id="b-mt-next" type="button" aria-label="Next month">›</button>
+    <div class="mt-tabs">
+      <button id="b-mt-tab-rec" type="button" aria-pressed="true">Records</button>
+      <button id="b-mt-tab-ot" type="button" aria-pressed="false">Overtime</button>
     </div>
-    <div id="mt-sum" class="mt-sum"></div>
-    <p class="mt-private">🔒 Only you can see this page.</p>
-    <div id="mt-list"><p class="hint">Loading…</p></div>
-    <p class="hint mt-foot">Hours are counted from your tag times. Something wrong? <button id="b-mt-req" class="link" type="button">Send a request</button></p>
+    <div id="mt-rec">
+      <div class="mt-month">
+        <button id="b-mt-prev" type="button" aria-label="Previous month">‹</button>
+        <b id="mt-label"></b>
+        <button id="b-mt-next" type="button" aria-label="Next month">›</button>
+      </div>
+      <p class="mt-private">🔒 Only you can see this page. Tap a time to correct it.</p>
+      <div id="mt-sum"></div>
+      <div id="mt-list"><p class="hint">Loading…</p></div>
+      <button id="b-mt-add" class="secondary mt-addbtn" type="button">+ Add a missing shift</button>
+    </div>
+    <div id="mt-ot" class="hidden">
+      <div class="mt-month">
+        <button id="b-ot-prev" type="button" aria-label="Previous quarter">‹</button>
+        <b id="ot-label"></b>
+        <button id="b-ot-next" type="button" aria-label="Next quarter">›</button>
+      </div>
+      <p class="mt-private">🔒 Only you can see this page.</p>
+      <div id="ot-body"><p class="hint">Loading…</p></div>
+    </div>
     <button id="b-mytime-back" class="back-fab" type="button">← Back</button>
   </section>
+  <div id="mt-pop" class="mt-scrim hidden"></div>
 
   <!-- 관리자: 공지 작성 + 확인 현황 -->
   <section id="v-team" class="hidden">
@@ -1373,6 +1437,8 @@
       m.append(ic.querySelector('svg').cloneNode(true));
       return m;
     }));
+    const tcp = sup ? Number(store.get('wt_tcp') || 0) : 0; // 기다리는 시간 변경 요청 → 폴더에도 배지
+    if (tcp > 0) $('folder-ic').append(el('span', 'badge', tcp > 99 ? '99+' : String(tcp)));
   }
   function openFolder() { $('folder').classList.remove('hidden'); $('folder').querySelector('.app:not(.hidden)')?.focus(); }
   function closeFolder() { $('folder').classList.add('hidden'); }
@@ -1409,7 +1475,7 @@
     if (q.has('p') && q.has('a') && q.has('c')) {
       sessionStorage.setItem('wt_pending', JSON.stringify({ a: q.get('a'), p: q.get('p'), c: q.get('c') }));
     }
-    if (['ann', 'rules', 'requests', 'schedule', 'receipt', 'receipts', 'chat', 'todo'].includes(q.get('view'))) sessionStorage.setItem('wt_view', q.get('view'));
+    if (['ann', 'rules', 'requests', 'schedule', 'receipt', 'receipts', 'chat', 'todo', 'mytime'].includes(q.get('view'))) sessionStorage.setItem('wt_view', q.get('view'));
     if (q.get('view') === 'chat' && q.get('room')) sessionStorage.setItem('wt_chat_room', q.get('room'));
     if (location.search) history.replaceState(null, '', location.pathname);
     const raw = sessionStorage.getItem('wt_pending');
@@ -1588,6 +1654,7 @@
         setSchedBadge(r.schedulePending || 0);
         setChatBadge(r.chatUnread || 0);
         store.set('wt_sup', r.supervisor ? '1' : '0');
+        if (r.supervisor) setInboxBadge(r.timePending || 0); else store.set('wt_tcp', '0');
         store.set('wt_rcp', r.recipes ? '1' : '0');
         syncManager();
         setReceiptDue(r.receipt);
@@ -1905,9 +1972,12 @@
     const box = $('inbox-list');
     box.replaceChildren(el('p', 'hint', 'Loading…'));
     try {
-      const r = await api({ action: 'requests', token: token() });
+      const [tc, r] = await Promise.all([api({ action: 'timeChanges', token: token() }), api({ action: 'requests', token: token() })]);
+      if (r.code === 'AUTH') return logout(r.error);
       if (!r.ok) return box.replaceChildren(el('p', 'err', r.error));
       box.replaceChildren();
+      if (tc.ok) renderTimeChanges(box, tc);
+      box.append(el('div', 'team-group', 'Requests'));
       if (!r.requests.length) box.append(el('p', 'hint', 'No requests yet.'));
       for (const q of r.requests) {
         const c = el('div', 'req');
@@ -1917,6 +1987,62 @@
     } catch (e) {
       box.replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
     }
+  }
+  // 시간 변경 요청: Accept / Deny 한 번 누르면 시트에 반영 + 직원에게 알림
+  function tcOpText(op) {
+    const what = op.info === 'START' ? 'Clock-in' : 'Clock-out';
+    const day = new Date(stampMin(op.date, '00:00') * 60000).toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' });
+    return day + ' · ' + (op.op === 'add' ? 'add ' + what.toLowerCase() + ' ' + op.to + ' (no tag)' : what + ' ' + op.from + ' → ' + op.to);
+  }
+  function tcCard(x) {
+    const c = el('div', 'tc-card' + (x.decision ? ' done' : ''));
+    c.append(el('div', 'meta', x.at.slice(0, 16) + ' · ' + x.id), el('b', null, x.name));
+    for (const op of x.ops) c.append(el('div', 'tc-op', tcOpText(op)));
+    if (x.reason) c.append(el('div', 'meta', '“' + x.reason + '”'));
+    if (x.decision) {
+      c.append(el('div', 'meta', (x.decision === 'accepted' ? '✓ Accepted' : '✗ Denied') + ' · ' + x.by + ' · ' + String(x.decidedAt).slice(0, 16)));
+      return c;
+    }
+    const btns = el('div', 'tc-btns');
+    const ok = el('button', null, 'Accept'), no = el('button', 'deny', 'Deny');
+    ok.type = no.type = 'button';
+    const decide = async (decision) => {
+      ok.disabled = no.disabled = true;
+      try {
+        const r = await api({ action: 'timeDecide', token: token(), id: x.id, decision });
+        if (!r.ok && r.code !== 'DONE') { toast(serverMsg(r)); ok.disabled = no.disabled = false; return; }
+        btns.replaceWith(el('div', 'meta', r.ok ? (decision === 'accept' ? '✓ Accepted — the record is updated.' : '✗ Denied — the tag time stays.') : r.error));
+        c.classList.add('done');
+        setInboxBadge(Math.max(0, Number(store.get('wt_tcp') || 0) - 1));
+      } catch (e) {
+        toast('Network problem.' + detail(e));
+        ok.disabled = no.disabled = false;
+      }
+    };
+    ok.addEventListener('click', () => decide('accept'));
+    no.addEventListener('click', () => decide('deny'));
+    btns.append(no, ok);
+    c.append(btns);
+    return c;
+  }
+  function renderTimeChanges(box, tc) {
+    box.append(el('div', 'team-group', 'Time changes' + (tc.pending.length ? ' (' + tc.pending.length + ')' : '')));
+    if (!tc.pending.length) box.append(el('p', 'hint', 'No time change waiting.'));
+    for (const x of tc.pending) box.append(tcCard(x));
+    setInboxBadge(tc.pending.length);
+    if (tc.recent.length) {
+      const more = el('details');
+      more.append(el('summary', 'meta', 'Recently decided (' + tc.recent.length + ')'));
+      for (const x of tc.recent) more.append(tcCard(x));
+      box.append(more);
+    }
+  }
+  function setInboxBadge(n) {
+    store.set('wt_tcp', String(n || 0));
+    const b = $('badge-inbox');
+    b.textContent = n > 99 ? '99+' : String(n);
+    b.classList.toggle('hidden', !(n > 0));
+    syncManager();
   }
   $('b-inbox').addEventListener('click', openInbox);
   $('b-inbox-back').addEventListener('click', () => goHome());
@@ -2055,65 +2181,87 @@
   $('b-team-refresh').addEventListener('click', openTeam);
   $('b-team-back').addEventListener('click', () => goHome());
 
-  // ---------------------------------------------------------------- My hours (내 출퇴근 기록, 한 달씩, 본인 것만)
-  // 서버는 토큰의 이름으로만 읽음(남의 기록은 볼 수 없음). 화면이 START→END 를 짝지어 근무 시간을 계산.
-  // 시간은 태그에 기록된 시간 기준, 시간 변경 요청(Modify)은 노란 표시로만.
-  // 폰 저장(wt_myt_v1, 로그인한 이름과 같을 때만 사용) → 열면 바로 보이고 뒤에서 새로 받음.
-  const MT_STORE = 'wt_myt_v1', MT_BACK_MONTHS = 24;
-  let mtMonth = null, mtSeq = 0;
+  // ---------------------------------------------------------------- My hours (내 출퇴근 기록 + 초과근무 원장, 본인 것만)
+  // 서버는 토큰의 이름으로만 읽음(남의 기록은 볼 수 없음).
+  // Records: 한 달, START→END 를 짝지어 날짜 카드로. 근무 줄을 누르면 작은 팝업 → 맞는 시간 → Send = Supervisor 에게 시간 변경 요청.
+  //   유효 시간 = 승인된 요청 시간, 아니면 태그 시간. 대기 중(노랑) · 승인(초록) · 거절(빨강) 표시.
+  // Overtime: 분기 원장(서버 계산) — 주마다 근무 − 계약 = Debit/Credit, 조정, 결산, 잔액.
+  // 폰 저장(wt_myt_v1, 로그인한 이름과 같을 때만) → 열면 바로 보이고 뒤에서 새로 받음.
+  const MT_STORE = 'wt_myt_v1', MT_BACK_MONTHS = 24, OT_BACK_QUARTERS = 8;
+  let mtMonth = null, mtSeq = 0, mtData = null, mtTab = 'rec', otQuarter = null, otSeq = 0;
   const mtShift = (month, d) => {
     const [y, m] = month.split('-').map(Number), t = y * 12 + (m - 1) + d;
     return Math.floor(t / 12) + '-' + String((t % 12) + 1).padStart(2, '0');
   };
-  const hm = (min) => Math.floor(min / 60) + 'h ' + String(min % 60).padStart(2, '0') + 'm';
+  const hm = (min) => Math.floor(min / 60) + 'h ' + String(min % 60).padStart(2, '0');
+  const hmSigned = (min) => (min > 0 ? '+' : min < 0 ? '−' : '') + hm(Math.abs(min));
+  const mtDay = (date, opts) => new Date(stampMin(date, '00:00') * 60000)
+    .toLocaleDateString('en-GB', Object.assign({ timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short' }, opts || {}));
+  const monthLabel = (month) => { const [y, m] = month.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'long', year: 'numeric' }); };
+  const nextDay = (date) => new Date((stampMin(date, '00:00') + 1440) * 60000).toISOString().slice(0, 10);
   function mtLoad() {
     try {
       const x = JSON.parse(store.get(MT_STORE) || 'null');
-      return x && x.name === store.get('wt_name') ? x.months || {} : {};
-    } catch (e) { return {}; }
+      return x && x.name === store.get('wt_name') ? x : { months: {}, ot: {} };
+    } catch (e) { return { months: {}, ot: {} }; }
   }
-  function mtSave(month, data) {
-    const months = mtLoad();
-    months[month] = data;
-    const keep = Object.keys(months).sort().slice(-4); // 최근 4달만
+  function mtSave(kind, key, data) {
+    const all = mtLoad(), part = Object.assign({}, all[kind] || {});
+    part[key] = data;
     const out = {};
-    for (const k of keep) out[k] = months[k];
-    store.set(MT_STORE, JSON.stringify({ name: store.get('wt_name'), months: out }));
+    for (const k of Object.keys(part).sort().slice(-4)) out[k] = part[k]; // 최근 4개만
+    all[kind] = out;
+    all.name = store.get('wt_name');
+    store.set(MT_STORE, JSON.stringify(all));
   }
 
-  // START 다음의 END(16시간 안) = 한 근무. 짝이 없으면 No clock-out / No clock-in.
-  // 지난달에서 시작한 근무는 지난달 것(여기선 뺌), 다음 달에 끝난 근무는 이 달 것.
+  // 화면에 보일 시간: 유효 시간, 또는 대기 중인 '빠진 태그 추가' 요청의 시간
+  const mtShown = (r) => r.time || (r.status === 'pending' && !r.rec ? r.req : '');
+  // START 다음의 END(16시간 안) = 한 근무. 지난달에서 시작한 근무는 지난달 것(여기선 뺌), 다음 달에 끝난 근무는 이 달 것.
   function mtShifts(d) {
     const all = [];
     if (d.before && d.before.info === 'START') all.push(Object.assign({ outside: true }, d.before));
-    all.push(...d.rows);
+    all.push(...d.rows.filter((r) => mtShown(r)).sort((a, b) => (a.date + mtShown(a) < b.date + mtShown(b) ? -1 : a.date + mtShown(a) > b.date + mtShown(b) ? 1 : 0)));
     if (d.after && d.after.info === 'END') all.push(Object.assign({ outside: true }, d.after));
     const out = [];
     let open = null;
     for (const r of all) {
       if (r.info === 'START') { if (open) out.push({ in: open }); open = r; continue; }
-      const gap = open ? stampMin(r.date, r.time) - stampMin(open.date, open.time) : -1;
+      const gap = open ? stampMin(r.date, mtShown(r)) - stampMin(open.date, mtShown(open)) : -1;
       if (open && gap >= 0 && gap <= LATE_HOURS * 60) out.push({ in: open, out: r, min: gap });
       else { if (open) out.push({ in: open }); out.push({ out: r }); }
       open = null;
     }
     if (open) out.push({ in: open });
     const now = parisNow();
-    return out.filter((s) => (s.in ? !s.in.outside : !s.out.outside)).map((s) => {
-      if (s.in && !s.out) {
-        const min = stampMin(now.slice(0, 10), now.slice(11)) - stampMin(s.in.date, s.in.time);
-        if (min >= 0 && min < LATE_HOURS * 60 && s === out[out.length - 1]) s.live = min;
-      }
-      return s;
-    });
+    const res = out.filter((s) => (s.in ? !s.in.outside : !s.out.outside));
+    const last = res[res.length - 1];
+    if (last && last.in && !last.out) {
+      const min = stampMin(now.slice(0, 10), now.slice(11)) - stampMin(last.in.date, mtShown(last.in));
+      if (min >= 0 && min < LATE_HOURS * 60) last.live = min;
+    }
+    return res;
+  }
+
+  function mtSetTab(tab) {
+    mtTab = tab;
+    $('b-mt-tab-rec').setAttribute('aria-pressed', tab === 'rec');
+    $('b-mt-tab-ot').setAttribute('aria-pressed', tab === 'ot');
+    $('mt-rec').classList.toggle('hidden', tab !== 'rec');
+    $('mt-ot').classList.toggle('hidden', tab !== 'ot');
+  }
+
+  function mtNav(month) {
+    const cur = parisNow().slice(0, 7);
+    $('mt-label').textContent = monthLabel(month);
+    $('b-mt-next').disabled = month >= cur;
+    $('b-mt-prev').disabled = month <= mtShift(cur, -MT_BACK_MONTHS);
   }
 
   function renderMyTime(d) {
-    const cur = d.current, month = d.month;
-    const [y, m] = month.split('-').map(Number);
-    $('mt-label').textContent = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'long', year: 'numeric' });
-    $('b-mt-next').disabled = month >= cur;
-    $('b-mt-prev').disabled = month <= mtShift(cur, -MT_BACK_MONTHS);
+    mtData = d;
+    mtNav(d.month);
     const shifts = mtShifts(d), today = parisNow().slice(0, 10);
     const days = new Map();
     for (const s of shifts) {
@@ -2121,43 +2269,165 @@
       if (!days.has(key)) days.set(key, []);
       days.get(key).push(s);
     }
-    const total = shifts.reduce((a, s) => a + (s.min || 0), 0);
+    // 거절된 '빠진 태그 추가' 요청은 그 날짜에 작은 빨간 줄로
+    const deniedAdds = d.rows.filter((r) => !r.rec && r.status === 'denied');
+    for (const r of deniedAdds) if (!days.has(r.date)) days.set(r.date, []);
+    const sorted = [...days.keys()].sort();
     const missing = shifts.filter((s) => (s.in && !s.out && s.live == null) || (!s.in && s.out)).length;
-    const changes = d.rows.filter((r) => r.change).length;
+    const pending = d.rows.filter((r) => r.status === 'pending').length;
     const sum = $('mt-sum');
     sum.replaceChildren();
-    const stat = (big, small) => { const b = el('div', 'mt-stat'); b.append(el('b', null, big), el('span', null, small)); return b; };
-    sum.append(stat(hm(total), 'Total hours'), stat(String(days.size), days.size === 1 ? 'Day worked' : 'Days worked'));
-    if (missing) sum.append(el('div', 'mt-stat alert', '⚠ ' + missing + (missing === 1 ? ' tag is' : ' tags are') + ' missing (clock-in or clock-out). Please tell your manager.'));
-    if (changes) sum.append(el('div', 'mt-stat alert', changes + (changes === 1 ? ' time change requested' : ' time changes requested') + ' — shown in yellow, not counted in the total.'));
+    if (missing) sum.append(el('div', 'mt-alert', '⚠ ' + missing + (missing === 1 ? ' tag is' : ' tags are') + ' missing. Tap it and enter the right time.'));
+    if (pending) sum.append(el('div', 'mt-alert', pending + (pending === 1 ? ' change is' : ' changes are') + ' waiting for the supervisor.'));
     const list = $('mt-list');
     list.replaceChildren();
-    if (!days.size) return list.append(el('p', 'hint', 'No clock-in or clock-out this month.'));
-    const timeTxt = (r, next) => (r ? r.time + (r.date !== next ? ' (' + Number(r.date.slice(8)) + ')' : '') : '?');
-    for (const [date, list2] of days) {
+    if (!sorted.length) list.append(el('p', 'hint', 'No clock-in or clock-out this month.'));
+    for (const date of sorted) {
       const card = el('div', 'mt-day' + (date === today ? ' today' : ''));
       const dd = new Date(stampMin(date, '00:00') * 60000);
       const left = el('div', 'mt-date');
       left.append(el('small', null, dd.toLocaleDateString('en-GB', { timeZone: 'UTC', weekday: 'short' })), el('b', null, String(dd.getUTCDate())));
       const right = el('div', 'mt-shifts');
-      let dayMin = 0;
-      for (const s of list2) {
-        const row = el('div', 'mt-shift');
-        const t = el('span', 't', timeTxt(s.in, date) + ' → ' + (s.live != null ? 'now' : timeTxt(s.out, date)));
-        let dur;
-        if (s.min != null) { dur = el('span', 'd', hm(s.min)); dayMin += s.min; }
-        else if (s.live != null) dur = el('span', 'd live', 'Working · ' + hm(s.live));
-        else dur = el('span', 'd warn', s.in ? 'No clock-out' : 'No clock-in');
-        row.append(t, dur);
-        right.append(row);
-        for (const r of [s.in, s.out]) {
-          if (r && r.change) right.append(el('span', 'change', (r.info === 'START' ? 'In ' : 'Out ') + r.time + ' → change requested: ' + r.change));
-        }
+      for (const s of days.get(date)) right.append(mtShiftRow(s, date));
+      for (const r of deniedAdds.filter((x) => x.date === date)) {
+        right.append(el('span', 'mt-tag denied', 'Add ' + (r.info === 'START' ? 'clock-in ' : 'clock-out ') + r.req + ' · not accepted'));
       }
-      if (list2.filter((s) => s.min != null).length > 1) right.append(el('div', 'mt-total', 'Day ' + hm(dayMin)));
       card.append(left, right);
       list.append(card);
     }
+  }
+
+  function mtShiftRow(s, date) {
+    const b = el('button', 'mt-shift');
+    b.type = 'button';
+    const line = el('div', 'mt-line');
+    const t = el('span', 't');
+    const part = (r) => {
+      if (!r) return '?';
+      const tm = mtShown(r), pendingAdd = !r.rec && r.status === 'pending';
+      return tm + (r.date !== date ? ' (' + Number(r.date.slice(8)) + ')' : '') + (pendingAdd ? '*' : '');
+    };
+    t.textContent = part(s.in) + ' → ' + (s.live != null ? 'now' : part(s.out));
+    let dur;
+    if (s.min != null) dur = el('span', 'd', hm(s.min));
+    else if (s.live != null) dur = el('span', 'd live', 'Working · ' + hm(s.live));
+    else dur = el('span', 'd warn', s.in ? 'No clock-out' : 'No clock-in');
+    line.append(t, dur);
+    b.append(line);
+    for (const r of [s.in, s.out]) {
+      if (!r || !r.status) continue;
+      const what = r.info === 'START' ? 'In' : 'Out';
+      if (r.status === 'pending') b.append(el('span', 'mt-tag pending', r.rec ? what + ' ' + r.rec + ' → ' + r.req + ' · waiting' : what + ' ' + r.req + ' added · waiting'));
+      else if (r.status === 'accepted' && r.rec && r.rec !== r.time) b.append(el('span', 'mt-tag accepted', what + ' corrected · tag ' + r.rec));
+      else if (r.status === 'accepted' && !r.rec) b.append(el('span', 'mt-tag accepted', what + ' added'));
+      else if (r.status === 'denied' && r.req) b.append(el('span', 'mt-tag denied', what + ' ' + r.req + ' · not accepted'));
+    }
+    b.addEventListener('click', () => mtOpenPop(s, date));
+    return b;
+  }
+
+  // ---- 수정 팝업 (근무 하나 = 시작·끝 두 칸, 바꾼 칸만 요청) / 빠진 근무 추가
+  function mtClosePop() { $('mt-pop').classList.add('hidden'); $('mt-pop').replaceChildren(); }
+  function mtPopFrame(title, sub) {
+    const scrim = $('mt-pop');
+    scrim.replaceChildren();
+    const pop = el('form', 'mt-pop');
+    pop.append(el('h3', null, title), el('p', 'meta', sub));
+    scrim.append(pop);
+    scrim.classList.remove('hidden');
+    return pop;
+  }
+  function mtField(pop, label, value, note, disabled) {
+    const row = el('div', 'mt-row');
+    const id = 'mtp-' + Math.random().toString(36).slice(2, 8);
+    const lab = el('label', null, label); lab.htmlFor = id;
+    const inp = el('input'); inp.id = id; inp.type = 'time'; inp.value = value || ''; inp.disabled = !!disabled;
+    row.append(lab, inp, el('small', null, note || ''));
+    pop.append(row);
+    return inp;
+  }
+  function mtPopEnd(pop, onSend) {
+    const reason = el('input'); reason.type = 'text'; reason.maxLength = 300; reason.placeholder = 'Reason (optional)';
+    const msg = el('p', 'err', '');
+    const btns = el('div', 'mt-btns');
+    const cancel = el('button', 'secondary', 'Cancel'); cancel.type = 'button';
+    const send = el('button', null, 'Send to supervisor'); send.type = 'submit';
+    btns.append(cancel, send);
+    pop.append(reason, msg, btns);
+    cancel.addEventListener('click', mtClosePop);
+    pop.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      msg.textContent = '';
+      let ops;
+      try { ops = onSend(); } catch (e) { msg.textContent = e.message; return; }
+      if (!ops.length) { msg.textContent = 'Nothing changed.'; return; }
+      send.disabled = true;
+      try {
+        const r = await api({ action: 'timeRequest', token: token(), ops, reason: reason.value });
+        if (r.code === 'AUTH') return logout(r.error);
+        if (!r.ok) { msg.textContent = serverMsg(r); if (r.code === 'CHANGED') openMyTime(mtMonth); return; }
+        mtClosePop();
+        toast('Sent to the supervisor. You will get a notification when it is checked.');
+        openMyTime(mtMonth);
+      } catch (e) {
+        msg.textContent = 'Network problem. Please try again.' + detail(e);
+      } finally {
+        send.disabled = false;
+      }
+    });
+    $('mt-pop').onclick = (ev) => { if (ev.target === $('mt-pop')) mtClosePop(); };
+  }
+  // 끝 시간이 시작보다 이르면 다음 날
+  function mtOutDate(inDate, inTime, outTime) { return outTime < inTime ? nextDay(inDate) : inDate; }
+  function mtCheckSpan(inDate, inTime, outDate, outTime) {
+    const gap = stampMin(outDate, outTime) - stampMin(inDate, inTime);
+    if (gap <= 0 || gap > LATE_HOURS * 60) throw new Error('Clock-out must be after clock-in (same shift, under ' + LATE_HOURS + ' h).');
+  }
+  function mtOpenPop(s, date) {
+    const pop = mtPopFrame(mtDay(date, { weekday: 'long', month: 'long' }), 'Enter the right time. Your supervisor will accept or refuse it.');
+    const note = (r) => (!r ? 'missing' : r.status === 'pending' ? 'waiting for supervisor' : r.rec ? 'tag ' + r.rec : 'added');
+    const locked = (r) => !!(r && r.status === 'pending');
+    const fin = mtField(pop, 'Clock-in', s.in ? mtShown(s.in) : '', note(s.in), locked(s.in));
+    const fout = mtField(pop, 'Clock-out', s.out ? mtShown(s.out) : '', note(s.out), locked(s.out));
+    mtPopEnd(pop, () => {
+      const ops = [];
+      const vin = fin.value, vout = fout.value;
+      const inDate = s.in ? s.in.date : (vin && s.out && vin > mtShown(s.out) ? new Date((stampMin(s.out.date, '00:00') - 1440) * 60000).toISOString().slice(0, 10) : date);
+      if (vin && vout) {
+        const outDate = s.out && vout === mtShown(s.out) ? s.out.date : mtOutDate(inDate, vin, vout);
+        mtCheckSpan(inDate, vin, outDate, vout);
+      }
+      const add = (info, d, to) => ops.push({ op: 'add', info, date: d, to });
+      const change = (r, to) => ops.push({ op: 'change', month: r.date.slice(0, 7), row: r.r, info: r.info, date: r.date, time: r.time, to });
+      if (!locked(s.in) && vin) {
+        if (!s.in) add('START', inDate, vin);
+        else if (vin !== mtShown(s.in)) change(s.in, vin);
+      }
+      if (!locked(s.out) && vout) {
+        if (!s.out) add('END', mtOutDate(inDate, vin || (s.in && mtShown(s.in)) || '00:00', vout), vout);
+        else if (vout !== mtShown(s.out)) change(s.out, vout);
+      }
+      return ops;
+    });
+    (s.in ? fout : fin).focus();
+  }
+  function mtOpenAdd() {
+    const pop = mtPopFrame('Add a missing shift', 'For a day you worked but did not tap the tags at all.');
+    const row = el('div', 'mt-row');
+    const lab = el('label', null, 'Day'); lab.htmlFor = 'mtp-day';
+    const day = el('input'); day.id = 'mtp-day'; day.type = 'date';
+    const today = parisNow().slice(0, 10), first = mtMonth + '-01';
+    const lastDay = new Date(Date.UTC(+mtMonth.slice(0, 4), +mtMonth.slice(5, 7), 0)).toISOString().slice(0, 10);
+    day.min = first; day.max = lastDay < today ? lastDay : today; day.value = day.max;
+    row.append(lab, day, el('small'));
+    pop.append(row);
+    const fin = mtField(pop, 'Clock-in', '', ''), fout = mtField(pop, 'Clock-out', '', '');
+    mtPopEnd(pop, () => {
+      if (!day.value || !fin.value || !fout.value) throw new Error('Please fill in the day and both times.');
+      const outDate = mtOutDate(day.value, fin.value, fout.value);
+      mtCheckSpan(day.value, fin.value, outDate, fout.value);
+      return [{ op: 'add', info: 'START', date: day.value, to: fin.value }, { op: 'add', info: 'END', date: outDate, to: fout.value }];
+    });
   }
 
   async function openMyTime(month) {
@@ -2165,34 +2435,143 @@
     const cur = parisNow().slice(0, 7);
     month = month && month <= cur ? month : cur;
     mtMonth = month;
-    const saved = mtLoad()[month];
-    if (currentView !== 'mytime') show('mytime');
+    const saved = (mtLoad().months || {})[month];
+    if (currentView !== 'mytime') { show('mytime'); mtSetTab('rec'); }
     if (saved) renderMyTime(saved);
-    else {
-      const [y, m] = month.split('-').map(Number);
-      $('mt-label').textContent = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-GB', { timeZone: 'UTC', month: 'long', year: 'numeric' });
-      $('b-mt-next').disabled = month >= cur;
-      $('b-mt-prev').disabled = month <= mtShift(cur, -MT_BACK_MONTHS);
-      $('mt-sum').replaceChildren();
-      $('mt-list').replaceChildren(el('p', 'hint', 'Loading…'));
-    }
+    else { mtNav(month); $('mt-sum').replaceChildren(); $('mt-list').replaceChildren(el('p', 'hint', 'Loading…')); }
     try {
       const r = await api({ action: 'myTime', token: token(), month });
       if (seq !== mtSeq) return; // 그새 다른 달을 누름
       if (r.code === 'AUTH') return logout(r.error);
       if (!r.ok) { if (!saved) $('mt-list').replaceChildren(el('p', 'err', serverMsg(r))); return; }
-      const data = { month: r.month, current: r.current, today: r.today, rows: r.rows, before: r.before, after: r.after };
-      mtSave(r.month, data);
+      const data = { month: r.month, rows: r.rows, before: r.before, after: r.after };
+      mtSave('months', r.month, data);
       if (currentView === 'mytime') renderMyTime(data);
     } catch (e) {
       if (seq === mtSeq && !saved) $('mt-list').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
     }
   }
+
+  // ---- Overtime (원장)
+  const qOf = (day) => day.slice(0, 4) + '-Q' + (Math.floor((+day.slice(5, 7) - 1) / 3) + 1);
+  const qShift = (q, d) => { const t = +q.slice(0, 4) * 4 + (+q.slice(6) - 1) + d; return Math.floor(t / 4) + '-Q' + ((t % 4) + 1); };
+  const qLabel = (q) => {
+    const n = +q.slice(6), y = q.slice(0, 4), names = ['Jan – Mar', 'Apr – Jun', 'Jul – Sep', 'Oct – Dec'];
+    return 'Q' + n + ' ' + y + ' · ' + names[n - 1];
+  };
+  const shortDay = (date) => mtDay(date, { weekday: undefined }).replace(/ (\w{3})\w*$/, ' $1');
+  function renderOvertime(d) {
+    const cur = qOf(parisNow().slice(0, 10));
+    $('ot-label').textContent = qLabel(d.quarter);
+    $('b-ot-next').disabled = d.quarter >= cur;
+    $('b-ot-prev').disabled = d.quarter <= qShift(cur, -OT_BACK_QUARTERS);
+    const body = $('ot-body');
+    body.replaceChildren();
+    if (!d.contracts.length) {
+      body.append(el('p', 'hint', 'No contract hours are entered for you for this quarter yet. Please ask your manager.'));
+      return;
+    }
+    const ct = el('div', 'ot-contract');
+    ct.append(el('div', 'meta', 'Contract'));
+    for (const k of d.contracts) {
+      const line = el('div');
+      line.append(el('b', null, hm(k.weeklyMin) + ' / week'), document.createTextNode(' · ' + (k.settlement === 'quarterly' ? 'settled each quarter' : 'settled each week')));
+      if (d.contracts.length > 1 || k.to) line.append(el('small', 'meta', '  from ' + shortDay(k.from) + (k.to ? ' to ' + shortDay(k.to) : '')));
+      ct.append(line);
+    }
+    body.append(ct);
+
+    const tbl = el('table', 'ot-table');
+    const head = el('tr');
+    for (const h of ['Week', 'Debit −', 'Credit +', 'Balance']) head.append(el('th', null, h));
+    const thead = el('thead'); thead.append(head);
+    const tb = el('tbody');
+    const amt = (m) => (m ? hm(m) : '');
+    const balCell = (m) => el('td', m < 0 ? 'neg' : m > 0 ? 'pos' : null, hmSigned(m) || '0h 00');
+    const addRow = (cls, label, sub, debit, credit, bal, flags) => {
+      const tr = el('tr', cls);
+      const c = el('td');
+      c.append(el('span', null, label));
+      if (sub) c.append(el('small', null, sub));
+      for (const f of flags || []) { c.append(document.createElement('br')); c.append(el('span', 'ot-flag', f)); }
+      tr.append(c, el('td', null, debit), el('td', null, credit), bal);
+      tb.append(tr);
+      return tr;
+    };
+    addRow('open', 'Opening balance', null, '', '', balCell(0));
+    for (const e of d.entries) {
+      if (e.type === 'week') {
+        const flags = [];
+        if (e.flags.missing) flags.push('⚠ missing tag');
+        if (e.flags.pending) flags.push('change waiting');
+        const tr = addRow('wk', e.week + '  ' + shortDay(e.from) + ' – ' + shortDay(e.to),
+                          hm(e.worked) + ' worked / ' + hm(e.contract), amt(e.debit), amt(e.credit), balCell(e.balance), flags);
+        tr.addEventListener('click', () => { // 그 주의 날짜별 근무 시간 펼치기
+          const cell = tr.firstChild, open = cell.querySelector('.ot-days');
+          if (open) return open.remove();
+          const box = el('div', 'ot-days');
+          if (!e.days.length) box.textContent = 'No complete shift this week.';
+          for (const x of e.days) box.append(el('div', null, mtDay(x.date) + ' · ' + hm(x.min)));
+          cell.append(box);
+        });
+      } else if (e.type === 'adj') {
+        addRow('adj', shortDay(e.date) + ' · ' + (e.reason || 'Adjustment'), null, amt(e.debit), amt(e.credit), balCell(e.balance));
+      } else {
+        const label = e.period.includes('Q') ? 'Settlement ' + e.period.replace('-', ' ') : 'Settlement ' + e.period;
+        addRow('settle', label, e.debit ? 'Overtime ' + hm(e.debit) + ' → paid' : 'Short ' + hm(e.credit) + ' → closed',
+               amt(e.debit), amt(e.credit), balCell(e.balance));
+      }
+    }
+    const tt = el('tr', 'total');
+    tt.append(el('td', null, d.closed ? 'Totals ✓ closed' : 'Totals so far'), el('td', null, hm(d.totals.debit)), el('td', null, hm(d.totals.credit)), balCell(d.balance));
+    tb.append(tt);
+    tbl.append(thead, tb);
+    body.append(tbl);
+    if (!d.entries.length) body.append(el('p', 'hint', 'No finished week yet in this quarter.'));
+    if (d.thisWeek) {
+      const w = d.thisWeek, now = el('div', 'ot-now');
+      now.append(el('b', null, 'This week (' + w.week + ')'), document.createElement('br'),
+                 document.createTextNode('So far ' + hm(w.worked) + (w.adjust ? ' + ' + hm(w.adjust) + ' adjusted' : '') +
+                   ' of ' + hm(w.contract) + '. Posted after Sunday.'));
+      body.append(now);
+    }
+    body.append(el('p', 'ot-note',
+      'How to read it: each finished week (Monday–Sunday) compares the hours you worked with your contract. ' +
+      'More than the contract → Credit (+, hours owed to you). Less → Debit (−). ' +
+      'Paid leave, public holidays and other adjustments are separate lines. ' +
+      (d.settlement === 'quarterly' ? 'At the end of the quarter the balance is settled and the account goes back to 0.'
+                                    : 'Each week is settled right away, so the account goes back to 0.') +
+      ' Tap a week to see its days. A shift counts on the day it started. Wrong time? Fix it in Records.'));
+  }
+  async function openOvertime(q) {
+    const seq = ++otSeq;
+    const cur = qOf(parisNow().slice(0, 10));
+    q = q && q <= cur ? q : cur;
+    otQuarter = q;
+    const saved = (mtLoad().ot || {})[q];
+    if (saved) renderOvertime(saved);
+    else { $('ot-label').textContent = qLabel(q); $('ot-body').replaceChildren(el('p', 'hint', 'Loading…')); }
+    try {
+      const r = await api({ action: 'overtime', token: token(), quarter: q });
+      if (seq !== otSeq) return;
+      if (r.code === 'AUTH') return logout(r.error);
+      if (!r.ok) { if (!saved) $('ot-body').replaceChildren(el('p', 'err', serverMsg(r))); return; }
+      mtSave('ot', r.quarter, r);
+      if (currentView === 'mytime' && mtTab === 'ot') renderOvertime(r);
+    } catch (e) {
+      if (seq === otSeq && !saved) $('ot-body').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
+    }
+  }
+
   $('b-mytime').addEventListener('click', () => openMyTime());
   $('b-mt-prev').addEventListener('click', () => openMyTime(mtShift(mtMonth, -1)));
   $('b-mt-next').addEventListener('click', () => openMyTime(mtShift(mtMonth, 1)));
-  $('b-mt-req').addEventListener('click', () => openRequest());
-  $('b-mytime-back').addEventListener('click', () => goHome());
+  $('b-mt-add').addEventListener('click', mtOpenAdd);
+  $('b-mt-tab-rec').addEventListener('click', () => { mtSetTab('rec'); openMyTime(mtMonth); });
+  $('b-mt-tab-ot').addEventListener('click', () => { mtSetTab('ot'); openOvertime(otQuarter); });
+  $('b-ot-prev').addEventListener('click', () => openOvertime(qShift(otQuarter, -1)));
+  $('b-ot-next').addEventListener('click', () => openOvertime(qShift(otQuarter, 1)));
+  $('b-mytime-back').addEventListener('click', () => { mtClosePop(); goHome(); });
 
   // ---------------------------------------------------------------- Schedule (읽기 전용 + 주마다 읽고 동의)
   let schedSel = {}, schedData = null;
@@ -3619,6 +3998,7 @@
       if (view === 'ann') return openFeed('ann', 'home');
       if (view === 'rules') return openFeed('rules', 'home');
       if (view === 'requests') return openInbox();
+      if (view === 'mytime') return openMyTime();
       if (view === 'schedule') return openSchedule({}, true, null, 'fresh');
       if (view === 'receipt') return openReceipt('home');
       if (view === 'receipts') return openReceipts();
@@ -6538,7 +6918,7 @@
       if (currentView === 'inbox') return openInbox();
       if (currentView === 'team') return openTeam();
       if (currentView === 'org') return openOrg();
-      if (currentView === 'mytime') return openMyTime(mtMonth);
+      if (currentView === 'mytime') return mtTab === 'ot' ? openOvertime(otQuarter) : $('mt-pop').classList.contains('hidden') && openMyTime(mtMonth);
       if (currentView === 'recipes') return loadRecipes();
       if (currentView === 'stock') { if (stTab === 'portion') loadStock(); if (stTab === 'menus' && !meOpenDirty()) loadMenus(); return loadRecipes(); }
       if (currentView === 'chat') return chatRefresh();

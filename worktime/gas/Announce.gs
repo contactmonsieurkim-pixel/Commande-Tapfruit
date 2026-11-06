@@ -12,6 +12,7 @@
 //   Deleted       : ID | Title | Deleted at | Deleted by | Hash   (Supervisor 가 지운 공지. 원래 행은 그대로 남음)
 //   Receipts, Receipt Mails : 교통카드 영수증 (Receipts.gs 참고)
 //   Chat          : ID | Sent at | Room | From | Text | Photo | Hash   (단체 채팅, Chat.gs 참고)
+//   Time Changes  : ID | At | By | Action | Employee | Ops | Reason | Hash   (출퇴근 시간 변경 요청·승인, Hours.gs 참고)
 // 각 행의 Hash 는 직전 행 Hash + 내용으로 만든 HMAC 체인 -> verifyRecords() 로 수정 여부 검사.
 
 var APP_URL_DEFAULT = 'https://contactmonsieurkim-pixel.github.io/Commande-Tapfruit/worktime/';
@@ -35,6 +36,7 @@ var REC_SHEETS = {
   Receipts: ['Saved at', 'Name', 'Month', 'File name', 'File ID', 'Status', 'Hash'],
   'Receipt Mails': ['Sent at', 'Month', 'Sent by', 'To', 'Summary', 'File IDs', 'Hash'],
   Chat: ['ID', 'Sent at', 'Room', 'From', 'Text', 'Photo', 'Hash'],
+  'Time Changes': ['ID', 'At', 'By', 'Action', 'Employee', 'Ops', 'Reason', 'Hash'],
 };
 
 // ------------------------------------------------------------------ setup helpers
@@ -586,6 +588,11 @@ function morningRun() {
     chatPushRun(true);
   } catch (err3) {
     console.error(err3);
+  }
+  try {
+    flushPersonQueue_(); // 밤사이 시간 변경 승인/거절 알림
+  } catch (err5) {
+    console.error(err5);
   }
   try {
     notifyTodoRecipes_(); // 아직 쓰지 않은 레시피(To write) → Supervisor
