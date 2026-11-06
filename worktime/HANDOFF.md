@@ -128,7 +128,8 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - 홈 아이콘 **Recipes** = Employees F열 Team 이 `Kitchen`(스크립트 속성 `RECIPE_TEAMS` 로 바꿀 수 있음)인 직원 + Supervisor 만 보임(`me.recipes`). 서버도 같은 기준으로 막음.
 - 레시피 = **Recipes** 스프레드시트의 탭 하나. A열 종류: `RECIPE MODE CATEGORY ING BASE STEP PHOTO BOX FILL KEEP` (자세한 형식은 `Recipes.gs` 맨 위, 시트의 `How to` 탭). 위→아래 순서 그대로 화면에 그림(재료 묶음·과정·사진이 섞임).
   숫자는 '1 000', '1,5', '4%' 도 읽음. 모르는 종류·빠진 양은 **경고**(Supervisor 의 편집기 목록에 ⚠ 숫자, 편집 화면 위에 내용). 편집기에서 `checkRecipes` 실행 = 탭마다 OK/CHECK 로그.
-- 두 형식: **Fixed** = 1 batch g, 화면에서 ×½ ×1 ×2 ×3 또는 직접 입력(1.5 등). **Percent** = BASE(기준 재료)를 잰 g 입력 → 나머지 = 기준 총중량 × %. BASE 여러 줄이면 합계가 100%. 계산은 화면에서(10 g 미만 소수 1자리, 나머지 정수).
+- 두 형식: **Fixed** = 1 batch g, 화면에서 ×½ ×1 ×2 ×3 또는 직접 입력(1.5 등). **Percent** = BASE(기준 재료)를 잰 g 입력 → 나머지 = 기준 총중량 × %. BASE 여러 줄이면 합계가 100%.
+  편집기: Percent 로 바꾸면 재료 맨 위에 빈 Base 줄이 생김, Percent 일 때 재료 줄마다 *Base* / *Not base* 버튼. Base 없이 저장하면 화면에서 바로 막고 방법을 알려줌(2026-11-06, 사장님이 'needs a base ingredient' 에서 막힘). 계산은 화면에서(10 g 미만 소수 1자리, 나머지 정수).
 - 재료 줄을 누르면 체크(계량 끝, 폰 메모리에만). 레시피를 보는 동안 화면 꺼짐 방지(Wake Lock, 안 되는 기기는 무시).
 - 마지막 **Store in**: 기본 박스(용량이 크게 + 작은 사진, 누르면 크게), 박스당 g(FILL) → "about N boxes", 보관 조건·일수 → Use by.
 - **Log production**: 박스 수(소수 1자리까지, 예상값이 미리 채워짐), 박스(레시피 기본값, *Use another box* 로 다른 박스), Made by(기본 = 폰 사용자, **Admin(E열)·Supervisor 는 다른 사람 선택**). 서버가 배치(×2 / base 8000 g)와 총 g 을 레시피로 다시 계산해 기록.
@@ -214,11 +215,23 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - **원재료 재고 조사**: Count 화면에 같이. 재료 Count = Daily → 저녁 Count, Sunday → 일요일. 냉장고 재료는 그 냉장고 화면에(파란 *raw*), 지하 선반은 선반 하나 = 화면 하나(칸 순서), 냉동 재료는 *Freezer items* 한 화면. 한 번도 안 센 것은 빨간 `?`.
   저장 = Ingredients 시트 `Counts` 탭(재료마다 마지막 값 = 지금 재고). Portion estim 의 재료 컴포넌트는 이 값.
 
+**속도 (2026-11-06, 사장님: "등록할 때마다 로딩이 너무 길다")**
+- 원인이었던 것: 저장할 때마다 레시피 탭 40여 개를 전부 다시 읽음, 같은 스프레드시트를 한 요청에서 여러 번 엶, 탭 머리글 검사를 매번 함. (가짜 서비스로 잰 추정: 재료 저장 ~14 s → ~3.4 s, 레시피 저장 ~12 s → ~2.8 s, 메뉴에 '레시피 필요' 추가 ~20 s → ~4.9 s)
+- 서버: `openSS_` = 요청 안에서 스프레드시트 한 번만 엶(`ssMemo_`, doPost 마다 비움). 탭 구조 검사는 처음 한 번만(`ING_OK` `MENU_OK` `PROD_OK` = `SCHEMA_VER`, setup 이 지우고 다시 검사).
+  레시피 = **탭마다 캐시**(`rt_<RCP_TAB_GEN>_<sheetId>`, 앱에서 쓴 탭만 비움) + 전체 결과 캐시(`rcp_all_<RCP_VER>_<ING_VER>`, 90 KB 씩 나눠 저장). 재료 이름 표 = `ing_map_<ING_VER>`, 위치 = `places_<PLACES_VER>`.
+  재료를 고치면 `ING_VER` 만 올림(레시피 탭은 다시 안 읽음). 재료 저장은 그 재료 하나만 돌려줌(목록 전체를 다시 만들지 않음).
+- **시트 감시 트리거**(setup 이 설치, `SHEET_WATCH`): Recipes 시트 onEdit = 그 탭 캐시만 비움(Places 탭이면 위치도), onChange(탭 추가·이름·숨김·줄 넣기) = 모든 탭 다시 읽게(`RCP_TAB_GEN`), Ingredients 시트 onEdit/onChange = `ING_VER`.
+  트리거가 있으면 캐시 6시간, 없으면 1분(시트에서 직접 고친 것이 늦게 보이지 않도록). 트리거는 사람이 시트에서 고친 것에만 반응(스크립트가 쓴 것은 앱이 직접 비움).
+- 화면: **저장은 뒤에서**(`bgSave`, 순서대로 하나씩, 위에 'Saving N…' 알약). Recipe editor·Ingredients 는 Save 를 누르면 바로 목록으로(또는 *Save & new* / *Save & add another* = 바로 빈 새 항목, 재료는 단위·보관·분류를 이어받음),
+  목록에 'Saving…' → 끝나면 ✓. 실패하면 'Not saved · tap' → 누르면 고치던 내용 그대로 + 이유. Menu editor 는 바꾸는 즉시 화면에 먼저(임시 ID → 저장되면 진짜 ID), 저장이 다 끝나면 서버 결과로 다시 그림.
+  저장 중에는 목록 새로고침(loadRecipes·loadIngr·loadMenus)을 미룸(먼저 넣은 것이 덮이지 않게). 저장 중에 창을 닫으려 하면 브라우저가 물어봄.
+
 ## 4. 작업 방식 (사장님과 합의된 흐름)
 
 - 사장님: 한국어, Mac + iPhone(Chrome/Safari), Supervisor = **Kim namheon**.
 - **PR 은 요청할 때만** 만든다. 작업 브랜치는 세션마다 지정됨(Our Team 은 `claude/busy-turing-aygx7q`), 병합된 뒤 새 작업은 최신 `main` 에서 시작.
 - 서버(.gs)가 바뀌는 변경의 배포 순서: **① Apps Script 파일 교체 → ② 필요하면 `setup` 실행 → ③ 배포 관리 → 수정 → 새 버전 → ④ 그다음 PR 병합**(화면이 새 서버를 부르기 때문).
+  **앱이 부르는 배포 = `AKfycbwAsI9…AipQ`** (`index.html` 의 `API_URL`). 2026-10-27 에 다른 배포(`AKfycbxLPx9…`)에 새 버전을 올려서 앱이 계속 'Unknown action' 을 낸 적 있음 → 배포 관리에서 이 ID 의 배포를 골라 연필 → *Nouvelle version*. 확인용: 편집기에서 `doPost` 를 직접 불러 보면 코드 문제인지 배포 문제인지 갈림.
 - 파일 복사 안내는 raw 링크 + "⌘A → ⌘C" (예전에 앞/뒤가 잘려 붙은 적 있음 → `setup` 의 `checkFiles_` 가 잡아줌).
 - **사장님 요청: .gs 파일을 고칠 때마다 답변 끝에 바뀐 파일 각각의 raw 링크를 항상 붙일 것** (푸시한 작업 브랜치 기준).
   형식: `https://raw.githubusercontent.com/contactmonsieurkim-pixel/Commande-Tapfruit/<커밋 SHA>/worktime/gas/<파일>.gs`

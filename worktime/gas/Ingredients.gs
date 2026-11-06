@@ -37,7 +37,7 @@ var SHELF_MAX_LEVELS = 12;
 
 function ingBook_() {
   var id = props_.getProperty('INGREDIENT_SHEET_ID');
-  if (id) return SpreadsheetApp.openById(id);
+  if (id) return openSS_(id);
   var ss = SpreadsheetApp.create('Ingredients');
   DriveApp.getFileById(ss.getId()).moveTo(folder_());
   props_.setProperty('INGREDIENT_SHEET_ID', ss.getId());
@@ -58,8 +58,9 @@ function ingTab_(ss, name, head, textCols) {
   return { sh: sh, fresh: fresh };
 }
 
-/** setup / 첫 사용: 탭을 만들고, 처음이면 예전 Recipes 시트의 재료 목록(또는 레시피들의 재료)을 옮겨 옴. */
+/** setup / 첫 사용: 탭을 만들고, 처음이면 예전 Recipes 시트의 재료 목록(또는 레시피들의 재료)을 옮겨 옴. 검사는 처음 한 번만(ING_OK). */
 function ensureIngBook_() {
+  if (props_.getProperty('ING_OK') === SCHEMA_VER) return ingBook_();
   var ss = ingBook_();
   var ing = ingTab_(ss, 'Ingredients', ING_HEAD, ['A:H', 'J:M']);
   ingTab_(ss, 'Packs', PACK_HEAD, ['A:D', 'H:K']);
@@ -70,7 +71,13 @@ function ensureIngBook_() {
   ingTab_(ss, 'Changes', CHANGE_HEAD, ['A:G']);
   ingTab_(ss, 'Counts', RAWCOUNT_HEAD, ['A:E', 'H:I']);
   if (ing.sh.getLastRow() < 2 && !props_.getProperty('ING_MIGRATED')) ingMigrate_(ing.sh);
+  props_.setProperty('ING_OK', SCHEMA_VER);
   return ss;
+}
+
+/** 재료가 바뀌면 (앱에서 저장 · 시트에서 직접 고침) → 재료 이름 캐시와 레시피 화면 캐시가 새로 만들어짐. */
+function bumpIngredients_() {
+  props_.setProperty('ING_VER', String(Number(props_.getProperty('ING_VER') || 0) + 1));
 }
 
 function ingMigrate_(sh) {
@@ -92,6 +99,7 @@ function ingMigrate_(sh) {
   if (rows.length) sh.getRange(2, 1, rows.length, ING_HEAD.length).setValues(rows.map(function (r) { return r.map(safeCell_); }));
   if (old && !old.isSheetHidden()) old.hideSheet();
   props_.setProperty('ING_MIGRATED', '1');
+  bumpIngredients_();
 }
 
 function ingId_(n) { return 'ING-' + ('00' + n).slice(-Math.max(3, String(n).length)); }
@@ -181,25 +189,12 @@ function ingUser_(req) {
 function ingView_(req) {
   ingUser_(req);
   var ss = ensureIngBook_(), list = readIngMaster_(ss), suppliers = readSuppliers_(ss), shelves = readShelves_(ss), fridges = ingFridges_();
-  var used = {};
-  recipesAll_().recipes.forEach(function (r) {
-    var seen = {};
-    r.items.forEach(function (it) {
-      var id = (it.t === 'ing' || it.t === 'base') && /^ING-/.test(it.code || '') && it.code;
-      if (id && !seen[id]) { seen[id] = true; (used[id] = used[id] || []).push(r.name); }
-    });
-  });
+  var used = ingUsedIn_();
   var teams = [];
   employees_().forEach(function (e) { if (e.team && teams.indexOf(e.team) < 0) teams.push(e.team); });
   shelves.forEach(function (s) { if (teams.indexOf(s.by) < 0) teams.push(s.by); });
   return { ok: true,
-           ingredients: list.filter(function (i) { return i.active; }).map(function (i) {
-             var x = JSON.parse(JSON.stringify(i));
-             delete x.row;
-             x.ver = ingVer_(i);
-             x.used = used[i.id] || [];
-             return x;
-           }),
+           ingredients: list.filter(function (i) { return i.active; }).map(function (i) { return ingOut_(i, used); }),
            suppliers: suppliers, suppliersVer: ingVer_(suppliers),
            shelves: shelves, shelvesVer: ingVer_(shelves), fridges: fridges, teams: teams, units: ING_UNITS };
 }
@@ -316,14 +311,37 @@ function ingSave_(req) {
     ingLog_(ss, emp, id, c.name, changes);
     var renamed = old && old.name !== c.name ? codeRenameInRecipes_(id, c.name) : [];
     SpreadsheetApp.flush();
-    bumpRecipes_();
+    bumpIngredients_();
     out = { ok: true, id: id, renamedIn: renamed };
   } finally {
     lock.releaseLock();
   }
-  var view = ingView_(req);
-  out.ingredient = view.ingredients.filter(function (i) { return i.id === out.id; })[0];
+  // 저장한 재료 하나만 다시 읽어 돌려줌 (목록 전체는 다시 만들지 않음)
+  var saved = readIngMaster_(ingBook_()).filter(function (i) { return i.id === out.id; })[0];
+  out.ingredient = saved ? ingOut_(saved, ingUsedIn_()) : null;
   return out;
+}
+
+/** 재료 하나 → 화면용 (ver = 열었을 때와 비교해 CHANGED 판단, used = 쓰는 레시피). */
+function ingOut_(i, used) {
+  var x = JSON.parse(JSON.stringify(i));
+  delete x.row;
+  x.ver = ingVer_(i);
+  x.used = used[i.id] || [];
+  return x;
+}
+
+/** { ING-001: [레시피 이름 …] } */
+function ingUsedIn_() {
+  var used = {};
+  recipesAll_().recipes.forEach(function (r) {
+    var seen = {};
+    r.items.forEach(function (it) {
+      var id = (it.t === 'ing' || it.t === 'base') && /^ING-/.test(it.code || '') && it.code;
+      if (id && !seen[id]) { seen[id] = true; (used[id] = used[id] || []).push(r.name); }
+    });
+  });
+  return used;
 }
 
 function ingWritePacks_(ss, id, c, emp) {
@@ -350,7 +368,7 @@ function ingRename_(id, name, emp) {
   ingLog_(ss, emp, id, name, [['Name', i.name, name]]);
   codeRenameInRecipes_(id, name);
   SpreadsheetApp.flush();
-  bumpRecipes_();
+  bumpIngredients_();
 }
 
 /** 주소 그림에서 끌어 놓기: 보관·주소만 바꿈. address = 'A-1' / 'F6' / 'FREEZER' / '' (주소 없음). */
@@ -391,7 +409,7 @@ function ingRemove_(req) {
     if (!i) fail_('Ingredient not found.');
     ss.getSheetByName('Ingredients').getRange(i.row, 11).setValue('FALSE');
     ingLog_(ss, emp, i.id, i.name, [['Removed', '', '']]);
-    bumpRecipes_();
+    bumpIngredients_();
   } finally {
     lock.releaseLock();
   }
