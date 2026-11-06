@@ -35,7 +35,8 @@ var RECIPE_HEAD = ['Kind', 'Name / text', 'Amount', 'Unit / note', 'Code'];
 var BOX_HEAD = ['Name', 'Capacity', 'Photo', 'Note', 'ID'];
 var RECIPE_COLS = 5;
 var RECIPE_SKIP_TAB = /^(boxes|places|ingredients|how to|_.*)$/i;
-var RECIPE_CACHE_SEC = 60;       // 시트에서 직접 고친 것은 최대 1분 뒤 앱에 보임 (앱에서 고친 것은 바로)
+var RECIPE_CACHE_SEC = 60;       // 시트 감시 트리거가 없을 때: 시트에서 직접 고친 것은 최대 1분 뒤 앱에 보임 (앱에서 고친 것은 바로)
+var SHEET_WATCH_CACHE_SEC = 21600; // 시트 감시 트리거(setup 이 설치)가 있으면 6시간 — 시트에서 고치면 트리거가 바로 캐시를 비움
 var RECIPE_MAX_ITEMS = 300;
 
 // ------------------------------------------------------------------ setup
@@ -75,7 +76,7 @@ function ensureRecipes_() {
 
 function recipeBook_() {
   var id = props_.getProperty('RECIPE_SHEET_ID');
-  if (id) return SpreadsheetApp.openById(id);
+  if (id) return openSS_(id);
   var ss = SpreadsheetApp.create('Recipes');
   DriveApp.getFileById(ss.getId()).moveTo(folder_());
   props_.setProperty('RECIPE_SHEET_ID', ss.getId());
@@ -254,22 +255,86 @@ function ensureIngredients_() {
 
 /** 재료 코드 → { name, unit, active } (지운 재료도 — 예전 레시피의 이름을 보여주려고). */
 function ingCodeMap_() {
+  var key = 'ing_map_' + (props_.getProperty('ING_VER') || '0'), cache = CacheService.getScriptCache(), hit = cache.get(key);
+  if (hit) return JSON.parse(hit);
   var out = {};
   readIngMaster_(ensureIngBook_()).forEach(function (i) { out[i.id] = { name: i.name, unit: i.unit, active: i.active }; });
+  try {
+    cache.put(key, JSON.stringify(out), sheetCacheSec_());
+  } catch (err) {
+    console.error(err);
+  }
   return out;
 }
 
+/** 캐시 유지 시간: 시트 감시 트리거가 있으면 길게, 없으면 1분. */
+function sheetCacheSec_() {
+  return props_.getProperty('SHEET_WATCH') === SCHEMA_VER ? SHEET_WATCH_CACHE_SEC : RECIPE_CACHE_SEC;
+}
+
+/** 큰 값을 90 000 자씩 나눠 캐시에 (CacheService 는 한 값 100 KB 까지). */
+function cachePutBig_(key, s, sec) {
+  var parts = {}, n = Math.ceil(s.length / 90000);
+  for (var i = 0; i < n; i++) parts[key + '_' + i] = s.slice(i * 90000, (i + 1) * 90000);
+  parts[key] = String(n);
+  try {
+    CacheService.getScriptCache().putAll(parts, sec);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function cacheGetBig_(key) {
+  var cache = CacheService.getScriptCache(), n = Number(cache.get(key) || 0);
+  if (!n) return null;
+  var keys = [];
+  for (var i = 0; i < n; i++) keys.push(key + '_' + i);
+  var got = cache.getAll(keys), s = '';
+  for (var j = 0; j < n; j++) { if (got[keys[j]] == null) return null; s += got[keys[j]]; }
+  return s;
+}
+
+/** 레시피 탭마다의 값 — 캐시(탭별, 앱에서 쓰거나 시트에서 고치면 그 탭만 비움)에서, 없는 탭만 시트에서 읽음. → [values…] (tabs 순서) */
+function recipeTabValues_(tabs) {
+  var cache = CacheService.getScriptCache(), gen = props_.getProperty('RCP_TAB_GEN') || '0';
+  var keys = tabs.map(function (sh) { return 'rt_' + gen + '_' + sh.getSheetId(); });
+  var got = keys.length ? cache.getAll(keys) : {}, put = {};
+  var out = tabs.map(function (sh, i) {
+    if (got[keys[i]] != null) return JSON.parse(got[keys[i]]);
+    var v = recipeValues_(sh), js = JSON.stringify(v);
+    if (js.length < 95000) put[keys[i]] = js;
+    return v;
+  });
+  if (Object.keys(put).length) {
+    try {
+      cache.putAll(put, sheetCacheSec_());
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  return out;
+}
+
+/** 이 탭의 캐시를 비움 (앱에서 다시 썼을 때). */
+function forgetRecipeTab_(sh) {
+  CacheService.getScriptCache().remove('rt_' + (props_.getProperty('RCP_TAB_GEN') || '0') + '_' + sh.getSheetId());
+}
+
 /** { recipes: [...], boxes: [...], boxesVer } — 캐시(앱에서 고치면 RCP_VER 이 바뀌어 바로 새로 읽음). */
+var recipesMemo_ = null;
+
 function recipesAll_() {
-  var key = 'rcp_all_' + (props_.getProperty('RCP_VER') || '0'), cache = CacheService.getScriptCache();
-  var hit = cache.get(key);
-  if (hit) return JSON.parse(hit);
+  var key = 'rcp_all_' + (props_.getProperty('RCP_VER') || '0') + '_' + (props_.getProperty('ING_VER') || '0');
+  if (recipesMemo_ && recipesMemo_.key === key) return recipesMemo_.out;
+  var hit = cacheGetBig_(key);
+  if (hit) { recipesMemo_ = { key: key, out: JSON.parse(hit) }; return recipesMemo_.out; }
   var ss = recipeBook_(), ingMap = ingCodeMap_();
   if (ensureBoxIds_(ss)) SpreadsheetApp.flush();
   var out = { recipes: [], boxes: readBoxes_(ss), ingredients: [] };
   Object.keys(ingMap).forEach(function (c) { if (ingMap[c].active) out.ingredients.push({ code: c, name: ingMap[c].name, unit: ingMap[c].unit }); });
   out.boxesVer = recipeVer_(out.boxes);
-  var tabs = recipeTabs_(ss), parsed = tabs.map(function (sh) { var v = recipeValues_(sh); return { sh: sh, v: v, r: parseRecipe_(sh.getName(), v) }; });
+  var tabs = recipeTabs_(ss), vals = recipeTabValues_(tabs);
+  var parsed = tabs.map(function (sh, i) { return { sh: sh, v: vals[i], r: parseRecipe_(sh.getName(), vals[i]) }; });
   // 코드가 없는 레시피(시트에서 새로 만든 탭)에 RCP 코드를 붙임
   var max = 0;
   parsed.forEach(function (x) { var m = /^RCP-(\d+)$/.exec(x.r.code); if (m) max = Math.max(max, +m[1]); });
@@ -285,15 +350,9 @@ function recipesAll_() {
     out.recipes.push(x.r);
   });
   recipeResolve_(out, ingMap);
-  var s = JSON.stringify(out);
-  if (s.length < 90000) {
-    try {
-      cache.put(key, s, RECIPE_CACHE_SEC);
-    } catch (err) {
-      console.error(err);
-    }
-  }
-  return out;
+  cachePutBig_(key, JSON.stringify(out), sheetCacheSec_());
+  recipesMemo_ = { key: key, out: out };
+  return JSON.parse(JSON.stringify(out));
 }
 
 /** 재료 줄의 이름 = 코드로 찾은 지금 이름 (코드가 없으면 이름으로 찾음). 박스 이름도 ID 로. To write 표시. */
@@ -344,6 +403,7 @@ function recipeWrite_(sh, rows) {
   }));
   sh.getRange(1, 1, 1, RECIPE_COLS).setFontWeight('bold');
   sh.setFrozenRows(1);
+  forgetRecipeTab_(sh);
 }
 
 function recipeById_(id) {
@@ -352,6 +412,51 @@ function recipeById_(id) {
 
 function bumpRecipes_() {
   props_.setProperty('RCP_VER', String(Number(props_.getProperty('RCP_VER') || 0) + 1));
+}
+
+function bumpPlaces_() {
+  props_.setProperty('PLACES_VER', String(Number(props_.getProperty('PLACES_VER') || 0) + 1));
+}
+
+// ------------------------------------------------------------------ 시트 감시 (시트에서 직접 고치면 앱의 캐시를 바로 비움)
+
+/** setup: Recipes · Ingredients 시트에 편집/구조 변경 트리거. 있으면 캐시를 오래 둬서 앱이 빨라짐. */
+function installSheetWatch_() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (['onRecipeBookEdit', 'onRecipeBookChange', 'onIngBookEdit'].indexOf(t.getHandlerFunction()) >= 0) ScriptApp.deleteTrigger(t);
+  });
+  var rid = recipeBook_().getId(), iid = ingBook_().getId();
+  ScriptApp.newTrigger('onRecipeBookEdit').forSpreadsheet(rid).onEdit().create();
+  ScriptApp.newTrigger('onRecipeBookChange').forSpreadsheet(rid).onChange().create();
+  ScriptApp.newTrigger('onIngBookEdit').forSpreadsheet(iid).onEdit().create();
+  ScriptApp.newTrigger('onIngBookEdit').forSpreadsheet(iid).onChange().create();
+  props_.setProperty('SHEET_WATCH', SCHEMA_VER);
+  bumpRecipes_(); bumpPlaces_(); bumpIngredients_();
+}
+
+/** Recipes 시트에서 칸을 고침: 그 탭만 다시 읽게 (Places 탭이면 위치 목록도). */
+function onRecipeBookEdit(e) {
+  try {
+    var sh = e && e.range && e.range.getSheet(), name = sh ? sh.getName() : '';
+    if (sh) forgetRecipeTab_(sh);
+    if (/^places$/i.test(name)) bumpPlaces_();
+    bumpRecipes_();
+  } catch (err) {
+    console.error(err);
+    props_.setProperty('RCP_TAB_GEN', String(Number(props_.getProperty('RCP_TAB_GEN') || 0) + 1));
+    bumpRecipes_(); bumpPlaces_();
+  }
+}
+
+/** 탭 추가·이름 바꾸기·숨기기·줄 넣기 등: 모든 탭을 다시 읽게. */
+function onRecipeBookChange() {
+  props_.setProperty('RCP_TAB_GEN', String(Number(props_.getProperty('RCP_TAB_GEN') || 0) + 1));
+  bumpRecipes_(); bumpPlaces_();
+}
+
+/** Ingredients 시트를 직접 고침: 재료 이름 캐시를 비움. */
+function onIngBookEdit() {
+  bumpIngredients_();
 }
 
 // ------------------------------------------------------------------ API: 보기
@@ -601,6 +706,7 @@ function recipeRename_(code, name) {
   var sh = recipeSheetById_(ss, r.id), vals = recipeValues_(sh);
   vals.forEach(function (row, i) { if (String(row[0]).trim().toUpperCase() === 'RECIPE') sh.getRange(i + 1, 2).setValue(safeCell_(name)); });
   sh.setName(recipeTabName_(ss, name, sh));
+  forgetRecipeTab_(sh);
   codeRenameInRecipes_(code, name);
   SpreadsheetApp.flush();
   bumpRecipes_();
@@ -608,9 +714,9 @@ function recipeRename_(code, name) {
 
 /** 레시피 탭들에서 E 열 코드가 code 인 재료 줄의 이름(B)을 새 이름으로 (시트를 읽기 쉽게; 앱은 코드로 찾음). */
 function codeRenameInRecipes_(code, name) {
-  var touched = [];
-  recipeTabs_(recipeBook_()).forEach(function (sh) {
-    var vals = recipeValues_(sh), hit = false, title = sh.getName();
+  var touched = [], tabs = recipeTabs_(recipeBook_()), all = recipeTabValues_(tabs);
+  tabs.forEach(function (sh, n) {
+    var vals = all[n], hit = false, title = sh.getName();
     vals.forEach(function (r, i) {
       var k = String(r[0]).trim().toUpperCase();
       if (k === 'RECIPE') title = String(r[1]).trim() || title;
@@ -619,8 +725,9 @@ function codeRenameInRecipes_(code, name) {
         hit = true;
       }
     });
-    if (hit) touched.push(title);
+    if (hit) { touched.push(title); forgetRecipeTab_(sh); }
   });
+  if (touched.length) bumpRecipes_();
   return touched;
 }
 
@@ -669,6 +776,7 @@ function boxSave_(req) {
       recipeValues_(t).forEach(function (r, i) {
         if (String(r[0]).trim().toUpperCase() === 'BOX' && !String(r[4]).trim() && oldIds[String(r[1]).trim().toLowerCase()]) {
           t.getRange(i + 1, 5).setValue(oldIds[String(r[1]).trim().toLowerCase()]);
+          forgetRecipeTab_(t);
         }
       });
     });
@@ -700,7 +808,8 @@ function boxSave_(req) {
 function ensureCodes_() {
   var ss = recipeBook_();
   ensureBoxIds_(ss);
-  bumpRecipes_();
+  props_.setProperty('RCP_TAB_GEN', String(Number(props_.getProperty('RCP_TAB_GEN') || 0) + 1));
+  bumpRecipes_(); bumpPlaces_(); bumpIngredients_();
   var places = prodPlaces_(), all = recipesAll_(), ingMap = ingCodeMap_(), boxes = {};
   all.boxes.forEach(function (b) { boxes[b.name.toLowerCase()] = b.id; });
   var rByKey = {}, iByKey = {};
@@ -721,6 +830,7 @@ function ensureCodes_() {
       else if (k === 'PLACE') code = (prodPlace_(b) || {}).id || '';
       if (code) { sh.getRange(i + 1, 5).setValue(code); fixed++; }
     });
+    forgetRecipeTab_(sh);
   });
   // Production Log: 위치 이름 → Place ID (빈 칸만)
   var log = prodSheet_(), last = log.getLastRow(), byLabel = {};

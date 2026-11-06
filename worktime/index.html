@@ -48,6 +48,11 @@
     .bell.on { color: var(--brand); }
     .bell .slash { display: none; }
     .bell.off .slash { display: inline; }
+    .save-pill { position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 40;
+                 background: var(--text); color: var(--bg); font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 999px;
+                 box-shadow: 0 2px 8px rgba(0, 0, 0, .18); pointer-events: none; }
+    .rc-saving { flex: none; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 7px; background: var(--line); color: var(--muted); }
+    .rc-failed { flex: none; font-size: 11px; font-weight: 700; border-radius: 6px; padding: 1px 7px; background: var(--err); color: #fff; }
     .toast {
       background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px;
       margin: -6px 0 14px; font-size: 14px; color: var(--text);
@@ -624,6 +629,7 @@
     .me-chip.todo { background: var(--warn-bg); color: var(--warn-ink); }
     .me-chip.ing { background: var(--blue-bg); color: var(--blue-text); }
     .me-chip.miss { background: var(--err); color: #fff; }
+    .me-chip.wait { background: var(--line); color: var(--muted); }
     .me-card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
     .me-card label { margin-top: 0; }
     .me-card > button { margin-top: 10px; }
@@ -903,6 +909,7 @@
     </span>
   </header>
   <div id="toast" class="toast hidden"></div>
+  <div id="save-pill" class="save-pill hidden" role="status" aria-live="polite">Saving…</div>
 
   <!-- 로그인 -->
   <section id="v-login" class="card hidden">
@@ -1357,6 +1364,27 @@
   // 서버가 거절한 경우: 진짜 원인 (+ 서버 오류면 파일:줄)
   const serverMsg = (r) => r.error + (r.detail ? ' (' + r.detail + ')' : '');
   const token = () => store.get('wt_token');
+
+  // 뒤에서 저장: 화면은 기다리지 않고 바로 다음 일을 할 수 있음. 저장은 순서대로 하나씩 (위 'Saving…' 표시).
+  const saveQ = { chain: Promise.resolve(), n: 0, after: [] };
+  function syncSavePill() {
+    const p = $('save-pill');
+    p.textContent = 'Saving' + (saveQ.n > 1 ? ' ' + saveQ.n : '') + '…';
+    p.classList.toggle('hidden', !saveQ.n);
+  }
+  function bgSave(job) {
+    saveQ.n++;
+    syncSavePill();
+    saveQ.chain = saveQ.chain.then(job).catch((e) => toast('Not saved: ' + e.message)).finally(() => {
+      saveQ.n--;
+      syncSavePill();
+      if (!saveQ.n) saveQ.after.splice(0).forEach((fn) => { try { fn(); } catch (e) { /* 화면 갱신 실패는 무시 */ } });
+    });
+    return saveQ.chain;
+  }
+  /** 저장이 다 끝난 뒤 한 번 (같은 함수는 한 번만). */
+  const afterSaves = (fn) => { if (!saveQ.n) return fn(); if (!saveQ.after.includes(fn)) saveQ.after.push(fn); };
+  window.addEventListener('beforeunload', (e) => { if (saveQ.n) { e.preventDefault(); e.returnValue = ''; } });
 
   // 1) 태그로 열렸으면 URL 파라미터를 꺼내고 주소창에서 즉시 지움 (새로고침/복사 방지)
   function takeTagParams() {
@@ -3792,6 +3820,7 @@
   }
 
   async function loadRecipes() {
+    if (saveQ.n) { afterSaves(loadRecipes); return rcpData; } // 저장 중이면 끝난 뒤에 (화면에 먼저 넣은 것이 덮이지 않게)
     try {
       const r = await api({ action: 'recipes', token: token() });
       if (r.code === 'AUTH') return logout(r.error);
@@ -3869,6 +3898,8 @@
       t.append(line);
     }
     b.append(t);
+    if (r.saving) b.append(el('span', 'rc-saving', 'Saving…'));
+    if (r.saveError) b.append(el('span', 'rc-failed', 'Not saved · tap'));
     if (r.todo) b.append(el('span', 'rc-todo', 'To write'));
     if (warn && r.warnings && r.warnings.length) b.append(el('span', 'rc-warn', '⚠ ' + r.warnings.length));
     b.append(el('span', 'rc-mode' + (r.mode === 'percent' ? ' pct' : ''), r.mode === 'percent' ? '%' : 'Fixed'), el('span', 'chev'));
@@ -4422,8 +4453,8 @@
 
   // ---------------------------------------------------------------- Menu editor (Supervisor): 메뉴 → 컴포넌트 → 1인분
   // 바꾸는 즉시 저장 (menuEdit). 컴포넌트는 여러 메뉴가 같이 씀. 새 이름이면 "레시피 필요?" → Yes = 빈 레시피(To write), No = 재료 목록에서만.
-  let md = null, meOpen = null, meQ = '', meNew = null, meBusy = false;
-  const meOpenDirty = () => meBusy;
+  let md = null, meOpen = null, meQ = '', meNew = null;
+  const meOpenDirty = () => saveQ.n > 0;
   const meEsc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   async function openMenus() {
@@ -4431,6 +4462,7 @@
     await loadMenus();
   }
   async function loadMenus() {
+    if (saveQ.n) return afterSaves(loadMenus); // 저장 중이면 끝난 뒤에
     try {
       const r = await api({ action: 'menuView', token: token() });
       if (r.code === 'AUTH') return logout(r.error);
@@ -4441,24 +4473,37 @@
       if (!md) $('rc-menus').replaceChildren(el('p', 'err', 'Network problem.' + detail(e)));
     }
   }
-  /** menuEdit 한 번 → 결과로 전체를 다시 그림. */
-  async function meEdit(body, okMsg) {
-    if (meBusy) return null;
-    meBusy = true;
-    try {
-      const r = await api(Object.assign({ action: 'menuEdit', token: token() }, body));
+  // 바꾸는 즉시 화면에 먼저 반영(apply)하고 저장은 뒤에서 (bgSave, 순서대로). 새로 만든 메뉴·컴포넌트는 임시 ID → 저장되면 진짜 ID.
+  const meIds = {};
+  let meSeq = 0, meNeedRender = false;
+  const idOf = (x) => meIds[x] || x;
+  const isTmp = (x) => /^tmp/.test(idOf(x));
+  const meTyping = () => { const a = document.activeElement; return !!(a && a.closest && a.closest('#rc-menus') && a.dataset && a.dataset.portion != null); };
+  function meEdit(body, okMsg, apply, noRender) {
+    if (apply) { apply(); if (!noRender) renderMenus(); }
+    return bgSave(async () => {
+      const b = typeof body === 'function' ? body() : body;
+      if (!b) return null;
+      let r;
+      try {
+        r = await api(Object.assign({ action: 'menuEdit', token: token() }, b));
+      } catch (e) { r = { ok: false, error: 'Network problem. Please try again.' + detail(e) }; }
       if (r.code === 'AUTH') { logout(r.error); return null; }
-      if (!r.ok) { toast(serverMsg(r)); if (r.code === 'CHANGED') loadMenus(); return null; }
-      md = r;
+      if (!r.ok) { toast('Not saved: ' + serverMsg(r)); afterSaves(loadMenus); return null; }
+      if (b.tmp && r.done) meIds[b.tmp] = r.done;
       if (okMsg) toast(okMsg);
-      renderMenus();
-      loadRecipes(); // 새 빈 레시피·이름이 Recipe editor 에도 바로
+      if (saveQ.n <= 1) { // 줄의 마지막 저장 = 서버의 결과가 화면과 같음 → 그대로 씀
+        md = r;
+        if (meOpen) meOpen = idOf(meOpen);
+        if (currentView === 'stock' && stTab === 'menus') { if (meTyping()) meNeedRender = true; else renderMenus(); }
+      }
+      afterSaves(loadRecipes); // 새 빈 레시피·이름이 Recipe editor 에도
       return r;
-    } catch (e) { toast('Network problem. Please try again.' + detail(e)); return null; }
-    finally { meBusy = false; }
+    });
   }
+  $('rc-menus').addEventListener('focusout', () => { if (meNeedRender) setTimeout(() => { if (!meTyping() && meNeedRender) { meNeedRender = false; renderMenus(); } }, 0); });
 
-  const meChip = (p) => (p.kind === 'ing' ? '<span class="me-chip ing">Ingredient · ' + meEsc(p.link) + '</span>'
+  const meChip = (p) => (!p.link ? '' : p.kind === 'ing' ? '<span class="me-chip ing">Ingredient · ' + meEsc(p.link) + '</span>'
     : p.todo ? '<span class="me-chip todo">To write · ' + meEsc(p.link) + '</span>' : '<span class="me-chip rcp">Recipe · ' + meEsc(p.link) + '</span>');
 
   function renderMenus() {
@@ -4471,7 +4516,7 @@
     if (!md.menus.length) h += '<p class="hint" style="padding:12px">No menus yet. Add the first one below.</p>';
     for (const x of md.menus) {
       const todo = x.parts.filter((p) => p.todo).length, miss = x.parts.filter((p) => p.portion == null).length;
-      h += '<button type="button" class="me-row" data-menu="' + meEsc(x.id) + '"><span class="nm">' + meEsc(x.name) + ' <small class="me-code">' + meEsc(x.id) + '</small>' +
+      h += '<button type="button" class="me-row" data-menu="' + meEsc(x.id) + '"><span class="nm">' + meEsc(x.name) + ' <small class="me-code">' + (isTmp(x.id) ? '' : meEsc(x.id)) + '</small>' +
         '<small>' + (x.parts.map((p) => meEsc(p.name)).join(' · ') || 'no components yet') + '</small>' +
         (todo || miss ? '<small>' + (todo ? '<span class="me-chip todo">' + todo + ' to write</span> ' : '') + (miss ? '<span class="me-chip miss">' + miss + ' portion' + (miss > 1 ? 's' : '') + ' missing</span>' : '') + '</small>' : '') +
         '</span><span class="chev"></span></button>';
@@ -4496,14 +4541,14 @@
 
   function renderMenu(m) {
     let h = '<button type="button" class="link me-back" data-act="back">← Menu editor</button>' +
-      '<div class="me-card"><div class="me-mh"><h2>' + meEsc(m.name) + ' <small class="me-code">' + meEsc(m.id) + '</small></h2>' +
+      '<div class="me-card"><div class="me-mh"><h2>' + meEsc(m.name) + ' <small class="me-code">' + (isTmp(m.id) ? '' : meEsc(m.id)) + '</small></h2>' +
       '<span class="me-acts"><button type="button" class="link" data-act="rename">Rename</button><button type="button" class="link danger" data-act="delmenu">Delete</button></span></div>' +
       '<p class="meta">Portion = how much goes on one plate. You can leave it empty and fill it in later.</p></div><div class="me-list">';
     if (!m.parts.length) h += '<p class="hint" style="padding:12px">No component yet. Add the first one below.</p>';
     m.parts.forEach((p) => {
       const others = md.menus.filter((x) => x.id !== m.id && x.parts.some((q) => q.cmp === p.cmp)).map((x) => x.name);
-      h += '<div class="me-part"><button type="button" class="me-pn" data-part="' + meEsc(p.cmp) + '"><b>' + meEsc(p.name) + '</b> <small class="me-code">' + meEsc(p.cmp) + '</small>' +
-        '<small>' + meChip(p) + (others.length ? ' <span class="meta">also in ' + meEsc(others.join(', ')) + '</span>' : '') + (p.missing ? ' <span class="me-chip miss">link missing</span>' : '') + '</small></button>' +
+      h += '<div class="me-part"><button type="button" class="me-pn" data-part="' + meEsc(p.cmp) + '"><b>' + meEsc(p.name) + '</b> <small class="me-code">' + (isTmp(p.cmp) ? '' : meEsc(p.cmp)) + '</small>' +
+        '<small>' + (p.pending ? '<span class="me-chip wait">Saving…</span> ' : '') + meChip(p) + (others.length ? ' <span class="meta">also in ' + meEsc(others.join(', ')) + '</span>' : '') + (p.missing ? ' <span class="me-chip miss">link missing</span>' : '') + '</small></button>' +
         '<label class="me-por"><input type="text" inputmode="decimal" data-portion="' + meEsc(p.cmp) + '" value="' + (p.portion == null ? '' : p.portion) + '" placeholder="—" aria-label="Portion of ' + meEsc(p.name) + '" class="' + (p.portion == null ? 'empty' : '') + '"><span>' + meEsc(p.unit) + '</span></label>' +
         '<button type="button" class="me-more" data-part="' + meEsc(p.cmp) + '" aria-label="More for ' + meEsc(p.name) + '">⋯</button></div>';
     });
@@ -4542,8 +4587,12 @@
     const btn = (text, cls, fn) => { const b = el('button', cls, text); b.type = 'button'; b.addEventListener('click', fn); return b; };
     const save = btn('Save name', null, async () => {
       const n = inp.value.trim();
-      if (!n || n === p.name) return closeRcSheet();
-      if (await meEdit({ op: 'cmpRename', cmp: p.cmp, name: n }, '✓ Renamed: ' + n)) closeRcSheet();
+      closeRcSheet();
+      if (!n || n === p.name) return;
+      meEdit(() => (isTmp(p.cmp) ? null : { op: 'cmpRename', cmp: idOf(p.cmp), name: n }), '✓ Renamed: ' + n, () => {
+        md.menus.forEach((x) => x.parts.forEach((q) => { if (q.cmp === p.cmp) q.name = n; }));
+        md.components.forEach((c) => { if (c.id === p.cmp) c.name = n; });
+      });
     });
     const out = [head, lab, inp, msg, save];
     if (p.kind === 'rcp' && p.recipeId) out.push(btn(p.todo ? 'Write the recipe' : 'Open in Recipe editor', 'secondary', () => {
@@ -4551,13 +4600,19 @@
       const go = () => { const r = rcpData && rcpData.recipes.find((x) => x.id === p.recipeId); if (r) editRecipe(r); };
       if (rcpData && rcpData.recipes.some((x) => x.id === p.recipeId)) go(); else loadRecipes().then(go);
     }));
-    out.push(btn('Remove from ' + m.name, 'secondary', async () => {
-      if (await meEdit({ op: 'partRemove', menu: m.id, cmp: p.cmp }, p.name + ' removed from ' + m.name)) closeRcSheet();
+    out.push(btn('Remove from ' + m.name, 'secondary', () => {
+      closeRcSheet();
+      meEdit(() => (isTmp(m.id) || isTmp(p.cmp) ? null : { op: 'partRemove', menu: idOf(m.id), cmp: idOf(p.cmp) }), p.name + ' removed from ' + m.name,
+        () => { m.parts = m.parts.filter((q) => q.cmp !== p.cmp); });
     }));
     out.push(btn('Delete this component everywhere', 'secondary danger', async () => {
       const others = md.menus.filter((x) => x.parts.some((q) => q.cmp === p.cmp)).map((x) => x.name);
       if (!confirm('Delete “' + p.name + '” from ' + others.join(', ') + '?\n\nThe ' + (p.kind === 'rcp' ? 'recipe' : 'ingredient') + ' itself stays.')) return;
-      if (await meEdit({ op: 'cmpDelete', cmp: p.cmp }, 'Component deleted')) closeRcSheet();
+      closeRcSheet();
+      meEdit(() => (isTmp(p.cmp) ? null : { op: 'cmpDelete', cmp: idOf(p.cmp) }), 'Component deleted', () => {
+        md.menus.forEach((x) => { x.parts = x.parts.filter((q) => q.cmp !== p.cmp); });
+        md.components = md.components.filter((c) => c.id !== p.cmp);
+      });
     }));
     out.push(btn('Close', 'link', closeRcSheet));
     sheet.append(...out);
@@ -4571,8 +4626,9 @@
     if (t.id === 'b-me-add') {
       const n = $('me-new-menu').value.trim();
       if (!n) return $('me-new-menu').focus();
-      const r = await meEdit({ op: 'add', name: n }, 'Menu added: ' + n);
-      if (r) { meOpen = r.done; renderMenus(); }
+      const tmp = 'tmp-menu-' + (++meSeq);
+      meEdit({ op: 'add', name: n, tmp }, 'Menu added: ' + n, () => { md.menus.push({ id: tmp, name: n, parts: [] }); meOpen = tmp; meQ = ''; });
+      window.scrollTo(0, 0);
       return;
     }
     const act = t.closest('[data-act]');
@@ -4586,7 +4642,12 @@
         const ok = el('button', null, 'Save'), cancel = el('button', 'secondary', 'Cancel');
         ok.type = 'button'; cancel.type = 'button';
         cancel.addEventListener('click', closeRcSheet);
-        ok.addEventListener('click', async () => { const n = inp.value.trim(); if (!n || n === m.name) return closeRcSheet(); if (await meEdit({ op: 'rename', menu: m.id, name: n }, '✓ Renamed')) closeRcSheet(); });
+        ok.addEventListener('click', () => {
+          const n = inp.value.trim();
+          closeRcSheet();
+          if (!n || n === m.name) return;
+          meEdit(() => (isTmp(m.id) ? null : { op: 'rename', menu: idOf(m.id), name: n }), '✓ Renamed', () => { m.name = n; });
+        });
         const head = el('div');
         head.append(el('div', 'oc-pos', m.id), el('h2', null, 'Rename menu'));
         const r2 = el('div', 'row');
@@ -4597,12 +4658,15 @@
       }
       if (a === 'delmenu') {
         if (!confirm('Delete the menu “' + m.name + '”?\n\nIts components and recipes stay (other menus keep them).')) return;
-        if (await meEdit({ op: 'remove', menu: m.id }, 'Menu deleted')) { meOpen = null; renderMenus(); }
+        meEdit(() => (isTmp(m.id) ? null : { op: 'remove', menu: idOf(m.id) }), 'Menu deleted', () => { md.menus = md.menus.filter((x) => x !== m); meOpen = null; });
         return;
       }
       if (a === 'mkyes') {
-        const n = meQ.trim();
-        if (await meEdit({ op: 'partAdd', menu: m.id, newRecipe: n }, n + ' added · empty recipe to write')) { meQ = ''; meNew = null; renderMenus(); }
+        const n = meQ.trim(), tmp = 'tmp-cmp-' + (++meSeq);
+        meEdit(() => (isTmp(m.id) ? null : { op: 'partAdd', menu: idOf(m.id), newRecipe: n, tmp }), n + ' added · empty recipe to write', () => {
+          m.parts.push({ cmp: tmp, link: '', name: n, kind: 'rcp', unit: 'g', todo: true, portion: null, pending: true });
+          meQ = ''; meNew = null;
+        });
         return;
       }
     }
@@ -4611,8 +4675,14 @@
     const add = t.closest('[data-add]');
     if (add) {
       const [kind, code] = add.dataset.add.split(':');
-      const body = kind === 'cmp' ? { op: 'partAdd', menu: m.id, cmp: code } : { op: 'partAdd', menu: m.id, link: code };
-      if (await meEdit(body, 'Added. The portion can wait.')) { meQ = ''; meNew = null; renderMenus(); }
+      const src = kind === 'cmp' ? md.components.find((c) => c.id === code) : kind === 'rcp' ? md.recipes.find((r) => r.code === code) : md.ingredients.find((i) => i.code === code);
+      const tmp = kind === 'cmp' ? code : 'tmp-cmp-' + (++meSeq);
+      meEdit(() => (isTmp(m.id) ? null : kind === 'cmp' ? { op: 'partAdd', menu: idOf(m.id), cmp: idOf(code) } : { op: 'partAdd', menu: idOf(m.id), link: code, tmp }),
+        'Added. The portion can wait.', () => {
+          m.parts.push({ cmp: tmp, link: kind === 'cmp' ? src.link : code, name: src.name, kind: kind === 'cmp' ? src.kind : kind, unit: (kind === 'cmp' ? src.unit : src.unit) || 'g',
+                         todo: !!src.todo, portion: null, pending: kind !== 'cmp' });
+          meQ = ''; meNew = null;
+        });
       return;
     }
     const part = t.closest('[data-part]');
@@ -4626,7 +4696,10 @@
     if (t.dataset.portion == null) return;
     const v = t.value.trim().replace(',', '.');
     if (v !== '' && !(Number(v) > 0)) { toast('Portion: a number, or empty.'); return; }
-    meEdit({ op: 'portion', menu: meOpen, cmp: t.dataset.portion, portion: v }, 'Portion saved');
+    const m = md.menus.find((x) => x.id === meOpen), p = m && m.parts.find((x) => x.cmp === t.dataset.portion);
+    if (!p) return;
+    t.classList.toggle('empty', v === '');
+    meEdit(() => (isTmp(m.id) || isTmp(p.cmp) ? null : { op: 'portion', menu: idOf(m.id), cmp: idOf(p.cmp), portion: v }), null, () => { p.portion = v === '' ? null : Number(v); }, true);
   });
   $('rc-menus').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && e.target.id === 'me-new-menu') { e.preventDefault(); $('b-me-add').click(); }
@@ -5301,7 +5374,8 @@
   function renderReList() {
     if (!rcpData) return $('re-list').replaceChildren(el('p', 'hint', 'Loading…'));
     if (!rcpData.canEdit) return $('re-list').replaceChildren(el('p', 'err', 'Only the supervisor can edit recipes.'));
-    const list = rcpData.recipes, todo = list.filter((r) => r.todo), rest = list.filter((r) => !r.todo);
+    const list = rcpData.recipes.map((r) => reFailed[r.id] || r).concat(Object.values(reFailed).filter((f) => !rcpData.recipes.some((r) => r.id === f.id)));
+    const todo = list.filter((r) => r.todo), rest = list.filter((r) => !r.todo);
     const out = [];
     if (todo.length) {
       const h = el('div', 'rc-lab re-todo-h', 'To write ');
@@ -5346,12 +5420,14 @@
     b.addEventListener('click', fn);
     return b;
   }
-  function reDock(onSave, extra) {
+  function reDock(onSave, extra, onSaveNew) {
     const dock = el('div', 'rc-dock'), cancel = el('button', 'secondary', 'Cancel'), save = el('button', null, 'Save');
     cancel.type = 'button'; save.type = 'button';
     cancel.addEventListener('click', reLeave);
     save.addEventListener('click', () => onSave(save));
-    dock.append(cancel, save);
+    dock.append(cancel);
+    if (onSaveNew) { const sn = el('button', 'secondary', 'Save & new'); sn.type = 'button'; sn.addEventListener('click', () => onSaveNew(sn)); dock.append(sn); }
+    dock.append(save);
     const msg = el('p');
     msg.id = 're-msg';
     return [msg, dock].concat(extra || []);
@@ -5392,7 +5468,20 @@
     return pick;
   }
 
+  const reFailed = {};             // 저장 실패한 레시피: id → 화면용 (draft = 고치던 내용, saveError = 이유)
   function editRecipe(r) {
+    if (r && r.saving) return toast('Still saving “' + r.name + '”. One moment…');
+    if (r && r.saveError && r.draft) {
+      reDraft = r.draft;
+      reDraft.failedId = r.id;
+      $('re-list-box').classList.add('hidden');
+      $('re-form').classList.remove('hidden');
+      $('v-redit').classList.add('re-on');
+      renderReForm();
+      reMsg('Not saved: ' + r.saveError, 'err');
+      window.scrollTo(0, 0);
+      return;
+    }
     const d = r ? JSON.parse(JSON.stringify(r)) : { name: '', mode: 'fixed', cat: '', items: [{ t: 'ing', name: '', q: '' }],
                                                     box: '', fill: null, keepNote: '', keepDays: null, countUnit: 'box' };
     if (r && r.todo && !d.items.length) d.items.push({ t: 'ing', name: '', q: '' }); // 빈 레시피(To write): 첫 재료 줄
@@ -5492,7 +5581,7 @@
       del.addEventListener('click', () => reDelete(del));
       extra.push(del);
     }
-    out.push(...reDock(reSave, extra));
+    out.push(...reDock((b) => reSave(b, false), extra, dr.id ? null : (b) => reSave(b, true)));
     $('re-form').replaceChildren(...out);
     renderReLines();
   }
@@ -5675,38 +5764,49 @@
     return box;
   }
 
-  async function reSave(btn) {
+  /** 저장 = 뒤에서. 목록으로 바로 돌아가고(또는 Save & new = 빈 새 레시피), 목록에 'Saving…' → 끝나면 ✓. 실패하면 'Not saved · tap' (누르면 고치던 내용 그대로). */
+  function reSave(btn, andNew) {
     const dr = reDraft;
     if (dr.uploads) return reMsg('Please wait until the photo is uploaded.', 'err');
     const d = dr.d;
+    if (!String(d.name || '').trim()) return reMsg('Please enter the recipe name.', 'err');
     const recipe = { name: d.name, mode: d.mode, cat: d.cat, box: d.box, fill: d.fill ?? '', keepNote: d.keepNote, keepDays: d.keepDays ?? '', place: d.place || '',
                      count: d.count === 'sunday' || d.count === 'none' ? d.count : 'daily', yieldPct: d.yieldPct ?? '', yieldNote: d.yieldNote || '',
                      countUnit: d.countUnit || 'box', boxId: d.boxId || '', items: d.items.map(({ k, recipe, ...x }) => x) };
     const bad = d.items.findIndex((x) => (x.t === 'ing' || x.t === 'base') && x.name && !x.code);
     if (bad >= 0) return reMsg('Line ' + (bad + 1) + ': “' + d.items[bad].name + '” is not in the ingredient list. Pick it from the list, or add it first in Manager › Ingredients.', 'err');
-    btn.disabled = true;
-    reMsg('Saving…', 'meta');
-    try {
-      const r = await api({ action: 'recipeSave', token: token(), id: dr.id || undefined, ver: dr.ver || undefined, recipe });
+    if (!d.items.some((x) => (x.t === 'ing' || x.t === 'base') && x.code)) return reMsg('Please add at least one ingredient.', 'err');
+    const id = dr.id || 'new-' + (++reKey) + '-' + Date.now();
+    const local = Object.assign(JSON.parse(JSON.stringify(recipe)), { id, ver: dr.ver, code: dr.d.code || '', saving: true, todo: false, warnings: [] });
+    const list = rcpData.recipes, i = list.findIndex((x) => x.id === id);
+    if (i >= 0) list[i] = local; else list.push(local);
+    delete reFailed[id];
+    if (dr.failedId) delete reFailed[dr.failedId];
+    const draft = dr;
+    toast('Saving “' + d.name + '”…');
+    if (andNew) { editRecipe(null); } else { reShowList(); window.scrollTo(0, 0); }
+    const done = (fn) => { fn(); if (currentView === 'redit' && !reDraft) renderReList(); };
+    bgSave(async () => {
+      let r;
+      try {
+        r = await api({ action: 'recipeSave', token: token(), id: dr.id || undefined, ver: dr.ver || undefined, recipe });
+      } catch (e) { r = { ok: false, error: 'Network problem. Please try again.' + detail(e) }; }
       if (r.code === 'AUTH') return logout(r.error);
+      const j = rcpData.recipes.findIndex((x) => x.id === id);
       if (!r.ok) {
-        btn.disabled = false;
-        reMsg(serverMsg(r), 'err');
-        if (r.code === 'CHANGED') loadRecipes();
+        done(() => {
+          if (j >= 0 && !dr.id) rcpData.recipes.splice(j, 1); // 새 레시피: 목록에서 빼고 실패 표시로
+          else if (j >= 0) Object.assign(rcpData.recipes[j], { saving: false });
+          reFailed[id] = Object.assign({}, local, { saving: false, saveError: serverMsg(r), draft });
+        });
+        toast('Not saved: ' + d.name + ' — ' + serverMsg(r));
         return;
       }
-      const list = rcpData.recipes, i = list.findIndex((x) => x.id === r.recipe.id);
-      if (i >= 0) list[i] = r.recipe; else list.push(r.recipe);
+      done(() => { if (j >= 0) rcpData.recipes[j] = r.recipe; else rcpData.recipes.push(r.recipe); });
       store.set(RCP_STORE, JSON.stringify(rcpData));
-      toast('✓ Saved: ' + r.recipe.name +
-            (r.recipe.warnings && r.recipe.warnings.length ? ' (please check the warnings)' : ''));
-      reShowList();
-      window.scrollTo(0, 0);
-      loadRecipes();
-    } catch (e) {
-      btn.disabled = false;
-      reMsg('Network problem. Please try again.' + detail(e), 'err');
-    }
+      toast('✓ Saved: ' + r.recipe.name + (r.recipe.warnings && r.recipe.warnings.length ? ' (please check the warnings)' : ''));
+      afterSaves(loadRecipes);
+    });
   }
 
   async function reDelete(btn) {
@@ -5855,6 +5955,7 @@
   }
 
   async function loadIngr() {
+    if (saveQ.n) return afterSaves(loadIngr); // 저장 중이면 끝난 뒤에
     try {
       const r = await api({ action: 'ingView', token: token() });
       if (r.code === 'AUTH') return logout(r.error);
@@ -5916,7 +6017,7 @@
       for (const i of list) {
         const p = igUsual(i), w = igProblems(i);
         h += '<button type="button" class="ig-item" data-open="' + igEsc(i.id) + '">' + igAddrCell(i) +
-          '<div class="ig-nm">' + igEsc(i.name) + '<div class="ig-sub">' + igTags(i) + (p ? igEsc(p.pack) + ' · ' + igEsc(p.supplier) : '') + '</div>' +
+          '<div class="ig-nm">' + igEsc(i.name) + (i.saving ? ' <span class="rc-saving">Saving…</span>' : '') + (i.saveError ? ' <span class="rc-failed">Not saved · tap</span>' : '') + '<div class="ig-sub">' + igTags(i) + (p ? igEsc(p.pack) + ' · ' + igEsc(p.supplier) : '') + '</div>' +
           (w.length ? '<div class="ig-warn">⚠ ' + w.join(' · ') + '</div>' : '') + '</div>' +
           '<div class="ig-price">' + (p ? igEur(p.price) + '<small>' + igPer(p, i.unit) + '</small>' : '') + '</div></button>';
       }
@@ -5928,8 +6029,14 @@
   }
 
   // ---- 편집
-  function igStartEdit(i) {
-    const d = i ? JSON.parse(JSON.stringify(i)) : { name: '', cat: '', unit: 'g', storage: 'Shelf', address: '', count: 'Sunday', demand: 'Recipes + Par', par: 0, note: '', packs: [], used: [] };
+  function igStartEdit(i, like) {
+    if (i && i.saving) return toast('Still saving “' + i.name + '”. One moment…');
+    if (i && i.saveError && i.draft) {
+      igDraft = i.draft; igDraft.failedId = i.id; igRender(); igMsg('Not saved: ' + i.saveError, 'err'); window.scrollTo(0, 0);
+      return;
+    }
+    const d = i ? JSON.parse(JSON.stringify(i)) : { name: '', cat: like ? like.cat : '', unit: like ? like.unit : 'g', storage: like ? like.storage : 'Shelf', address: '',
+                                                   count: like ? like.count : 'Sunday', demand: like ? like.demand : 'Recipes + Par', par: 0, note: '', packs: [], used: [] };
     d.packs.forEach((p) => { p.k = Math.random(); });
     igDraft = { id: i ? i.id : null, ver: i ? i.ver : null, d, dirty: false };
     igRender();
@@ -5986,6 +6093,7 @@
     h += '<div class="ig-card"><label>Note<input data-f="note" value="' + igEsc(d.note) + '" maxlength="200"></label></div>';
     if (igDraft.id) h += '<div class="ig-card ig-used"><h3>Used in</h3><div>' + (d.used && d.used.length ? d.used.map(igEsc).join(' · ') : '<span class="ig-sub">No recipe yet</span>') + '</div></div>';
     h += '<p id="ig-msg" class="ig-msg"></p><button type="button" class="ig-btn" id="b-ig-save">Save</button>';
+    if (!igDraft.id) h += '<button type="button" class="ig-btn ghost" id="b-ig-savenew">Save & add another</button>';
     if (igDraft.id) h += '<button type="button" class="ig-link danger" data-act="remove" style="align-self:center">Remove this ingredient</button>';
     $('ig-view').innerHTML = h;
     $('ig-count').textContent = '';
@@ -6008,34 +6116,41 @@
 
   const igMsg = (t, cls) => { const m = $('ig-msg'); if (m) { m.textContent = t; m.className = 'ig-msg ' + (cls || ''); } };
 
-  async function igSave() {
-    const d = igDraft.d, btn = $('b-ig-save');
+  /** 저장 = 뒤에서. 목록으로 바로 (또는 Save & add another = 같은 단위·보관·분류로 빈 새 재료). 실패하면 목록에 'Not saved · tap'. */
+  function igSave(andNew) {
+    const dr = igDraft, d = dr.d;
+    if (!String(d.name || '').trim()) return igMsg('Please enter the ingredient name.', 'err');
     const ingredient = { name: d.name, cat: d.cat, unit: d.unit, storage: d.storage, address: d.storage === 'Freezer' ? '' : d.address,
                          count: d.count, demand: d.demand, par: d.par, note: d.note,
                          packs: d.packs.map(({ k, ...p }) => p) };
-    btn.disabled = true;
-    igMsg('Saving…', 'meta');
-    try {
-      const r = await api({ action: 'ingSave', token: token(), id: igDraft.id || undefined, ver: igDraft.ver || undefined, ingredient });
+    const id = dr.id || 'new-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    const local = Object.assign(JSON.parse(JSON.stringify(ingredient)), { id, ver: dr.ver, used: d.used || [], saving: true,
+                                packs: ingredient.packs.map((p) => Object.assign({}, p, { size: igNum(p.size), price: igNum(p.price), deposit: igNum(p.deposit) || 0 })) });
+    if (dr.failedId && dr.failedId !== id) ig.ingredients = ig.ingredients.filter((x) => x.id !== dr.failedId);
+    const list = ig.ingredients, i = list.findIndex((x) => x.id === id);
+    if (i >= 0) list[i] = local; else list.push(local);
+    toast('Saving “' + d.name + '”…');
+    igDraft = null;
+    if (andNew) igStartEdit(null, d); else { igRender(); window.scrollTo(0, 0); }
+    const redraw = () => { if (currentView === 'ingr' && !igDraft && !igSupDraft && igTab === 'ing') igRender(); };
+    bgSave(async () => {
+      let r;
+      try {
+        r = await api({ action: 'ingSave', token: token(), id: dr.id || undefined, ver: dr.ver || undefined, ingredient });
+      } catch (e) { r = { ok: false, error: 'Network problem. Please try again.' + detail(e) }; }
       if (r.code === 'AUTH') return logout(r.error);
+      const j = ig.ingredients.findIndex((x) => x.id === id);
       if (!r.ok) {
-        btn.disabled = false;
-        igMsg(serverMsg(r), 'err');
-        if (r.code === 'CHANGED') loadIngr();
-        return;
+        if (j >= 0) Object.assign(ig.ingredients[j], { saving: false, saveError: serverMsg(r), draft: dr });
+        toast('Not saved: ' + d.name + ' — ' + serverMsg(r));
+        return redraw();
       }
-      const list = ig.ingredients, i = list.findIndex((x) => x.id === r.id);
-      if (r.ingredient) { if (i >= 0) list[i] = r.ingredient; else list.push(r.ingredient); }
+      if (j >= 0 && r.ingredient) ig.ingredients[j] = r.ingredient;
       store.set(IG_STORE, JSON.stringify(ig));
       toast('✓ Saved: ' + d.name + (r.renamedIn && r.renamedIn.length ? ' · renamed in ' + r.renamedIn.join(', ') : ''));
-      igDraft = null;
-      igRender();
-      window.scrollTo(0, 0);
-      loadIngr();
-    } catch (e) {
-      btn.disabled = false;
-      igMsg('Network problem. Please try again.' + detail(e), 'err');
-    }
+      redraw();
+      afterSaves(loadIngr);
+    });
   }
 
   async function igRemove() {
@@ -6244,7 +6359,8 @@
       if (a === 'newsup') return igSupStart(null);
       if (a === 'delsup') return igSupSave(true);
     }
-    if (t.id === 'b-ig-save') return igSave();
+    if (t.id === 'b-ig-save') return igSave(false);
+    if (t.id === 'b-ig-savenew') return igSave(true);
     if (t.id === 'b-ig-supsave') return igSupSave(false);
     const g = t.closest('[data-group]'); if (g) { igGroup = g.dataset.group; return igListView(); }
     const o = t.closest('[data-open]'); if (o) return igStartEdit(igById(o.dataset.open));

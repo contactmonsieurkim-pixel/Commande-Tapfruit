@@ -137,6 +137,9 @@ function makeEnv(propsInit) {
     }) },
     CacheService: { getScriptCache: () => ({
       put: (k, v) => { cache[k] = v; },
+      putAll: (o) => { Object.assign(cache, o); },
+      remove: (k) => { delete cache[k]; },
+      getAll: (ks) => Object.fromEntries(ks.filter((k) => k in cache).map((k) => [k, cache[k]])),
       get: (k) => (k in cache ? cache[k] : null),
     }) },
     LockService: { getScriptLock: () => ({ waitLock: () => {}, tryLock: () => true, releaseLock: () => {} }) },
@@ -145,9 +148,10 @@ function makeEnv(propsInit) {
       getProjectTriggers: () => triggers.slice(),
       deleteTrigger: (t) => triggers.splice(triggers.indexOf(t), 1),
       newTrigger: (fn) => {
-        const b = { timeBased: () => b, everyDays: () => b, everyMinutes: (m) => { b.minutes = m; return b; }, atHour: (h) => { b.hour = h; return b; },
+        const b = { forSpreadsheet: (id) => { b.ss = id; return b; }, onEdit: () => { b.on = 'edit'; return b; }, onChange: () => { b.on = 'change'; return b; },
+                    timeBased: () => b, everyDays: () => b, everyMinutes: (m) => { b.minutes = m; return b; }, atHour: (h) => { b.hour = h; return b; },
                     at: (d) => { b.at = d; return b; }, after: (ms) => { b.after = ms; return b; }, inTimezone: () => b,
-                    create: () => triggers.push({ getHandlerFunction: () => fn, hour: b.hour, at: b.at, minutes: b.minutes, after: b.after }) };
+                    create: () => triggers.push({ getHandlerFunction: () => fn, hour: b.hour, at: b.at, minutes: b.minutes, after: b.after, ss: b.ss, on: b.on }) };
         return b;
       },
     },
@@ -366,13 +370,15 @@ test('setup: protected record sheets, daily trigger, VAPID keys', () => {
   assert.deepStrictEqual(ss.sheets.map((x) => x.name),
     ['Announcements', 'Confirmations', 'Notifications', 'Logins', 'Our Rules', 'Requests', 'Deleted', 'Receipts', 'Receipt Mails', 'Chat']);
   assert.ok(ss.sheets.every((x) => x.protected));
-  assert.deepStrictEqual(env.triggers.map((t) => [t.getHandlerFunction(), t.hour || t.minutes]),
+  assert.deepStrictEqual(env.triggers.filter((t) => !t.on).map((t) => [t.getHandlerFunction(), t.hour || t.minutes]),
     [['scheduleMorning', 7], ['checkScheduleChanges', 30]]);
+  assert.deepStrictEqual(env.triggers.filter((t) => t.on).map((t) => t.getHandlerFunction() + ':' + t.on),
+    ['onRecipeBookEdit:edit', 'onRecipeBookChange:change', 'onIngBookEdit:edit', 'onIngBookEdit:change'], 'sheet watch');
   const head = env.files[env.props.CONFIG_SHEET_ID].sheets[0];
   assert.deepStrictEqual([1, 2, 3, 4, 5, 6, 7, 8].map((c) => head.cells['1,' + c]),
     ['Name', 'PIN', 'Active', 'Email', 'Admin', 'Team', 'Supervisor', 'Transport receipt']);
   env.ctx.setup(); // 다시 실행해도 중복 생성 없음
-  assert.strictEqual(env.triggers.length, 2);
+  assert.strictEqual(env.triggers.length, 6);
   assert.strictEqual(Buffer.from(env.call({ action: 'pushKey' }).publicKey, 'base64url').length, 65);
 });
 
@@ -1834,7 +1840,8 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
   const sup = login('Nam KIM', '4321'), yu = login('Yuna', '2222'), chef = login('Chef Admin', '6666'), waiter = login('Waiter', '7777');
   const book = () => C.files[C.props.RECIPE_SHEET_ID];
   const view = (t) => C.call({ action: 'recipes', token: t });
-  const dropCache = () => { for (const k of Object.keys(C.cache)) if (k.startsWith('rcp_')) delete C.cache[k]; };
+  // 시트에서 직접 고친 것처럼 (실제로는 시트 감시 트리거가 캐시를 비움)
+  const dropCache = () => { for (const k of Object.keys(C.cache)) if (/^(rcp_|rt_|ing_map_|places_)/.test(k)) delete C.cache[k]; };
   const tabRows = (sh) => Array.from({ length: sh.getLastRow() }, (_, i) => sh.getRange(i + 1, 1, 1, 4).getValues()[0]);
   const BULGOGI = {
     name: 'Bulgogi marinade', mode: 'fixed', cat: 'Sauce', box: 'GN 1/6 · 150 mm', fill: 1700, keepNote: 'Fridge 0–3 °C', keepDays: 5,
@@ -1929,6 +1936,7 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     const again = C.call({ action: 'recipeSave', token: sup, id: r0.id, ver: r0.ver, recipe: edit });
     assert.deepStrictEqual([again.ok, again.code], [false, 'CHANGED'], 'old version');
     book().getSheetByName('Bulgogi sauce').getRange(6, 3).setValue('1100'); // Soy sauce (row 3 = ID)
+    C.ctx.onRecipeBookEdit({ range: { getSheet: () => book().getSheetByName('Bulgogi sauce') } }); // 시트 감시 트리거
     const st = C.call({ action: 'recipeSave', token: sup, id: r0.id, ver: r.recipe.ver, recipe: edit });
     assert.deepStrictEqual([st.ok, st.code], [false, 'CHANGED'], 'edited in the sheet');
   });
@@ -2180,7 +2188,7 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     const rows = tabRows(sh);
     const i = rows.findIndex((r) => r[2] === 'Fridge 1') + 1;
     sh.getRange(i, 4, 1, 2).setValues([['K1', 'Sunday']]);
-    C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Bump', items: [{ t: 'ing', name: 'Water', q: 1 }] } }); // 앱 편집 = 캐시 갱신
+    C.ctx.onRecipeBookEdit({ range: { getSheet: () => sh } }); // 시트 감시 트리거 = 캐시 갱신
     const p = view(yu).places.find((x) => x.spot === 'Fridge 1');
     assert.deepStrictEqual([p.short, p.count], ['K1', 'sunday']);
     assert.ok(!C.call({ action: 'countView', token: chef, kind: 'daily' }).places.some((x) => x.short === 'K1'));
@@ -2402,13 +2410,13 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.match(log.entry.placeId, /^PL-\d\d$/);
     const places = book().getSheetByName('Places'), row = tabRows(places).findIndex((r) => r[2] === 'Fridge 4') + 1;
     places.getRange(row, 3).setValue('Fridge 4 (left)');
-    C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Bump 2', items: [{ t: 'ing', name: 'Water', q: 1 }] } });
+    C.ctx.onRecipeBookEdit({ range: { getSheet: () => places } });
     const it = C.call({ action: 'stock', token: yu }).items.find((x) => x.recipeId === bulgogi().id);
     assert.ok(it.lots.some((e) => e.id === log.entry.id && e.place === 'Ground floor · Fridge 4 (left)'), 'batch follows the place ID');
     assert.ok(C.call({ action: 'countView', token: chef, kind: 'daily' }).places.find((p) => p.place === 'Ground floor · Fridge 4 (left)').items
       .some((x) => x.recipeId === bulgogi().id));
     places.getRange(row, 3).setValue('Fridge 4');
-    C.call({ action: 'recipeSave', token: sup, recipe: { name: 'Bump 3', items: [{ t: 'ing', name: 'Water', q: 1 }] } });
+    C.ctx.onRecipeBookEdit({ range: { getSheet: () => places } });
   });
 
   test('codes: renaming a recipe keeps homemade lines (shown with the new name, saved by RCP code)', () => {
