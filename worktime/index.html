@@ -136,13 +136,19 @@
     details.ann.rule .sum-title { flex: 1; min-width: 0; }
     details.ann.rule .sum-title .meta { font-size: 12px; }
     .edit-link.danger { color: var(--err); }
-    /* 모든 화면(메인 제외) 왼쪽 아래에 늘 떠 있는 Back = 메인 화면. 늘 보이므로 반투명하게 */
-    .back-fab { position: fixed; left: 16px; bottom: max(20px, env(safe-area-inset-bottom)); width: auto; margin: 0;
+    /* 모든 화면(메인 제외) 왼쪽 아래에 늘 떠 있는 ⌂ = 메인 화면, ← Back = 바로 전 화면. 늘 보이므로 반투명하게 */
+    .home-fab { position: fixed; left: 16px; bottom: max(20px, env(safe-area-inset-bottom)); width: 44px; height: 40px; margin: 0; padding: 0;
+                border-radius: 22px; z-index: 5; display: flex; align-items: center; justify-content: center;
+                background: var(--fab-bg); color: var(--brand-ink); box-shadow: 0 2px 6px rgba(0, 0, 0, .12);
+                -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+    .home-fab svg { width: 20px; height: 20px; display: block; }
+    .home-fab:active, .home-fab:focus-visible { background: var(--brand); }
+    .back-fab { position: fixed; left: 68px; bottom: max(20px, env(safe-area-inset-bottom)); width: auto; margin: 0;
                 padding: 10px 16px; border-radius: 22px; font-size: 14px; z-index: 5;
                 background: var(--fab-bg); color: var(--brand-ink); box-shadow: 0 2px 6px rgba(0, 0, 0, .12);
                 -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); transition: background .15s; }
     .back-fab:active, .back-fab:focus-visible { background: var(--brand); }
-    #v-ann.focus .back-fab { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 84px); } /* 확인 버튼 위 */
+    #v-ann.focus .back-fab, #v-ann.focus .home-fab { bottom: calc(max(16px, env(safe-area-inset-bottom)) + 84px); } /* 확인 버튼 위 */
     #v-request, #v-inbox, #v-team, #v-admin, #v-receipt, #v-receipts { padding-bottom: 72px; }
     .count { color: var(--muted); font-size: 14px; text-align: center; margin: -4px 0 10px; }
     .feed-title { font-size: 20px; margin: 0 0 12px; }
@@ -382,7 +388,7 @@
     .room .muted-ic { font-size: 13px; opacity: .7; }
     #v-chat.in-room { padding-bottom: 150px; }
     #v-chat:not(.in-room) { padding-bottom: 72px; }
-    #v-chat.in-room .back-fab { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 74px); }
+    #v-chat.in-room .back-fab, #v-chat.in-room .home-fab { bottom: calc(max(10px, env(safe-area-inset-bottom)) + 74px); }
     .chat-head { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; }
     .chat-head .feed-title { margin: 0; }
     .chat-head .meta { flex: 1; }
@@ -613,7 +619,9 @@
     .rc-dock { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); display: flex; gap: 8px; margin-top: 14px; z-index: 4; }
     .rc-dock button { margin: 0; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
     #v-redit.re-on { padding-bottom: 24px; }
-    #v-redit.re-on .back-fab, #v-redit.re-on .st-tabs { display: none; }
+    #v-redit.re-on .back-fab, #v-redit.re-on .home-fab, #v-redit.re-on .st-tabs { display: none; }
+    .re-return { background: var(--blue-bg); color: var(--blue-text); border-radius: 10px; padding: 10px 12px; font-size: 14px; margin: 0 0 10px; }
+    .ac-add { display: inline-block; margin-left: 6px; font-weight: 700; }
     .st-tabs { flex-wrap: wrap; }
     /* Portion estim */
     .cn-kind { margin: 0 0 10px; }
@@ -787,6 +795,7 @@
     .ic-ingr { background: linear-gradient(160deg, #8fbf5a, #4f7d2c); }
     #v-ingr { padding-bottom: 80px; }
     #v-ingr button { width: auto; margin: 0; padding: 0; font: inherit; font-weight: 400; background: none; color: inherit; border: 0; border-radius: 0; }
+    #v-ingr .home-fab { width: 44px; height: 40px; border-radius: 22px; background: var(--fab-bg); color: var(--brand-ink); display: flex; }
     #v-ingr .back-fab { padding: 10px 16px; border-radius: 22px; font-size: 14px; font-weight: 600; background: var(--fab-bg); color: var(--brand-ink); }
     #v-ingr .back-fab:active, #v-ingr .back-fab:focus-visible { background: var(--brand); }
     #v-ingr input, #v-ingr select { font-size: 16px; padding: 9px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--text); width: 100%; min-width: 0; }
@@ -1302,7 +1311,19 @@
   let annReturn = 'home';
 
   let currentView = null;
+  // 화면 이동 기록: ← Back = 바로 전 화면 (goBack), ⌂ = 메인 화면. 메인으로 가면 기록을 비움.
+  let navStack = [], navBack = false;
+  const NAV_SKIP = ['login', 'result', 'closed', 'modify'];
+  let stShownTab = 'portion';     // Stock 화면에서 마지막으로 보인 탭 (Recipe editor 에서 Back 하면 그 탭으로)
+  function curTab() { return stShownTab; }
   function show(view) {
+    const back = navBack;
+    navBack = false;
+    if (!back && currentView && currentView !== view && !NAV_SKIP.includes(currentView) && view !== 'home') {
+      navStack.push({ view: currentView, tab: curTab() });
+      if (navStack.length > 30) navStack.shift();
+    }
+    if (view === 'home' || view === 'login') navStack = [];
     currentView = view;
     for (const v of VIEWS) $('v-' + v).classList.toggle('hidden', v !== view);
     document.querySelector('main').classList.toggle('wide', view === 'schedule');
@@ -1787,7 +1808,7 @@
 
   $('b-anns').addEventListener('click', () => openFeed('ann', 'home'));
   $('b-rules').addEventListener('click', () => openFeed('rules', 'home'));
-  const leaveAnns = () => (annReturn === 'result' ? show('result') : goHome());
+  const leaveAnns = () => (annReturn === 'result' ? show('result') : goBack());
   $('b-ann-back').addEventListener('click', leaveAnns); // 확인 중에도 = 나중에 (Later)
 
   // ---------------------------------------------------------------- 알림 (웹 푸시)
@@ -1865,7 +1886,7 @@
     show('request');
   }
   $('b-request').addEventListener('click', () => openRequest());
-  $('b-request-back').addEventListener('click', () => (reqTopic ? show('schedule') : goHome()));
+  $('b-request-back').addEventListener('click', () => (reqTopic ? show('schedule') : goBack()));
   $('f-request').addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const btn = ev.submitter; btn.disabled = true;
@@ -1903,7 +1924,7 @@
     }
   }
   $('b-inbox').addEventListener('click', openInbox);
-  $('b-inbox-back').addEventListener('click', () => goHome());
+  $('b-inbox-back').addEventListener('click', () => goBack());
 
   // ---------------------------------------------------------------- 현재 상태 (마지막 출퇴근 기록)
   // 오른쪽 위: 지금 근무 중인지(START) 퇴근했는지(END) + 기록된 시간. Supervisor 는 Team status 에서 모두를 봄.
@@ -2037,7 +2058,7 @@
   }
   $('b-team').addEventListener('click', openTeam);
   $('b-team-refresh').addEventListener('click', openTeam);
-  $('b-team-back').addEventListener('click', () => goHome());
+  $('b-team-back').addEventListener('click', () => goBack());
 
   // ---------------------------------------------------------------- Schedule (읽기 전용 + 주마다 읽고 동의)
   let schedSel = {}, schedData = null;
@@ -2588,7 +2609,7 @@
   }
 
   $('b-sched').addEventListener('click', () => { schedData = null; openSchedule(); });
-  $('b-sch-back').addEventListener('click', () => goHome());
+  $('b-sch-back').addEventListener('click', () => goBack());
 
 
   // ---------------------------------------------------------------- 교통카드 정기권 영수증 (직원)
@@ -2755,7 +2776,7 @@
   $('b-rc-back').addEventListener('click', () => {
     if (rcNew.length && !confirm('Your photo is not uploaded yet. Leave anyway?')) return;
     rcNew = []; renderNew();
-    goHome();
+    goBack();
   });
 
   // ---------------------------------------------------------------- 교통카드 영수증 (Supervisor: 현황 + 회계사에게)
@@ -2893,7 +2914,7 @@
   });
 
   $('b-receipts').addEventListener('click', () => openReceipts());
-  $('b-rs-back').addEventListener('click', () => goHome());
+  $('b-rs-back').addEventListener('click', () => goBack());
 
   // ---------------------------------------------------------------- 관리자
   let pickedPhotos = [];
@@ -3088,7 +3109,7 @@
   }
 
   $('b-admin').addEventListener('click', () => { stopEditRule(); show('admin'); loadStatus(); loadStaff(); });
-  $('b-admin-back').addEventListener('click', () => { stopEditRule(); goHome(); });
+  $('b-admin-back').addEventListener('click', () => { stopEditRule(); goBack(); });
 
   // ---------------------------------------------------------------- Chat (전체 방 + 팀별 방)
   // Apps Script 는 서버가 먼저 보낼 수 없으므로, 화면이 열려 있는 동안 몇 초마다 새 메시지를 물어봄.
@@ -3451,7 +3472,7 @@
   $('b-chat').addEventListener('click', () => openChat());
   $('b-chat-back').addEventListener('click', () => {
     if (chat.room && chat.rooms.length > 1) { showRoomList(); return chatRefresh(); }
-    goHome();
+    goBack();
   });
 
   // ---------------------------------------------------------------- 로그인 / 시간 변경
@@ -3664,7 +3685,7 @@
     }
   }
   $('b-org').addEventListener('click', () => openOrg());
-  $('b-org-back').addEventListener('click', () => { closeOrgSheet(); goHome(); });
+  $('b-org-back').addEventListener('click', () => { closeOrgSheet(); goBack(); });
   $('b-org-fit').addEventListener('click', () => { orgFit = true; orgZoom(); });
   $('b-org-full').addEventListener('click', () => { orgFit = false; orgZoom(); });
   window.addEventListener('resize', () => { if (currentView === 'org') orgZoom(); });
@@ -3825,6 +3846,7 @@
     try {
       const r = await api({ action: 'recipes', token: token() });
       if (r.code === 'AUTH') return logout(r.error);
+      if (saveQ.n) { afterSaves(loadRecipes); return rcpData; }
       if (!r.ok) {
         if (!rcpData) $('rc-list').replaceChildren(el('p', 'err', serverMsg(r)));
         if (!rcpData) $('re-list').replaceChildren(el('p', 'err', serverMsg(r)));
@@ -4310,6 +4332,7 @@
     t = stTab;
     if (t === 'recipes') { if (currentView !== 'redit' || reDraft) openEditor(); return; }
     if (currentView !== 'stock') { rcpSaved(); show('stock'); }
+    stShownTab = t;
     $('rc-stock').classList.toggle('hidden', t !== 'portion');
     $('rc-count').classList.toggle('hidden', t !== 'count');
     $('rc-menus').classList.toggle('hidden', t !== 'menus');
@@ -4330,7 +4353,7 @@
     loadRecipes(); // 위치 목록·권한·레시피 (Missing batch 용)
   }
   $('b-stock').addEventListener('click', () => openStock());
-  $('b-st-back').addEventListener('click', () => goHome());
+  $('b-st-back').addEventListener('click', () => goBack());
 
   const placeOf = (label) => ((rcpData && rcpData.places) || []).find((p) => p.label === label);
   const shortOf = (label) => (placeOf(label) || {}).short || label || '?';
@@ -4467,6 +4490,7 @@
     try {
       const r = await api({ action: 'menuView', token: token() });
       if (r.code === 'AUTH') return logout(r.error);
+      if (saveQ.n) return afterSaves(loadMenus); // 받는 사이에 바꾼 것이 있으면 (화면에 먼저 넣은 것이 덮이지 않게) 저장 뒤 다시
       if (!r.ok) { if (!md) $('rc-menus').replaceChildren(el('p', 'err', serverMsg(r))); return; }
       md = r;
       if (currentView === 'stock' && stTab === 'menus') renderMenus();
@@ -4492,6 +4516,9 @@
       if (r.code === 'AUTH') { logout(r.error); return null; }
       if (!r.ok) { toast('Not saved: ' + serverMsg(r)); afterSaves(loadMenus); return null; }
       if (b.tmp && r.done) meIds[b.tmp] = r.done;
+      // 화면의 임시 ID 를 바로 진짜 ID 로 (다른 저장이 줄에 남아 있어 서버 결과를 아직 안 쓰는 동안에도)
+      if (md) md.menus.forEach((x) => { x.id = idOf(x.id); x.parts.forEach((q) => { q.cmp = idOf(q.cmp); }); });
+      if (meOpen) meOpen = idOf(meOpen);
       if (okMsg) toast(okMsg);
       if (saveQ.n <= 1) { // 줄의 마지막 저장 = 서버의 결과가 화면과 같음 → 그대로 씀
         md = r;
@@ -4566,7 +4593,8 @@
           '<button type="button" data-new="yes" class="' + (meNew === 'yes' ? 'on' : '') + '">Yes<small>we make it</small></button>' +
           '<button type="button" data-new="no" class="' + (meNew === 'no' ? 'on' : '') + '">No<small>bought / raw</small></button></div>';
         if (meNew === 'yes') h += '<p class="meta">Creates an empty recipe marked <span class="me-chip todo">To write</span>. You get a reminder at 09:00 until it has ingredients.</p><button type="button" data-act="mkyes">Add “' + meEsc(meQ.trim()) + '”</button>';
-        if (meNew === 'no') h += '<p class="me-warn">Raw items must come from the Ingredients list, so one product never has two names. Pick it above, or add it first in Manager › Ingredients.</p>';
+        if (meNew === 'no') h += '<p class="me-warn">Raw items must come from the Ingredients list, so one product never has two names. Pick it above, or add it now:</p>' +
+          '<button type="button" data-act="mkno">+ Add “' + meEsc(meQ.trim()) + '” to Ingredients</button>';
         h += '</div>';
       }
     }
@@ -4662,6 +4690,7 @@
         meEdit(() => (isTmp(m.id) ? null : { op: 'remove', menu: idOf(m.id) }), 'Menu deleted', () => { md.menus = md.menus.filter((x) => x !== m); meOpen = null; });
         return;
       }
+      if (a === 'mkno') { addIngredientFrom({ kind: 'menu', menu: m.id }, meQ.trim()); return; }
       if (a === 'mkyes') {
         const n = meQ.trim(), tmp = 'tmp-cmp-' + (++meSeq);
         meEdit(() => (isTmp(m.id) ? null : { op: 'partAdd', menu: idOf(m.id), newRecipe: n, tmp }), n + ' added · empty recipe to write', () => {
@@ -5339,7 +5368,7 @@
   $('b-recipes').addEventListener('click', () => openRecipes());
   $('b-rc-list-back').addEventListener('click', () => {
     if (rcpOpen && rcpStack.length) return openRecipe(rcpStack.pop()); // 홈메이드 재료에서 왔으면 그 레시피로
-    if (rcpOpen) { showRcpList(); window.scrollTo(0, 0); } else goHome();
+    if (rcpOpen) { showRcpList(); window.scrollTo(0, 0); } else goBack();
   });
   $('rc-q').addEventListener('input', () => { rcpState.q = $('rc-q').value; renderRcpList(); });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeRcSheet(); });
@@ -5471,6 +5500,64 @@
     f.addEventListener('change', () => { onFile(f.files[0]); f.value = ''; });
     pick.append(f);
     return pick;
+  }
+
+  // ---------------------------------------------------------------- 새 재료를 쓰던 화면에서 바로 추가하고 돌아오기
+  // 레시피 편집 중(또는 메뉴 편집기)에서 목록에 없는 재료 → Ingredients 의 새 재료 화면(이름이 채워진 채) → 저장되면 원래 화면의 그 자리에 연결.
+  let reReturn = null;             // { kind: 'recipe', draft, k } | { kind: 'menu', menu }
+  function addIngredientFrom(ret, name) {
+    reReturn = ret;
+    openIngr();
+    igStartEdit(null);
+    igDraft.d.name = name;
+    igDraft.returnTo = ret;
+    igDraft.dirty = true;
+    igRender();
+  }
+  /** 새 재료 저장이 끝나면(hit = { code, name }) 또는 취소하면(hit = null) 원래 화면으로. */
+  function returnFromIngredient(hit) {
+    const ret = reReturn;
+    reReturn = null;
+    if (!ret) return;
+    if (navStack.length && ['redit', 'stock'].includes(navStack[navStack.length - 1].view)) navStack.pop();
+    navBack = true;
+    if (ret.kind === 'menu') {
+      stTab = 'menus'; stShownTab = 'menus';
+      show('stock');
+      syncStockTabs();
+      $('rc-stock').classList.add('hidden'); $('rc-count').classList.add('hidden'); $('rc-menus').classList.remove('hidden');
+      meOpen = idOf(ret.menu); meQ = ''; meNew = null; // 메뉴를 만든 직후면 임시 ID → 진짜 ID
+      if (hit && md) {
+        md.ingredients.push({ code: hit.code, name: hit.name, unit: hit.unit });
+        const m = md.menus.find((x) => x.id === idOf(ret.menu));
+        if (m) {
+          const tmp = 'tmp-cmp-' + (++meSeq);
+          meEdit(() => (isTmp(m.id) ? null : { op: 'partAdd', menu: idOf(m.id), link: hit.code, tmp }), hit.name + ' added', () => {
+            m.parts.push({ cmp: tmp, link: hit.code, name: hit.name, kind: 'ing', unit: hit.unit || 'g', todo: false, portion: null, pending: true });
+          });
+        }
+      }
+      renderMenus();
+      return;
+    }
+    stTab = 'recipes';
+    show('redit');
+    syncStockTabs();
+    reDraft = ret.draft;
+    $('re-list-box').classList.add('hidden');
+    $('re-form').classList.remove('hidden');
+    $('v-redit').classList.add('re-on');
+    let at = -1;
+    if (hit) {
+      if (rcpData) rcpData.ingredients = (rcpData.ingredients || []).concat([{ code: hit.code, name: hit.name, unit: hit.unit }]);
+      at = reDraft.d.items.findIndex((x) => x.k === ret.k);
+      if (at >= 0) { reDraft.d.items[at].name = hit.name; reDraft.d.items[at].code = hit.code; }
+      reDraft.dirty = true;
+    }
+    renderReForm();
+    const line = at >= 0 && $('re-lines').children[at];
+    if (line) line.scrollIntoView({ block: 'center' }); else window.scrollTo(0, 0);
+    toast(hit ? '✓ ' + hit.name + ' added to Ingredients and put in your recipe.' : 'Back to your recipe.');
   }
 
   const reFailed = {};             // 저장 실패한 레시피: id → 화면용 (draft = 고치던 내용, saveError = 이유)
@@ -5751,7 +5838,13 @@
         b.addEventListener('click', () => pick(n));
         hint.append(b);
       }
-      hint.append(el('span', 'meta ac-how', 'New ingredients are added in Manager › Ingredients.'));
+      if (store.get('wt_admin') === '1') {
+        // 새 재료: 쓰던 레시피는 그대로 두고 Ingredients 에서 추가 → 저장하면 이 줄로 돌아와 연결됨
+        const add = el('button', 'link ac-add', '+ Add “' + input.value.trim() + '” to Ingredients');
+        add.type = 'button';
+        add.addEventListener('click', () => addIngredientFrom({ kind: 'recipe', draft: reDraft, k: it.k }, input.value.trim()));
+        hint.append(add);
+      } else hint.append(el('span', 'meta ac-how', 'New ingredients are added in Manager › Ingredients.'));
     };
     const show = () => {
       const k = ingKey(input.value);
@@ -5922,7 +6015,7 @@
 
   $('b-re-new').addEventListener('click', () => { if (rcpData) editRecipe(null); });
   $('b-re-boxes').addEventListener('click', () => { if (rcpData) editBoxes(); });
-  $('b-re-back').addEventListener('click', () => (reDraft ? reLeave() : goHome()));
+  $('b-re-back').addEventListener('click', () => (reDraft ? reLeave() : goBack()));
 
   // ------------------------------------------------------------------ Ingredients (Admin 이상)
   // 재료 · 거래처 · 주소 그림. 서버 = 별도 'Ingredients' 스프레드시트 (Ingredients.gs). 시트에서 직접 고쳐도 됨.
@@ -5979,10 +6072,12 @@
     try {
       const r = await api({ action: 'ingView', token: token() });
       if (r.code === 'AUTH') return logout(r.error);
+      if (saveQ.n) return afterSaves(loadIngr);
       if (!r.ok) { if (!ig) $('ig-view').replaceChildren(el('p', 'err', serverMsg(r))); return; }
+      const first = !ig;
       ig = r;
       store.set(IG_STORE, JSON.stringify(r));
-      if (currentView === 'ingr' && !igDraft && !igSupDraft && !igDrag) igRender();
+      if (currentView === 'ingr' && !igDrag && (first || (!igDraft && !igSupDraft))) igRender(); // 처음 받은 것이면 편집 화면도 다시 그림
     } catch (e) {
       if (!ig) $('ig-view').replaceChildren(el('p', 'err', 'Network problem. Please try again.' + detail(e)));
     }
@@ -6070,7 +6165,9 @@
 
   function igEditView() {
     const d = igDraft.d, opts = igAddrs().filter((a) => a.kind === d.storage);
-    let h = '<button type="button" class="ig-link" data-act="leave">← Ingredients</button>';
+    const ret = igDraft.returnTo;
+    let h = '<button type="button" class="ig-link" data-act="leave">' + (ret ? '← Back to the ' + (ret.kind === 'menu' ? 'menu' : 'recipe') : '← Ingredients') + '</button>';
+    if (ret) h += '<p class="re-return">New ingredient for the ' + (ret.kind === 'menu' ? 'menu' : 'recipe') + ' you are writing. After saving, you go straight back to it, with this ingredient filled in.</p>';
     h += '<div class="ig-card"><h3>' + igEsc(d.name || 'New ingredient') + ' <span class="ig-sub">' + igEsc(igDraft.id || '') + '</span></h3>' +
       '<label>Name<input data-f="name" value="' + igEsc(d.name) + '" maxlength="120"></label>' +
       (igDraft.id ? '<p class="ig-help">Renaming also updates every recipe that uses it.</p>' : '') +
@@ -6112,8 +6209,8 @@
 
     h += '<div class="ig-card"><label>Note<input data-f="note" value="' + igEsc(d.note) + '" maxlength="200"></label></div>';
     if (igDraft.id) h += '<div class="ig-card ig-used"><h3>Used in</h3><div>' + (d.used && d.used.length ? d.used.map(igEsc).join(' · ') : '<span class="ig-sub">No recipe yet</span>') + '</div></div>';
-    h += '<p id="ig-msg" class="ig-msg"></p><button type="button" class="ig-btn" id="b-ig-save">Save</button>';
-    if (!igDraft.id) h += '<button type="button" class="ig-btn ghost" id="b-ig-savenew">Save & add another</button>';
+    h += '<p id="ig-msg" class="ig-msg"></p><button type="button" class="ig-btn" id="b-ig-save">' + (igDraft.returnTo ? 'Save and go back' : 'Save') + '</button>';
+    if (!igDraft.id && !igDraft.returnTo) h += '<button type="button" class="ig-btn ghost" id="b-ig-savenew">Save & add another</button>';
     if (igDraft.id) h += '<button type="button" class="ig-link danger" data-act="remove" style="align-self:center">Remove this ingredient</button>';
     $('ig-view').innerHTML = h;
     $('ig-count').textContent = '';
@@ -6127,6 +6224,7 @@
   }
 
   function igLeave() {
+    if (igDraft && igDraft.returnTo) { igDraft = null; return returnFromIngredient(null); } // 새 재료 취소 → 쓰던 화면으로
     if (igDraft && igDraft.dirty && !confirm('Discard your changes?')) return;
     if (igSupDraft && igSupDraft.dirty && !confirm('Discard your changes?')) return;
     igDraft = null; igSupDraft = null;
@@ -6143,6 +6241,7 @@
     const ingredient = { name: d.name, cat: d.cat, unit: d.unit, storage: d.storage, address: d.storage === 'Freezer' ? '' : d.address,
                          count: d.count, demand: d.demand, par: d.par, note: d.note,
                          packs: d.packs.map(({ k, ...p }) => p) };
+    if (dr.returnTo) return igSaveAndReturn(dr, ingredient);
     const id = dr.id || 'new-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
     const local = Object.assign(JSON.parse(JSON.stringify(ingredient)), { id, ver: dr.ver, used: d.used || [], saving: true,
                                 packs: ingredient.packs.map((p) => Object.assign({}, p, { size: igNum(p.size), price: igNum(p.price), deposit: igNum(p.deposit) || 0 })) });
@@ -6171,6 +6270,27 @@
       redraw();
       afterSaves(loadIngr);
     });
+  }
+
+  /** 레시피·메뉴에서 온 새 재료: 코드(ING-…)가 있어야 연결되므로 저장을 기다렸다가 돌아감. */
+  async function igSaveAndReturn(dr, ingredient) {
+    const btn = $('b-ig-save');
+    if (btn) btn.disabled = true;
+    igMsg('Saving, then back to the ' + (dr.returnTo.kind === 'menu' ? 'menu' : 'recipe') + '…', 'meta');
+    let r;
+    await bgSave(async () => {
+      try {
+        r = await api({ action: 'ingSave', token: token(), ingredient });
+      } catch (e) { r = { ok: false, error: 'Network problem. Please try again.' + detail(e) }; }
+    });
+    if (r && r.code === 'AUTH') return logout(r.error);
+    if (!r || !r.ok) {
+      if (btn) btn.disabled = false;
+      return igMsg(serverMsg(r || { error: 'Not saved.' }), 'err');
+    }
+    if (ig && r.ingredient) { ig.ingredients.push(r.ingredient); store.set(IG_STORE, JSON.stringify(ig)); }
+    if (igDraft === dr) igDraft = null;
+    returnFromIngredient({ code: r.id, name: r.ingredient ? r.ingredient.name : ingredient.name, unit: ingredient.unit });
   }
 
   async function igRemove() {
@@ -6467,15 +6587,42 @@
   document.addEventListener('pointercancel', () => igEndDrag(true));
 
   $('b-ingr').addEventListener('click', () => openIngr());
-  $('b-ig-back').addEventListener('click', () => (igDraft || igSupDraft ? igLeave() : goHome()));
+  $('b-ig-back').addEventListener('click', () => (igDraft || igSupDraft ? igLeave() : goBack()));
 
-  // 상단 로고 = 메인 화면 (로그인 전에는 아무 동작 안 함)
-  $('b-logo').addEventListener('click', () => {
+  /** ← Back = 바로 전 화면 (기록이 없으면 메인 화면). */
+  function goBack() {
+    const e = navStack.pop();
+    if (!e) return goHome();
+    navBack = true;
+    const open = {
+      stock: () => { stTab = e.tab && e.tab !== 'recipes' ? e.tab : 'portion'; openStock(); },
+      redit: () => openEditor(), ingr: () => openIngr(), recipes: () => openRecipes(),
+      schedule: () => openSchedule(schedData ? { sched: schedData.sched, file: schedData.file, tab: schedData.tab } : {}, false, null, true),
+      ann: () => openFeed(feed || 'ann', 'home'), inbox: () => openInbox(), team: () => openTeam(), org: () => openOrg(),
+      receipt: () => openReceipt('home'), receipts: () => openReceipts(), chat: () => openChat(),
+      admin: () => { show('admin'); loadStatus(); loadStaff(); }, request: () => openRequest(),
+    }[e.view];
+    if (open) open(); else { navBack = false; goHome(); }
+  }
+
+  /** ⌂ / 상단 로고 = 메인 화면 (고치던 것이 있으면 먼저 물어봄). */
+  function homeAnywhere() {
     if (!token() || currentView === 'login') return;
     if (currentView === 'redit' && reDraft && reDraft.dirty && !confirm('Discard your changes?')) return;
     if (currentView === 'ingr' && ((igDraft && igDraft.dirty) || (igSupDraft && igSupDraft.dirty)) && !confirm('Discard your changes?')) return;
     if (editingRule) stopEditRule();
+    reReturn = null;
     goHome();
+  }
+  $('b-logo').addEventListener('click', homeAnywhere);
+  // 모든 ← Back 옆(왼쪽 아래)에 ⌂ 메인 화면 버튼
+  document.querySelectorAll('.back-fab').forEach((b) => {
+    const h = el('button', 'home-fab');
+    h.type = 'button';
+    h.setAttribute('aria-label', 'Home'); h.title = 'Home';
+    h.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 3l9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>';
+    h.addEventListener('click', homeAnywhere);
+    b.before(h);
   });
 
   // 앱을 다시 열면(백그라운드에서 돌아오면) 서버에서 최신 상태를 다시 받아옴.

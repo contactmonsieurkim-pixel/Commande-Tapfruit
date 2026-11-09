@@ -67,6 +67,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - 확인 화면: 미확인만 하나씩(집중 모드) → 다 확인해야 지난 목록. 앱을 열면 **메인 화면 먼저**(공지 창 자동 진입은 압박감 때문에 제거). 알림·메일 링크로 들어온 경우만 바로 해당 화면.
 - 공지·Our Rules 목록(다 확인한 뒤)은 **제목만, 눌러서 펼침**(사진은 펼칠 때 받음, 앱 복귀로 다시 그려도 펼친 것 유지) + 왼쪽 아래 떠 있는 **← Back** = 메인 화면.
 - **← Back** 은 메인 외 모든 화면(공지·룰 확인 중 포함, 확인 버튼 위)에 늘 떠 있음, 반투명(`--fab-bg`). 예전 'Later' 버튼은 Back 으로 대체. 스케줄에서 연 Request 의 Back 은 스케줄로.
+  2026-11-09 (사장님): **← Back = 바로 전 화면**(`navStack`, `show()` 가 쌓고 `goBack()` 이 꺼냄, 메인으로 가면 비움. Stock 앱은 떠날 때 보던 탭으로), 그 왼쪽에 늘 **⌂ = 메인 화면**(`.home-fab`, 모든 `.back-fab` 앞에 자동으로 붙음, 고치던 것이 있으면 먼저 물어봄). 화면 안의 한 단계 뒤(레시피 → 목록, 편집 → 목록)는 그대로.
 - 확인은 사람당 1회 기록(브라우저든 앱이든). 앱은 다시 열릴 때 서버에서 새로고침.
 - 업로더 이름은 **앱·메일에서 숨김**, 기록 시트에는 남김(감사용).
 - **공지**: 게시 시점의 대상자만 확인 대상. 나중에 온 직원도 지금 대상(전체/팀/개인)에 해당하면 지난 공지를 **읽을 수는 있음**(확인 요청 없음, `mustConfirm: false`). Supervisor 는 모든 공지를 봄.
@@ -201,7 +202,7 @@ API 액션(`doPost` 의 `action`): `login me tap modify pushKey subscribe anns p
 - 레시피 탭은 5열: E = 코드 (ING/BASE 줄 = ING- 또는 홈메이드 RCP-, BOX 줄 = BOX-, PLACE 줄 = PL-). 앱은 코드로 지금 이름을 찾아 보여줌 → 이름을 바꿔도 연결 유지(시트의 B열 이름도 같이 고쳐 둠).
 - Production Log 에 `Place ID` 열(19번째) → 위치 이름(Spot)을 바꿔도 배치가 따라감. 원재료의 냉장고 주소 = 위치 ID(앱은 Short 로 보여줌).
 - `setup` 의 `ensureCodes_` 가 기존 데이터에 코드를 붙임(여러 번 실행해도 안전). 시트에서 새로 만든 레시피 탭은 앱이 읽을 때 ID 줄을 넣고, 새 박스·위치 줄에도 ID 를 붙임.
-- **새 재료는 Ingredients 앱에서만**(사장님: 같은 재료가 여러 이름으로 갈라짐 방지). 레시피 편집기 재료 칸은 목록(재료 + 다른 레시피)에서 고르기만, 목록에 없으면 빨간 *Not in the ingredient list* + *Did you mean …?*, 저장 안 됨(서버도 거절). 지운(Active FALSE) 재료는 새로 고를 수 없음(예전 레시피에는 그대로 보임).
+- **새 재료는 Ingredients 앱에서만**(사장님: 같은 재료가 여러 이름으로 갈라짐 방지). 단, 레시피를 쓰다가(또는 Menu editor 의 'No, bought/raw') 목록에 없으면 **+ Add “…” to Ingredients** → 이름이 채워진 새 재료 화면 → *Save and go back* = 코드를 받을 때까지 기다렸다가 **쓰던 레시피(그 줄, 양 그대로)** 나 메뉴로 돌아와 연결(`addIngredientFrom` / `returnFromIngredient`, 2026-11-09). 레시피 편집기 재료 칸은 목록(재료 + 다른 레시피)에서 고르기만, 목록에 없으면 빨간 *Not in the ingredient list* + *Did you mean …?*, 저장 안 됨(서버도 거절). 지운(Active FALSE) 재료는 새로 고를 수 없음(예전 레시피에는 그대로 보임).
 
 **메뉴 · 컴포넌트 · Portion estim (2026-10-23)**
 - Stock 앱 = 탭 **Portion estim · Count · Menu editor · Recipe editor** (사장님이 정한 순서). Portion estim = 레시피를 보는 사람 모두, Count = Admin 이상(안에서 Evening / Sunday), Menu editor·Recipe editor = Supervisor. 예전 Stock 탭(레시피별 목록)은 Portion estim 맨 아래 *Not on a menu* 로, Manager 폴더의 Recipe editor 아이콘은 없앰(Recipe editor 는 v-redit 화면 + 같은 탭 줄).
