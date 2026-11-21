@@ -901,3 +901,44 @@ function checkSchedule() {
   });
   Logger.log('끝.');
 }
+
+/**
+ * 편집기에서 실행: 한 직원이 앱에서 Schedule 을 열었을 때 받는 화면을 그대로 만들어 보고 요약을 로그에 씀.
+ * 사용법: 아래 NAME 을 그 직원 이름(Employees 의 Name)으로 바꾸고 checkScheduleFor 를 실행. 아무것도 바꾸지 않음.
+ */
+function checkScheduleFor(name) {
+  var NAME = name || 'Name here';
+  var emp = findEmployee_(NAME);
+  if (!emp) {
+    Logger.log('FAIL 이 이름의 재직 중 직원이 없음: "' + NAME + '" (Employees 의 Name·Active 확인)');
+    return;
+  }
+  Logger.log('직원: ' + emp.name + ' · Team: ' + (emp.team || '(비어 있음)') + ' · Supervisor: ' + emp.supervisor);
+  var people = schedPeople_();
+  Logger.log('Schedule Colors: ' + (people.colors[emp.name] ? '색 ' + people.colors[emp.name]
+    : '없음 → My shifts 가 안 보이고 By day 로 열림 (이름 철자가 Employees 와 같은지 확인)'));
+  var tok = 'diag-' + Utilities.getUuid();
+  props_.setProperty('tok_' + tok, emp.name);
+  try {
+    var r = scheduleView_({ token: tok });
+    if (!r.schedules.length) return Logger.log('FAIL Schedules 탭이 비어 있음');
+    Logger.log('스케줄: ' + r.schedules.map(function (x) { return x.name; }).join(', ') + ' → 처음 열리는 것: ' + r.sched);
+    if (r.error) return Logger.log('FAIL 앱에 보이는 메시지: ' + r.error);
+    Logger.log('달 버튼: ' + r.tabs.map(function (t) { return t.label + '(' + t.tab + ')'; }).join(', ') + ' → 처음: ' + r.tab);
+    Logger.log('주 ' + r.weeks.length + '개, 확인할 주: ' + (r.pending.map(function (p) { return p.label; }).join(', ') || '없음'));
+    r.weeks.forEach(function (w) {
+      var mine = (w.slots || []).filter(function (x) { return x.names.indexOf(emp.name) >= 0; });
+      Logger.log('  ' + w.label + ': 근무 칸 ' + (w.slots || []).length + '개, 이 사람 ' + mine.length + '개' +
+        (w.mustConfirm ? ' · 확인 필요' : w.confirmedAt ? ' · 확인함 ' + w.confirmedAt : '') +
+        (mine.length ? ' · 예: ' + mine.slice(0, 2).map(function (x) { return x.date + ' ' + x.start + '-' + x.end; }).join(', ') : ''));
+    });
+    Logger.log('응답 크기: ' + JSON.stringify(r).length + ' bytes');
+  } catch (err) {
+    Logger.log('FAIL 서버 오류 → ' + errDetail_(err));
+    Logger.log(String(err && err.stack || ''));
+  } finally {
+    props_.deleteProperty('tok_' + tok);
+  }
+  Logger.log('끝.');
+}
+

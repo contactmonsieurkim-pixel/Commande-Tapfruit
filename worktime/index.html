@@ -2060,14 +2060,30 @@
 
   // force: true = 저장된 화면이 1분 안 것이어도 서버에서 새로 받음 (앱으로 돌아왔을 때)
   //        'fresh' = 저장된 화면을 아예 보여 주지 않고 Loading… 후 새로 받은 것만 (알림·메일 링크로 들어왔을 때)
+  // 그리다가 오류가 나면(예: 예전 버전에서 폰에 저장된 화면) 저장된 것을 지우고, 빈 화면 대신 원인을 보여 줌
+  function drawSchedule(r, focus) {
+    try {
+      renderSchedule(r, focus);
+      return null;
+    } catch (e) {
+      console.error(e);
+      schedStore = { user: '', views: {}, alias: {} };
+      try { localStorage.removeItem(SCHED_STORE); } catch (e2) { /* 무시 */ }
+      return e;
+    }
+  }
+
   async function openSchedule(sel, focus = true, after, force = false) {
     schedSel = sel || {};
     if (currentView !== 'schedule') show('schedule'); // 이미 보고 있으면 맨 위로 올리지 않음
-    const seq = ++schedSeq, hit = force === 'fresh' ? null : cacheGet(schedSel), cached = hit && hit.r;
+    const seq = ++schedSeq, hit = force === 'fresh' ? null : cacheGet(schedSel);
+    let cached = hit && hit.r, hold = null;
     if (cached) {
-      const hold = currentView === 'schedule' && !focus ? holdView() : null;
+      hold = currentView === 'schedule' && !focus ? holdView() : null;
       schedData = cached;
-      renderSchedule(cached, focus);
+      if (drawSchedule(cached, focus)) { cached = null; schedData = null; } // 저장된 화면이 깨짐 -> 서버에서 새로
+    }
+    if (cached) {
       if (hold) hold();
       if (after) after();
       if (!force && Date.now() - hit.at < SCHED_FRESH_MS) {
@@ -2090,7 +2106,11 @@
       schedData = r;
       if (!cached || JSON.stringify(cached) !== JSON.stringify(r)) {
         const hold = holdView();
-        renderSchedule(r, focus && !cached);
+        const bad = drawSchedule(r, focus && !cached);
+        if (bad) {
+          return $('sch-body').replaceChildren(el('p', 'err', 'Could not show the schedule. Please tell your manager. (' +
+            bad.message + ')'));
+        }
         if (cached) hold();
         if (after && !cached) after();
       }

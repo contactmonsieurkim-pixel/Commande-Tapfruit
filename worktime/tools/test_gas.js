@@ -1468,6 +1468,18 @@ test('supervisor can be changed/added in the sheet; supervisor has manager right
     assert.strictEqual(has('Sujeong 14:30', 'Sujeong SEO'), true);
   });
 
+  test('schedule: checkScheduleFor shows what one person gets (editor tool)', () => {
+    const logs = [];
+    S.ctx.Logger.log = (x) => logs.push(String(x));
+    S.ctx.checkScheduleFor('Yuna');
+    assert.ok(logs.some((l) => /^직원: Yuna · Team: Kitchen/.test(l)), logs.join('\n'));
+    assert.ok(logs[logs.length - 1] === '끝.', logs.join('\n'));
+    assert.ok(!Object.keys(S.props).some((k) => k.startsWith('tok_diag-')), 'temporary login removed');
+    logs.length = 0;
+    S.ctx.checkScheduleFor('Nobody');
+    assert.match(logs[0], /^FAIL 이 이름의/);
+  });
+
   test('schedule: records still verify', () => {
     assert.ok(S.ctx.verifyRecords().every((x) => x.ok));
   });

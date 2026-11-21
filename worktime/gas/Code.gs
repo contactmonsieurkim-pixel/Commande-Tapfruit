@@ -44,7 +44,7 @@ function setup() {
 function checkFiles_() {
   var last = { 'Code.gs': 'json_', 'Crypto.gs': 'verifySun_', 'WebPush.gs': 'sendWebPush_',
                'Announce.gs': 'morningRun', 'Supervisor.gs': 'recordLogin_', 'Rules.gs': 'announceRule_',
-               'Schedule.gs': 'checkSchedule', 'Receipts.gs': 'notifyReceipts_',
+               'Schedule.gs': 'checkScheduleFor', 'Receipts.gs': 'notifyReceipts_',
                'Chat.gs': 'chatPushRun', 'Recipes.gs': 'checkRecipes', 'Stock.gs': 'checkStock',
                'Ingredients.gs': 'checkIngredients', 'Menus.gs': 'checkMenus' };
   var missing = Object.keys(last).filter(function (f) { return typeof this[last[f]] !== 'function'; }, this);
