@@ -44,7 +44,7 @@ function ensurePlaces_(ss) {
 
 function prodBook_() {
   var id = props_.getProperty('PROD_SHEET_ID');
-  if (id) return SpreadsheetApp.openById(id);
+  if (id) return openSS_(id);
   var ss = SpreadsheetApp.create('Production Log');
   DriveApp.getFileById(ss.getId()).moveTo(folder_());
   ss.getSheets()[0].setName('Log');
@@ -54,7 +54,9 @@ function prodBook_() {
 
 /** 탭이 없으면 만들고, 머리글이 짧으면(나중에 추가된 열) 채움. */
 function prodTab_(name, head) {
-  var ss = prodBook_(), sh = ss.getSheetByName(name) || ss.insertSheet(name);
+  var ss = prodBook_(), sh = ss.getSheetByName(name);
+  if (sh && props_.getProperty('PROD_OK') === SCHEMA_VER) return sh; // 머리글 검사는 setup 뒤 처음 한 번만
+  sh = sh || ss.insertSheet(name);
   if (!sh.getRange('A1').getValue() || !sh.getRange(1, head.length).getValue()) {
     sh.getRange(1, 1, 1, head.length).setValues([head]).setFontWeight('bold');
     sh.setFrozenRows(1);
@@ -64,8 +66,10 @@ function prodTab_(name, head) {
 
 function prodSheet_() {
   var sh = prodTab_('Log', PROD_HEAD);
+  if (props_.getProperty('PROD_OK') === SCHEMA_VER) return sh;
   prodTab_('Stock moves', MOVES_HEAD);
   prodTab_('Use', USE_HEAD);
+  props_.setProperty('PROD_OK', SCHEMA_VER);
   return sh;
 }
 
@@ -84,8 +88,8 @@ var placesMemo_ = null;
 
 /** [{ floor, type, spot, short, count: 'daily'|'sunday', group: 'Fridge'|'Shelf', label }] — Places 탭 순서. */
 function prodPlaces_() {
-  if (placesMemo_ && placesMemo_.ver === props_.getProperty('RCP_VER')) return placesMemo_.list;
-  var key = 'places_' + (props_.getProperty('RCP_VER') || '0'), cache = CacheService.getScriptCache(), hit = cache.get(key), list;
+  if (placesMemo_ && placesMemo_.ver === props_.getProperty('PLACES_VER')) return placesMemo_.list;
+  var key = 'places_' + (props_.getProperty('PLACES_VER') || '0'), cache = CacheService.getScriptCache(), hit = cache.get(key), list;
   if (hit) {
     list = JSON.parse(hit);
   } else {
@@ -111,9 +115,9 @@ function prodPlaces_() {
                  group: type === 'Shelf' ? 'Shelf' : 'Fridge',
                  label: r[0] + ' · ' + (type === 'Shelf' && !/shelf/i.test(r[2]) ? 'Shelf · ' : '') + r[2] };
       });
-    cache.put(key, JSON.stringify(list), RECIPE_CACHE_SEC);
+    cache.put(key, JSON.stringify(list), sheetCacheSec_());
   }
-  placesMemo_ = { ver: props_.getProperty('RCP_VER'), list: list };
+  placesMemo_ = { ver: props_.getProperty('PLACES_VER'), list: list };
   return list;
 }
 
@@ -666,7 +670,7 @@ function countSave_(req) {
 
 /** 편집기에서 실행: 위치 목록과 지금 재고를 실행 로그에. */
 function checkStock() {
-  bumpRecipes_();
+  bumpPlaces_();
   prodPlaces_().forEach(function (p) {
     Logger.log(p.short + '  ' + p.label + '  (' + p.type + ', count ' + p.count + ')');
   });

@@ -16,12 +16,19 @@ var EDIT_WINDOW_SEC = 60 * 60; // 태그 후 1시간 동안 시간 변경 요청
 
 var props_ = PropertiesService.getScriptProperties();
 
+// 빠르게: 한 요청 안에서 같은 스프레드시트를 다시 열지 않음 (doPost·트리거 시작 때 비움)
+var ssMemo_ = {};
+function openSS_(id) { return ssMemo_[id] || (ssMemo_[id] = SpreadsheetApp.openById(id)); }
+// 탭 구조 검사(머리글·없는 탭 만들기)는 처음 한 번만. 바꾸면 setup 이 다시 검사함.
+var SCHEMA_VER = '2026-11-06';
+
 /**
  * 편집기에서 실행 (처음 1회 + 기능 추가 후 다시 1회). 여러 번 실행해도 안전.
  * 직원 명단 시트, 공지 기록 시트, 비밀키, 웹 푸시 키, 매일 리마인더 트리거를 준비.
  */
 function setup() {
   checkFiles_();
+  ['ING_OK', 'MENU_OK', 'PROD_OK'].forEach(function (k) { props_.deleteProperty(k); }); // 탭 구조를 다시 검사
   var config = ensureConfig_();
   var records = ensureRecords_();
   ensureScheduleConfig_(config);
@@ -29,6 +36,7 @@ function setup() {
   var recipes = ensureRecipes_();
   ensureMenus_();
   ensureCodes_();
+  installSheetWatch_(); // 시트에서 직접 고치면 앱의 캐시를 바로 비움
   vapidKeys_();
   if (!props_.getProperty('VAPID_SUBJECT')) {
     props_.setProperty('VAPID_SUBJECT', 'mailto:' + Session.getEffectiveUser().getEmail());
@@ -93,6 +101,8 @@ function doPost(e) {
   try {
     schedResetMemo_();
     employeesMemo_ = null;
+    ssMemo_ = {};
+    recipesMemo_ = null;
     var handlers = {
       login: login_, tap: tap_, modify: modify_, me: me_,
       pushKey: pushKey_, subscribe: subscribe_, anns: annList_, photo: annPhoto_,
@@ -255,7 +265,7 @@ var employeesMemo_ = null;
 function employees_() {
   if (employeesMemo_) return employeesMemo_;
   var id = requiredProp_('CONFIG_SHEET_ID');
-  var rows = SpreadsheetApp.openById(id).getSheetByName('Employees').getDataRange().getDisplayValues();
+  var rows = openSS_(id).getSheetByName('Employees').getDataRange().getDisplayValues();
   var out = [];
   for (var i = 1; i < rows.length; i++) {
     var r = rows[i].concat(['', '', '', '', '', '', '', '']);

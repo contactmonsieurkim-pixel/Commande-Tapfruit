@@ -15,7 +15,7 @@ var PART_HEAD = ['Menu ID', 'Menu', 'Component ID', 'Component', 'Portion', 'Uni
 
 function menuBook_() {
   var id = props_.getProperty('MENU_SHEET_ID');
-  if (id) return SpreadsheetApp.openById(id);
+  if (id) return openSS_(id);
   var ss = SpreadsheetApp.create('Menus');
   DriveApp.getFileById(ss.getId()).moveTo(folder_());
   props_.setProperty('MENU_SHEET_ID', ss.getId());
@@ -24,10 +24,12 @@ function menuBook_() {
 }
 
 function ensureMenus_() {
+  if (props_.getProperty('MENU_OK') === SCHEMA_VER) return menuBook_();
   var ss = menuBook_();
   ingTab_(ss, 'Menus', MENU_HEAD, ['A:D']);
   ingTab_(ss, 'Components', COMP_HEAD, ['A:D']);
   ingTab_(ss, 'Parts', PART_HEAD, ['A:D', 'F:F']);
+  props_.setProperty('MENU_OK', SCHEMA_VER);
   return ss;
 }
 
@@ -155,8 +157,10 @@ function menuEdit_(req) {
         }
       }
       if (mb.parts.some(function (p) { return p.menu === m2.id && p.cmp === cmp; })) fail_(mb.comps[cmp].name + ' is already in ' + m2.name + '.');
-      var d2 = menuData_(), c2 = d2.comps.filter(function (x) { return x.id === cmp; })[0];
-      appendRows_(psh, [[m2.id, m2.name, cmp, c2 ? c2.name : '', '', c2 ? c2.unit : '']]);
+      var rc2 = {};
+      recipesAll_().recipes.forEach(function (r) { rc2[r.code] = r; });
+      var c2 = menuLinkInfo_(mb.comps[cmp].link, rc2, ingCodeMap_());
+      appendRows_(psh, [[m2.id, m2.name, cmp, c2.name, '', c2.unit]]);
       done = cmp;
     } else if (op === 'portion') {
       var m3 = menu(), p3 = mb.parts.filter(function (p) { return p.menu === m3.id && p.cmp === String(req.cmp || '').toUpperCase(); })[0];
